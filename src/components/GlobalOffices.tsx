@@ -55,10 +55,10 @@ const GlobalOffices = () => {
   ];
 
   return (
-    <section id="offices" className="relative py-24 px-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 overflow-hidden">
+    <section id="offices" className="relative py-24 px-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden transition-colors">
       {/* Background decoration */}
       <motion.div
-        className="absolute top-0 right-0 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl"
+        className="absolute top-0 right-0 w-96 h-96 bg-purple-200/20 dark:bg-purple-900/20 rounded-full blur-3xl"
         animate={{
           scale: [1, 1.3, 1],
           opacity: [0.2, 0.4, 0.2],
@@ -83,12 +83,12 @@ const GlobalOffices = () => {
             className="inline-flex items-center gap-3 mb-6"
             whileHover={{ scale: 1.05 }}
           >
-            <Globe2 className="w-12 h-12 text-purple-500" />
+            <Globe2 className="w-12 h-12 text-purple-500 dark:text-purple-400" />
           </motion.div>
-          <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
+          <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 dark:from-purple-400 dark:via-blue-400 dark:to-pink-400 bg-clip-text text-transparent">
             Global Presence
           </h2>
-          <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
             With offices across six continents, we provide 24/7 support and local expertise wherever your business operates.
           </p>
         </motion.div>
@@ -105,17 +105,17 @@ const GlobalOffices = () => {
               whileHover={{ y: -10 }}
               className="group relative"
             >
-              <div className="glass rounded-3xl overflow-hidden border-2 border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <div className="glass dark:glass-dark rounded-3xl overflow-hidden border-2 border-white/50 dark:border-gray-700/50 shadow-xl hover:shadow-2xl transition-all duration-300">
                 {/* Gradient header */}
                 <div className={`h-3 bg-gradient-to-r ${office.color}`}></div>
                 
-                <div className="p-8 bg-white/60 backdrop-blur-sm">
+                <div className="p-8 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm">
                   {/* Country flag emoji could go here */}
                   <div className="mb-4">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-1 group-hover:text-purple-700 transition-colors">
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1 group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
                       {office.country}
                     </h3>
-                    <p className="text-lg font-semibold text-gray-600">{office.city}</p>
+                    <p className="text-lg font-semibold text-gray-600 dark:text-gray-300">{office.city}</p>
                   </div>
                   
                   <div className="space-y-4">
@@ -124,10 +124,10 @@ const GlobalOffices = () => {
                       whileHover={{ x: 5 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className="p-2 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg">
-                        <MapPin className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50 rounded-lg">
+                        <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <span className="text-gray-700 text-sm leading-relaxed">{office.address}</span>
+                      <span className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{office.address}</span>
                     </motion.div>
                     
                     <motion.div
@@ -135,10 +135,10 @@ const GlobalOffices = () => {
                       whileHover={{ x: 5 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className="p-2 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg">
-                        <Phone className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/50 dark:to-cyan-900/50 rounded-lg">
+                        <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <span className="text-gray-700 text-sm">{office.phone}</span>
+                      <span className="text-gray-700 dark:text-gray-300 text-sm">{office.phone}</span>
                     </motion.div>
                     
                     <motion.div
@@ -146,10 +146,10 @@ const GlobalOffices = () => {
                       whileHover={{ x: 5 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className="p-2 bg-gradient-to-br from-pink-100 to-rose-100 rounded-lg">
-                        <Mail className="h-5 w-5 text-pink-600" />
+                      <div className="p-2 bg-gradient-to-br from-pink-100 to-rose-100 dark:from-pink-900/50 dark:to-rose-900/50 rounded-lg">
+                        <Mail className="h-5 w-5 text-pink-600 dark:text-pink-400" />
                       </div>
-                      <span className="text-gray-700 text-sm">{office.email}</span>
+                      <span className="text-gray-700 dark:text-gray-300 text-sm">{office.email}</span>
                     </motion.div>
                   </div>
                 </div>
@@ -171,7 +171,7 @@ const GlobalOffices = () => {
           transition={{ duration: 0.8, delay: 0.5 }}
           className="text-center mt-16"
         >
-          <p className="text-lg text-gray-600 mb-6">
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
             Ready to connect with us?
           </p>
           <motion.button

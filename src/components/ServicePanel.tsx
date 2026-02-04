@@ -18,7 +18,7 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ title, description, color, 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent dark:from-white/5"></div>
       
       <div className="relative h-full p-6 flex flex-col justify-between text-white">
         <div>
@@ -35,7 +35,7 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ title, description, color, 
           </Button>
         </div>
         
-        <div className={`absolute inset-0 bg-black/20 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}></div>
+        <div className={`absolute inset-0 bg-black/20 dark:bg-black/40 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}></div>
       </div>
     </div>
   );

@@ -59,8 +59,8 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl bg-white dark:bg-gray-800 shadow-2xl">
         <CardHeader className="relative">
           <Button
             onClick={onClose}
@@ -71,12 +71,12 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
             <X className="h-4 w-4" />
           </Button>
           
-          <CardTitle className="text-2xl text-center mb-4">
+          <CardTitle className="text-2xl text-center mb-4 dark:text-gray-100">
             Inquiry for {serviceName}
           </CardTitle>
           
           <div className="space-y-2">
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>Question {currentQuestion + 1} of {questions.length}</span>
               <span>{Math.round(progress)}% Complete</span>
             </div>
@@ -85,8 +85,8 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 p-6 rounded-xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
               {questions[currentQuestion]}
             </h3>
             
@@ -94,7 +94,7 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
               value={answers[currentQuestion]}
               onChange={(e) => handleAnswerChange(e.target.value)}
               placeholder="Please provide detailed information..."
-              className="min-h-32 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              className="min-h-32 rounded-lg border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           

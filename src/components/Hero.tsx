@@ -14,10 +14,10 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-50 to-pink-100 overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-50 to-pink-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden transition-colors">
       {/* Animated gradient orbs */}
       <motion.div
-        className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-purple-300/40 to-pink-300/40 rounded-full blur-3xl"
+        className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-purple-300/40 to-pink-300/40 dark:from-purple-900/30 dark:to-pink-900/30 rounded-full blur-3xl"
         animate={{
           scale: [1, 1.2, 1],
           x: [0, 50, 0],
@@ -30,7 +30,7 @@ const Hero = () => {
         }}
       />
       <motion.div
-        className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-300/40 to-cyan-300/40 rounded-full blur-3xl"
+        className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-300/40 to-cyan-300/40 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-full blur-3xl"
         animate={{
           scale: [1.2, 1, 1.2],
           x: [0, -50, 0],
@@ -47,7 +47,7 @@ const Hero = () => {
       {floatingWords.map((word, index) => (
         <motion.div
           key={index}
-          className="absolute text-xs md:text-sm font-bold text-gray-400/30 pointer-events-none"
+          className="absolute text-xs md:text-sm font-bold text-gray-400/30 dark:text-gray-600/40 pointer-events-none"
           style={{ left: word.x, top: word.y }}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ 
@@ -84,10 +84,10 @@ const Hero = () => {
             <motion.div
               key={idx}
               whileHover={{ scale: 1.1, rotate: 5 }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm rounded-full border border-purple-200 shadow-lg"
+              className="flex items-center gap-2 px-4 py-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-full border border-purple-200 dark:border-purple-700 shadow-lg"
             >
-              <span className="text-purple-600">{item.icon}</span>
-              <span className="text-sm font-semibold text-gray-700">{item.label}</span>
+              <span className="text-purple-600 dark:text-purple-400">{item.icon}</span>
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{item.label}</span>
             </motion.div>
           ))}
         </motion.div>
@@ -116,10 +116,10 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="mb-6"
         >
-          <h2 className="text-2xl md:text-4xl font-bold text-gray-800 mb-4">
+          <h2 className="text-2xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-4">
             AI+ Digitally Infused, Revenue-Oriented
           </h2>
-          <p className="text-xl md:text-2xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
             Marketing Agency for{' '}
             <span className="font-bold text-purple-600">Startups</span>,{' '}
             <span className="font-bold text-blue-600">Enterprises</span>,{' '}
@@ -133,7 +133,7 @@ const Hero = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed"
+          className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed"
         >
           Transforming businesses with intelligent growth strategies, data-driven insights, 
           and cutting-edge automation that delivers real, measurable results.
@@ -158,7 +158,7 @@ const Hero = () => {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button 
               variant="outline"
-              className="border-3 border-purple-400 text-purple-700 hover:bg-purple-500 hover:text-white hover:border-purple-500 px-10 py-6 text-lg rounded-full shadow-lg transition-all duration-300 font-bold backdrop-blur-sm bg-white/50"
+              className="border-3 border-purple-400 dark:border-purple-600 text-purple-700 dark:text-purple-300 hover:bg-purple-500 hover:text-white hover:border-purple-500 px-10 py-6 text-lg rounded-full shadow-lg transition-all duration-300 font-bold backdrop-blur-sm bg-white/50 dark:bg-gray-800/50"
             >
               Get Started Today
             </Button>
@@ -181,12 +181,12 @@ const Hero = () => {
             <motion.div
               key={idx}
               whileHover={{ y: -5 }}
-              className="glass rounded-2xl p-6 border-2 border-white/50 shadow-lg"
+              className="glass dark:glass-dark rounded-2xl p-6 border-2 border-white/50 dark:border-gray-700/50 shadow-lg"
             >
-              <div className="text-3xl md:text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+              <div className="text-3xl md:text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent mb-2">
                 {stat.number}
               </div>
-              <div className="text-sm font-semibold text-gray-600">{stat.label}</div>
+              <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">{stat.label}</div>
             </motion.div>
           ))}
         </motion.div>
@@ -198,9 +198,9 @@ const Hero = () => {
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <div className="w-6 h-10 border-2 border-purple-400 rounded-full flex items-start justify-center p-2">
+        <div className="w-6 h-10 border-2 border-purple-400 dark:border-purple-600 rounded-full flex items-start justify-center p-2">
           <motion.div
-            className="w-1.5 h-1.5 bg-purple-600 rounded-full"
+            className="w-1.5 h-1.5 bg-purple-600 dark:bg-purple-400 rounded-full"
             animate={{ y: [0, 16, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           />

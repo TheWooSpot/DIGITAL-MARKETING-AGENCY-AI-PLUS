@@ -111,11 +111,11 @@ const ServiceCategories = () => {
   return (
     <section className="relative py-24 px-6 overflow-hidden">
       {/* Background with gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors" />
       
       {/* Animated background elements */}
       <motion.div
-        className="absolute top-20 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl"
+        className="absolute top-20 left-10 w-72 h-72 bg-purple-200/30 dark:bg-purple-900/20 rounded-full blur-3xl"
         animate={{
           scale: [1, 1.2, 1],
           opacity: [0.3, 0.5, 0.3],
@@ -127,7 +127,7 @@ const ServiceCategories = () => {
         }}
       />
       <motion.div
-        className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl"
+        className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/30 dark:bg-blue-900/20 rounded-full blur-3xl"
         animate={{
           scale: [1.2, 1, 1.2],
           opacity: [0.5, 0.3, 0.5],
@@ -151,7 +151,7 @@ const ServiceCategories = () => {
           <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
             AI+ Digital Marketing Solutions
           </h2>
-          <p className="text-xl text-gray-700 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
             Powering growth for startups, enterprises, SMBs, and non-profits with intelligent marketing solutions
           </p>
         </motion.div>
@@ -168,7 +168,7 @@ const ServiceCategories = () => {
               className="relative group"
             >
               <motion.div
-                className={`relative rounded-3xl p-8 cursor-pointer transition-all duration-500 ${category.gradient} glass border-2 border-white/50 shadow-lg hover:shadow-2xl`}
+                className={`relative rounded-3xl p-8 cursor-pointer transition-all duration-500 ${category.gradient} dark:bg-gradient-to-br dark:from-gray-800/80 dark:to-gray-700/80 glass dark:glass-dark border-2 border-white/50 dark:border-gray-700/50 shadow-lg hover:shadow-2xl`}
                 whileHover={{ scale: 1.02, y: -5 }}
                 onClick={() => setActivePanel(activePanel === category.id ? null : category.id)}
               >
@@ -183,24 +183,24 @@ const ServiceCategories = () => {
 
                 {/* Category Number */}
                 <div className="absolute top-6 right-6">
-                  <div className="w-10 h-10 rounded-full bg-white/60 backdrop-blur-sm flex items-center justify-center font-bold text-gray-700">
+                  <div className="w-10 h-10 rounded-full bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm flex items-center justify-center font-bold text-gray-700 dark:text-gray-200">
                     {category.id}
                   </div>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-2xl font-bold mb-4 text-gray-800 group-hover:text-gray-900 transition-colors">
+                <h3 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                   {category.title}
                 </h3>
 
                 {/* Purpose */}
-                <p className="text-gray-700 leading-relaxed mb-4">
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
                   {category.purpose}
                 </p>
 
                 {/* Expand indicator */}
                 <motion.div
-                  className="flex items-center text-sm font-semibold text-gray-600"
+                  className="flex items-center text-sm font-semibold text-gray-600 dark:text-gray-400"
                   animate={{ x: activePanel === category.id ? 5 : 0 }}
                 >
                   {activePanel === category.id ? 'Click to close' : 'Click to explore'}
@@ -222,8 +222,8 @@ const ServiceCategories = () => {
                       transition={{ duration: 0.4, ease: 'easeInOut' }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-6 pt-6 border-t-2 border-white/50">
-                        <h4 className="font-bold text-lg mb-4 text-gray-800">Key Services Include:</h4>
+                      <div className="mt-6 pt-6 border-t-2 border-white/50 dark:border-gray-600/50">
+                        <h4 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">Key Services Include:</h4>
                         <ul className="space-y-3">
                           {category.details.map((detail, idx) => (
                             <motion.li
@@ -233,8 +233,8 @@ const ServiceCategories = () => {
                               transition={{ delay: idx * 0.1 }}
                               className="flex items-start"
                             >
-                              <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mt-2 mr-3 flex-shrink-0" />
-                              <span className="text-gray-700">{detail}</span>
+                              <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 rounded-full mt-2 mr-3 flex-shrink-0" />
+                              <span className="text-gray-700 dark:text-gray-300">{detail}</span>
                             </motion.li>
                           ))}
                         </ul>
