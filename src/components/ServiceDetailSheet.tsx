@@ -37,22 +37,22 @@ export function ServiceDetailSheet({
       <SheetContent
         side="right"
         className={cn(
-          'w-full sm:max-w-[60vw] sm:min-w-[400px] overflow-y-auto',
+hubo           'w-full sm:max-w-[60vw] sm:min-w-[400px] overflow-y-auto p-4',
           'glass dark:glass-dark border-l-2 border-white/50 dark:border-gray-700/50',
           'transition-all duration-300 ease-out'
         )}
       >
-        <SheetHeader className="text-left pb-4 border-b border-white/50 dark:border-gray-600/50">
-          <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+        <SheetHeader className="text-left pb-2 border-b border-white/50 dark:border-gray-600/50">
+          <SheetTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
             {service.name}
           </SheetTitle>
-          <SheetDescription className="text-base text-muted-foreground">
+          <SheetDescription className="text-sm text-muted-foreground">
             {service.tagline}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6 pl-8 pr-6">
-          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+        <div className="mt-3 space-y-3 pl-2 pr-8">
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
             {service.description}
           </p>
 
@@ -62,7 +62,7 @@ export function ServiceDetailSheet({
                 How It Works
               </AccordionTrigger>
               <AccordionContent>
-                <ul className="space-y-2 pt-2">
+                <ul className="space-y-1 pt-1">
                   {service.howItWorks.map((item, idx) => (
                     <li
                       key={idx}
@@ -78,10 +78,10 @@ export function ServiceDetailSheet({
           </Accordion>
 
           <div>
-            <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-3">
+            <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-1.5 text-sm">
               Business Impact
             </h4>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {service.businessImpact.map((item, idx) => (
                 <li
                   key={idx}
@@ -98,7 +98,7 @@ export function ServiceDetailSheet({
             {service.infrastructure}
           </p>
 
-          <div className="pt-2">
+          <div className="pt-1">
             <TierLevel dots={service.tier} />
           </div>
 
