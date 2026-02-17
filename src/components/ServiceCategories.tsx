@@ -126,7 +126,7 @@ const ServiceCategories = () => {
   const categories: ServiceCategory[] = [
     {
       id: 1,
-      title: 'Growth & Acquisition',
+      title: 'Growth & Visibility',
       purpose: 'Help businesses get discovered, attract attention, and generate demand',
       subheader: 'Get discovered. Get remembered.',
       icon: <TrendingUp className="w-8 h-8" />,
@@ -309,6 +309,13 @@ const ServiceCategories = () => {
                   {category.purpose}
                 </p>
 
+                {/* Subheader - e.g. Get discovered. Get remembered. */}
+                {category.subheader && (
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-4 italic">
+                    {category.subheader}
+                  </p>
+                )}
+
                 {/* Expand indicator */}
                 <motion.div
                   className="flex items-center text-sm font-semibold text-gray-600 dark:text-gray-400"
@@ -334,15 +341,10 @@ const ServiceCategories = () => {
                       className="overflow-hidden"
                     >
                       <div className="mt-6 pt-6 border-t-2 border-white/50 dark:border-gray-600/50">
-                        {category.subheader && (
-                          <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-4 italic">
-                            {category.subheader}
-                          </p>
-                        )}
                         <h4 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">
                           Key Services Include:
                         </h4>
-                        <ul className="space-y-3">
+                        <ul className="space-y-3 list-none">
                           {category.details.map((detail, idx) =>
                             isServiceDetail(detail) ? (
                               <motion.li
@@ -357,7 +359,6 @@ const ServiceCategories = () => {
                                 }}
                                 whileHover={{ y: -2 }}
                               >
-                                <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 rounded-full flex-shrink-0" />
                                 <span className="text-gray-700 dark:text-gray-300 font-medium flex-1">
                                   {detail.name}
                                 </span>
@@ -371,7 +372,6 @@ const ServiceCategories = () => {
                                 transition={{ delay: idx * 0.1 }}
                                 className="flex items-start"
                               >
-                                <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 rounded-full mt-2 mr-3 flex-shrink-0" />
                                 <span className="text-gray-700 dark:text-gray-300">{detail}</span>
                               </motion.li>
                             )

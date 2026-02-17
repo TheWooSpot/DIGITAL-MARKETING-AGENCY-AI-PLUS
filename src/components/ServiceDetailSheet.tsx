@@ -51,14 +51,14 @@ export function ServiceDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-6 pl-8 pr-6">
           <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
             {service.description}
           </p>
 
           <Accordion type="single" collapsible defaultValue="">
-            <AccordionItem value="how-it-works" className="border-none">
-              <AccordionTrigger className="hover:no-underline py-2 text-gray-800 dark:text-gray-100 font-semibold">
+            <AccordionItem value="how-it-works" className="border-0 border-none">
+              <AccordionTrigger className="hover:no-underline py-2 text-gray-800 dark:text-gray-100 font-semibold justify-start gap-2 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
                 How It Works
               </AccordionTrigger>
               <AccordionContent>
