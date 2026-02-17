@@ -76,14 +76,14 @@ const Hero = () => {
         </motion.div>
       ))}
 
-      {/* Main content */}
-      <div className="relative z-10 text-center max-w-7xl mx-auto px-6">
-        {/* Icon badges */}
+      {/* Main content - pr-14 reserves space for theme toggle on mobile */}
+      <div className="relative z-10 text-center max-w-7xl mx-auto px-4 sm:px-6 pr-14 sm:pr-6 w-full min-w-0">
+        {/* Icon badges - smaller on mobile to prevent truncation */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="flex justify-center gap-4 mb-8 flex-wrap"
+          className="flex justify-center gap-2 sm:gap-4 mb-6 sm:mb-8 flex-wrap"
         >
           {[
             { icon: <Sparkles className="w-5 h-5" />, label: 'AI Powered' },
@@ -94,10 +94,10 @@ const Hero = () => {
             <motion.div
               key={idx}
               whileHover={{ scale: 1.1, rotate: 5 }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-full border border-purple-200 dark:border-purple-700 shadow-lg"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-full border border-purple-200 dark:border-purple-700 shadow-lg shrink-0"
             >
-              <span className="text-purple-600 dark:text-purple-400">{item.icon}</span>
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{item.label}</span>
+              <span className="text-purple-600 dark:text-purple-400 shrink-0">{item.icon}</span>
+              <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{item.label}</span>
             </motion.div>
           ))}
         </motion.div>
@@ -108,7 +108,7 @@ const Hero = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <h1 className="text-6xl md:text-8xl font-black mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black mb-6 leading-tight break-words">
             <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
               DIGITAL
             </span>
@@ -126,10 +126,10 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="mb-6"
         >
-          <h2 className="text-2xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-4">
+          <h2 className="text-lg sm:text-2xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-4 break-words">
             AI+ Digitally Infused, Revenue-Oriented
           </h2>
-          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-xl md:text-2xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed break-words">
             Marketing Agency for{' '}
             <span className="font-bold text-purple-600">Startups</span>,{' '}
             <span className="font-bold text-blue-600">Enterprises</span>,{' '}
@@ -143,7 +143,7 @@ const Hero = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed"
+          className="text-sm sm:text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed break-words"
         >
           Transforming businesses with intelligent growth strategies, data-driven insights, 
           and cutting-edge automation that delivers real, measurable results.
