@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { VapiVoiceChat } from '@/components/VapiVoiceChat';
 import { Sparkles, Zap, Target, BarChart3 } from 'lucide-react';
 
 const Hero = () => {
+  const [voiceChatOpen, setVoiceChatOpen] = useState(false);
+  const vapiKey = import.meta.env.VITE_VAPI_PUBLIC_KEY ?? '';
   const floatingWords = [
     { text: 'STRATEGY', x: '10%', y: '20%', delay: 0 },
     { text: 'GROWTH', x: '85%', y: '15%', delay: 0.2 },
@@ -158,6 +168,7 @@ const Hero = () => {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button 
               variant="outline"
+              onClick={() => setVoiceChatOpen(true)}
               className="border-3 border-purple-400 dark:border-purple-600 text-purple-700 dark:text-purple-300 hover:bg-purple-500 hover:text-white hover:border-purple-500 px-10 py-6 text-lg rounded-full shadow-lg transition-all duration-300 font-bold backdrop-blur-sm bg-white/50 dark:bg-gray-800/50"
             >
               Get Started Today
@@ -191,6 +202,24 @@ const Hero = () => {
           ))}
         </motion.div>
       </div>
+
+      {/* Voice Chat Sheet - Reception - Socialutely */}
+      <Sheet open={voiceChatOpen} onOpenChange={setVoiceChatOpen}>
+        <SheetContent side="bottom" className="h-[70vh] sm:max-w-lg sm:mx-auto sm:rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Talk with Reception</SheetTitle>
+            <SheetDescription className="sr-only">
+              Voice chat with our AI reception assistant
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 h-[calc(100%-4rem)]">
+            <VapiVoiceChat
+              publicKey={vapiKey}
+              onClose={() => setVoiceChatOpen(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Scroll indicator */}
       <motion.div
