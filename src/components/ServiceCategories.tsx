@@ -1,35 +1,138 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, MessageCircle, DollarSign, Settings, GraduationCap, Sparkles } from 'lucide-react';
+import { TrendingUp, MessageCircle, DollarSign, Settings, GraduationCap, Sparkles, Info } from 'lucide-react';
+import { ServiceDetailSheet } from '@/components/ServiceDetailSheet';
+import type { ServiceDetail } from '@/types/services';
+
+function isServiceDetail(d: string | ServiceDetail): d is ServiceDetail {
+  return typeof d === 'object' && d !== null && 'id' in d;
+}
+
+const growthServices: ServiceDetail[] = [
+  {
+    id: 'searchlift',
+    name: 'SearchLift™ SBO Engine',
+    tagline: 'Position your brand where buying decisions begin.',
+    description:
+      'When customers search, your brand should be found — not buried. SearchLift™ engineers structured visibility across search engines and AI-driven discovery platforms to generate sustained inbound demand. This isn\'t surface-level SEO. It\'s search dominance architecture.',
+    howItWorks: [
+      'Search Box Optimization (SBO)',
+      'Structured content & schema alignment',
+      'AI-enhanced publishing cadence',
+      'Authority signal amplification',
+      'Index acceleration frameworks',
+    ],
+    businessImpact: [
+      'Higher ranking velocity',
+      'Increased organic lead flow',
+      'Reduced dependency on paid ads',
+      'Long-term digital asset growth',
+    ],
+    infrastructure:
+      'Powered by advanced SEO architecture, AI publishing systems, and structured indexing frameworks.',
+    tier: 1,
+    cta: 'Explore Implementation →',
+  },
+  {
+    id: 'spotlight-streams',
+    name: 'Spotlight Streams™ OTT Boost',
+    tagline: 'Appear where premium attention lives.',
+    description:
+      'Your brand is placed inside streaming environments — not just social feeds. This elevates perception, expands reach beyond traditional ads, and builds high-impact awareness across connected TV ecosystems.',
+    howItWorks: [
+      'OTT / CTV campaign placement',
+      'Audience targeting refinement',
+      'Cross-device attribution',
+      'Brand lift optimization',
+      'Streaming platform distribution',
+    ],
+    businessImpact: [
+      'Elevated brand credibility',
+      'Expanded demographic reach',
+      'Measurable awareness growth',
+      'Premium positioning advantage',
+    ],
+    infrastructure:
+      'Delivered through advanced streaming ad networks and cross-platform attribution systems.',
+    tier: 2,
+    cta: 'Explore Campaign Strategy →',
+  },
+  {
+    id: 'authority-amplifier',
+    name: 'Authority Amplifier™ PR System',
+    tagline: 'Trust built at scale.',
+    description:
+      'We secure digital placements that position your brand as established, credible, and newsworthy. Authority visibility builds trust faster than ads and strengthens search credibility simultaneously.',
+    howItWorks: [
+      'Digital PR distribution',
+      'Media placement strategy',
+      'Authority backlink structuring',
+      'Brand narrative positioning',
+      'Search reputation enhancement',
+    ],
+    businessImpact: [
+      'Increased perceived legitimacy',
+      'Shortened sales cycles',
+      'Higher conversion trust factor',
+      'Strengthened SEO authority',
+    ],
+    infrastructure:
+      'Powered by national media distribution networks and structured authority amplification frameworks.',
+    tier: 2,
+    cta: 'Build Authority →',
+  },
+  {
+    id: 'signal-surge',
+    name: 'Signal Surge™ Paid Traffic Lab',
+    tagline: 'Engineered traffic. Predictable growth.',
+    description:
+      'Strategic paid acquisition campaigns designed for ROI — not vanity metrics. We attract qualified buyers, optimize cost per acquisition, and scale performance methodically.',
+    howItWorks: [
+      'Paid search campaigns',
+      'Paid social campaigns',
+      'Conversion optimization loops',
+      'Audience refinement modeling',
+      'Cost-per-acquisition engineering',
+    ],
+    businessImpact: [
+      'Increased qualified lead volume',
+      'Controlled acquisition costs',
+      'Predictable scaling capability',
+      'Faster revenue velocity',
+    ],
+    infrastructure:
+      'Powered by advanced ad platform orchestration and real-time performance optimization systems.',
+    tier: 1,
+    cta: 'Launch Paid Strategy →',
+  },
+];
 
 interface ServiceCategory {
   id: number;
   title: string;
   purpose: string;
+  subheader?: string;
   icon: React.ReactNode;
   color: string;
   gradient: string;
-  details: string[];
+  details: Array<string | ServiceDetail>;
 }
 
 const ServiceCategories = () => {
   const [activePanel, setActivePanel] = useState<number | null>(null);
+  const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
+  const [serviceSheetOpen, setServiceSheetOpen] = useState(false);
 
   const categories: ServiceCategory[] = [
     {
       id: 1,
       title: 'Growth & Acquisition',
       purpose: 'Help businesses get discovered, attract attention, and generate demand',
+      subheader: 'Get discovered. Get remembered.',
       icon: <TrendingUp className="w-8 h-8" />,
       color: 'from-purple-300 to-pink-300',
       gradient: 'bg-gradient-to-br from-purple-100/80 to-pink-100/80',
-      details: [
-        'SEO & Search Marketing',
-        'Social Media Advertising',
-        'Content Marketing Strategy',
-        'Lead Generation Campaigns',
-        'Brand Awareness Programs'
-      ]
+      details: growthServices,
     },
     {
       id: 2,
@@ -43,8 +146,8 @@ const ServiceCategories = () => {
         'Live Chat Management',
         'Email Marketing Automation',
         'SMS & Text Campaigns',
-        'Social Media Engagement'
-      ]
+        'Social Media Engagement',
+      ],
     },
     {
       id: 3,
@@ -58,8 +161,8 @@ const ServiceCategories = () => {
         'Appointment Booking Systems',
         'Payment Gateway Integration',
         'CRM & Pipeline Management',
-        'Conversion Rate Optimization'
-      ]
+        'Conversion Rate Optimization',
+      ],
     },
     {
       id: 4,
@@ -73,8 +176,8 @@ const ServiceCategories = () => {
         'Workflow Automation',
         'Data Management & Analytics',
         'Integration & APIs',
-        'Performance Monitoring'
-      ]
+        'Performance Monitoring',
+      ],
     },
     {
       id: 5,
@@ -88,8 +191,8 @@ const ServiceCategories = () => {
         'Documentation & Resources',
         'Onboarding & Support',
         'Best Practices Consulting',
-        'Ongoing Education'
-      ]
+        'Ongoing Education',
+      ],
     },
     {
       id: 6,
@@ -103,16 +206,21 @@ const ServiceCategories = () => {
         'Creative Design Services',
         'Video & Content Production',
         'User Experience Design',
-        'Multi-Channel Campaigns'
-      ]
-    }
+        'Multi-Channel Campaigns',
+      ],
+    },
   ];
+
+  const handleServiceClick = (service: ServiceDetail) => {
+    setSelectedService(service);
+    setServiceSheetOpen(true);
+  };
 
   return (
     <section className="relative py-24 px-6 overflow-hidden">
       {/* Background with gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors" />
-      
+
       {/* Animated background elements */}
       <motion.div
         className="absolute top-20 left-10 w-72 h-72 bg-purple-200/30 dark:bg-purple-900/20 rounded-full blur-3xl"
@@ -123,7 +231,7 @@ const ServiceCategories = () => {
         transition={{
           duration: 8,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
       />
       <motion.div
@@ -135,7 +243,7 @@ const ServiceCategories = () => {
         transition={{
           duration: 10,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
       />
 
@@ -152,7 +260,8 @@ const ServiceCategories = () => {
             AI+ Digital Marketing Solutions
           </h2>
           <p className="text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
-            Powering growth for startups, enterprises, SMBs, and non-profits with intelligent marketing solutions
+            Powering growth for startups, enterprises, SMBs, and non-profits with
+            intelligent marketing solutions
           </p>
         </motion.div>
 
@@ -170,7 +279,9 @@ const ServiceCategories = () => {
               <motion.div
                 className={`relative rounded-3xl p-8 cursor-pointer transition-all duration-500 ${category.gradient} dark:bg-gradient-to-br dark:from-gray-800/80 dark:to-gray-700/80 glass dark:glass-dark border-2 border-white/50 dark:border-gray-700/50 shadow-lg hover:shadow-2xl`}
                 whileHover={{ scale: 1.02, y: -5 }}
-                onClick={() => setActivePanel(activePanel === category.id ? null : category.id)}
+                onClick={() =>
+                  setActivePanel(activePanel === category.id ? null : category.id)
+                }
               >
                 {/* Icon with gradient background */}
                 <motion.div
@@ -223,20 +334,48 @@ const ServiceCategories = () => {
                       className="overflow-hidden"
                     >
                       <div className="mt-6 pt-6 border-t-2 border-white/50 dark:border-gray-600/50">
-                        <h4 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">Key Services Include:</h4>
+                        {category.subheader && (
+                          <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-4 italic">
+                            {category.subheader}
+                          </p>
+                        )}
+                        <h4 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">
+                          Key Services Include:
+                        </h4>
                         <ul className="space-y-3">
-                          {category.details.map((detail, idx) => (
-                            <motion.li
-                              key={idx}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.1 }}
-                              className="flex items-start"
-                            >
-                              <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 rounded-full mt-2 mr-3 flex-shrink-0" />
-                              <span className="text-gray-700 dark:text-gray-300">{detail}</span>
-                            </motion.li>
-                          ))}
+                          {category.details.map((detail, idx) =>
+                            isServiceDetail(detail) ? (
+                              <motion.li
+                                key={detail.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.1, duration: 0.22 }}
+                                className="flex items-center gap-2 cursor-pointer rounded-lg px-3 py-2 -mx-3 opacity-85 hover:opacity-100 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-purple-200/30 dark:hover:shadow-purple-900/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleServiceClick(detail);
+                                }}
+                                whileHover={{ y: -2 }}
+                              >
+                                <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 rounded-full flex-shrink-0" />
+                                <span className="text-gray-700 dark:text-gray-300 font-medium flex-1">
+                                  {detail.name}
+                                </span>
+                                <Info className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0" />
+                              </motion.li>
+                            ) : (
+                              <motion.li
+                                key={idx}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className="flex items-start"
+                              >
+                                <span className="inline-block w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 rounded-full mt-2 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 dark:text-gray-300">{detail}</span>
+                              </motion.li>
+                            )
+                          )}
                         </ul>
                       </div>
                     </motion.div>
@@ -258,12 +397,18 @@ const ServiceCategories = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-10 py-4 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-2xl transition-all duration-300"
+            className="px-10 py-4 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 hover:from-purple-600 hover:via-blue-600 hover:to-pink-600 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-lg hover:shadow-purple-500/30 transition-all duration-300"
           >
             Start Your Growth Journey
           </motion.button>
         </motion.div>
       </div>
+
+      <ServiceDetailSheet
+        service={selectedService}
+        open={serviceSheetOpen}
+        onOpenChange={setServiceSheetOpen}
+      />
     </section>
   );
 };
