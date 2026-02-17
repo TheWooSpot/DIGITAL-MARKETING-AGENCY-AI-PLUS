@@ -37,7 +37,7 @@ export function ServiceDetailSheet({
       <SheetContent
         side="right"
         className={cn(
-hubo           'w-full sm:max-w-[60vw] sm:min-w-[400px] overflow-y-auto p-4',
+          'w-full sm:max-w-[60vw] sm:min-w-[400px] overflow-y-auto p-4',
           'glass dark:glass-dark border-l-2 border-white/50 dark:border-gray-700/50',
           'transition-all duration-300 ease-out'
         )}
