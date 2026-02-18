@@ -107,6 +107,204 @@ const growthServices: ServiceDetail[] = [
   },
 ];
 
+const engagementServices: ServiceDetail[] = [
+  {
+    id: 'convoflow',
+    name: 'ConvoFlow™ AI Chat Suite',
+    tagline: 'Turn visitors into conversations — automatically.',
+    description:
+      'ConvoFlow™ deploys intelligent AI agents across web and SMS channels to answer, guide, qualify, and convert in real time — creating frictionless engagement at scale.',
+    howItWorks: [
+      'AI chat deployment across web and SMS',
+      'Intent detection and routing logic',
+      'Qualification and lead scoring',
+      'Real-time handoff to human agents',
+      'Conversation analytics and optimization',
+    ],
+    businessImpact: [
+      '24/7 automated engagement',
+      'Higher lead qualification rates',
+      'Reduced response latency',
+      'Scalable conversation capacity',
+    ],
+    infrastructure:
+      'Powered by AI conversation platforms, natural language processing, and multi-channel orchestration systems.',
+    tier: 1,
+    cta: 'Deploy AI Chat →',
+  },
+  {
+    id: 'inboxignite',
+    name: 'InboxIgnite™ Smart Email Engine',
+    tagline: 'Build relationships that nurture revenue.',
+    description:
+      'InboxIgnite™ engineers automated email ecosystems designed to educate, re-engage, and convert — ensuring your audience stays informed and activated.',
+    howItWorks: [
+      'Automated email sequence design',
+      'Behavioral trigger workflows',
+      'Personalization and segmentation',
+      'A/B testing and optimization',
+      'Deliverability and list health',
+    ],
+    businessImpact: [
+      'Consistent nurture at scale',
+      'Higher email engagement rates',
+      'Shortened time to conversion',
+      'Reduced manual campaign work',
+    ],
+    infrastructure:
+      'Delivered through enterprise email platforms, automation builders, and deliverability monitoring systems.',
+    tier: 1,
+    cta: 'Launch Email Engine →',
+  },
+  {
+    id: 'textpulse',
+    name: 'TextPulse™ SMS Automation',
+    tagline: 'Reach customers where response rates are highest.',
+    description:
+      'TextPulse™ builds intelligent SMS sequences that trigger reminders, promotions, and follow-ups — driving immediate action with personal precision.',
+    howItWorks: [
+      'SMS campaign design and sequencing',
+      'Opt-in and consent management',
+      'Trigger-based messaging',
+      'Two-way conversation flows',
+      'Compliance and deliverability',
+    ],
+    businessImpact: [
+      'Higher open and response rates',
+      'Faster customer activation',
+      'Reduced no-shows and churn',
+      'Direct revenue attribution',
+    ],
+    infrastructure:
+      'Powered by SMS gateway providers, automation platforms, and TCPA-compliant consent systems.',
+    tier: 2,
+    cta: 'Activate SMS →',
+  },
+  {
+    id: 'voicebridge',
+    name: 'VoiceBridge™ AI Receptionist',
+    tagline: 'Never miss a call. Never miss an opportunity.',
+    description:
+      'VoiceBridge™ installs AI-powered voice agents that answer, route, qualify, and schedule — transforming inbound calls into booked revenue 24/7.',
+    howItWorks: [
+      'AI voice agent deployment',
+      'Call routing and qualification',
+      'Calendar and scheduling integration',
+      'Fallback and escalation logic',
+      'Call analytics and optimization',
+    ],
+    businessImpact: [
+      '24/7 call coverage',
+      'Reduced missed opportunity',
+      'Faster appointment booking',
+      'Consistent caller experience',
+    ],
+    infrastructure:
+      'Powered by AI voice platforms, telephony integrations, and real-time speech processing.',
+    tier: 1,
+    cta: 'Deploy Voice AI →',
+  },
+];
+
+const appointmentsServices: ServiceDetail[] = [
+  {
+    id: 'bookstream',
+    name: 'BookStream™ Smart Scheduling Hub',
+    tagline: 'Convert interest into confirmed appointments.',
+    description:
+      'BookStream™ structures automated booking, reminders, confirmations, and follow-ups — reducing no-shows and maximizing scheduled revenue without manual coordination.',
+    howItWorks: [
+      'Online booking widget and pages',
+      'Calendar sync and availability',
+      'Automated reminders and confirmations',
+      'No-show reduction workflows',
+      'Integration with CRM and payments',
+    ],
+    businessImpact: [
+      'Higher booking conversion',
+      'Reduced no-show rates',
+      'Eliminated scheduling friction',
+      'Scalable appointment capacity',
+    ],
+    infrastructure:
+      'Powered by scheduling platforms, calendar APIs, and notification systems.',
+    tier: 1,
+    cta: 'Set Up Booking →',
+  },
+  {
+    id: 'closecraft',
+    name: 'CloseCraft™ Funnel Builder',
+    tagline: 'Engineer conversion pathways that perform.',
+    description:
+      'CloseCraft™ designs landing pages and structured offer funnels that guide prospects through persuasive decision sequences — built for clarity, velocity, and measurable results.',
+    howItWorks: [
+      'Landing page and funnel design',
+      'Offer structure and copy',
+      'Conversion tracking and analytics',
+      'A/B testing and optimization',
+      'Integration with booking and payment',
+    ],
+    businessImpact: [
+      'Higher conversion rates',
+      'Faster prospect-to-customer flow',
+      'Clear conversion attribution',
+      'Repeatable funnel performance',
+    ],
+    infrastructure:
+      'Delivered through landing page builders, analytics platforms, and conversion optimization tools.',
+    tier: 1,
+    cta: 'Build Your Funnel →',
+  },
+  {
+    id: 'dealdrive',
+    name: 'DealDrive™ Proposal Automation',
+    tagline: 'Accelerate agreement. Eliminate friction.',
+    description:
+      'DealDrive™ automates smart proposals, approvals, and structured follow-ups — compressing sales cycles and increasing close rates.',
+    howItWorks: [
+      'Proposal generation and templates',
+      'E-signature and approval flows',
+      'Follow-up automation',
+      'Deal stage tracking',
+      'Integration with CRM and payments',
+    ],
+    businessImpact: [
+      'Shorter sales cycles',
+      'Higher close rates',
+      'Reduced manual proposal work',
+      'Faster revenue recognition',
+    ],
+    infrastructure:
+      'Powered by proposal software, e-signature platforms, and CRM integrations.',
+    tier: 2,
+    cta: 'Automate Proposals →',
+  },
+  {
+    id: 'payportal',
+    name: 'PayPortal™ Dynamic Checkout',
+    tagline: 'Monetize with precision and flexibility.',
+    description:
+      'PayPortal™ deploys secure, adaptive payment systems with dynamic pricing capability — enabling seamless transactions across service tiers and custom offers.',
+    howItWorks: [
+      'Payment gateway integration',
+      'Dynamic pricing and tiers',
+      'Checkout flow optimization',
+      'Subscription and one-time options',
+      'Fraud and compliance safeguards',
+    ],
+    businessImpact: [
+      'Higher payment completion',
+      'Flexible pricing options',
+      'Reduced checkout abandonment',
+      'Secure, compliant transactions',
+    ],
+    infrastructure:
+      'Powered by payment processors, checkout platforms, and PCI-compliant systems.',
+    tier: 1,
+    cta: 'Enable Payments →',
+  },
+];
+
 interface ServiceCategory {
   id: number;
   title: string;
@@ -136,33 +334,23 @@ const ServiceCategories = () => {
     },
     {
       id: 2,
-      title: 'Engagement & Conversation',
+      title: 'Engagement & Communication',
       purpose: 'Manage and optimize how prospects and customers communicate with the business',
+      subheader: 'Spark interaction. Sustain conversation.',
       icon: <MessageCircle className="w-8 h-8" />,
       color: 'from-blue-300 to-cyan-300',
       gradient: 'bg-gradient-to-br from-blue-100/80 to-cyan-100/80',
-      details: [
-        'AI Chat Bots & Assistants',
-        'Live Chat Management',
-        'Email Marketing Automation',
-        'SMS & Text Campaigns',
-        'Social Media Engagement',
-      ],
+      details: engagementServices,
     },
     {
       id: 3,
-      title: 'Conversion & Revenue Enablement',
+      title: 'Appointments & Conversions',
       purpose: 'Turn conversations and interest into booked appointments, signed agreements, and paid revenue',
+      subheader: 'Turn attention into action.',
       icon: <DollarSign className="w-8 h-8" />,
       color: 'from-green-300 to-emerald-300',
       gradient: 'bg-gradient-to-br from-green-100/80 to-emerald-100/80',
-      details: [
-        'Sales Funnel Optimization',
-        'Appointment Booking Systems',
-        'Payment Gateway Integration',
-        'CRM & Pipeline Management',
-        'Conversion Rate Optimization',
-      ],
+      details: appointmentsServices,
     },
     {
       id: 4,
