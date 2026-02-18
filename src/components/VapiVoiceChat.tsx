@@ -5,6 +5,14 @@ import { Mic, MicOff, PhoneOff } from 'lucide-react';
 
 const RECEPTION_ASSISTANT_ID = '4fa66663-1e58-416f-a137-5b0547300e05'; // Reception - Socialutely (works reliably)
 
+const WELCOME_GREETINGS = [
+  "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
+  "Hello and welcome to Socialutely. I'm excited to connect with you. What brings you here today?",
+  "Hi there! Thanks for reaching out to Socialutely. I'd love to hear about you and how we can help. What's on your mind?",
+  "Welcome! You've reached Socialutely. I'm here to understand your needs and see how we can support you. How can I assist you today?",
+  "Good to hear from you. This is Socialutely—I'm here to learn about you and your business. What would you like to explore today?",
+];
+
 function extractErrorMessage(e: unknown): string {
   if (!e) return 'Something went wrong';
   if (typeof e === 'string') return e;
@@ -65,13 +73,12 @@ export function VapiVoiceChat({ publicKey, onClose }: VapiVoiceChatProps) {
       setTranscript((prev) => [...prev, '--- Call ended ---']);
     });
 
-    vapi.on('message', (message: { type?: string; transcript?: string; role?: string; message?: { content?: string } }) => {
-      if (message.type === 'transcript' && message.transcript) {
-        setTranscript((prev) => [...prev, message.transcript]);
-      }
-      if (message.message?.content && typeof message.message.content === 'string') {
-        const role = message.role === 'assistant' ? 'AI' : 'You';
-        setTranscript((prev) => [...prev, `${role}: ${message.message.content}`]);
+    vapi.on('message', (message: { type?: string; transcript?: string; transcriptType?: string; role?: string; message?: { content?: string } }) => {
+      // Only add final transcripts to avoid duplicates. Vapi sends incremental "partial" updates
+      // as the AI speaks; each partial gets appended, causing repeated/incremental lines.
+      // Skip partial - they're intermediate updates superseded by final.
+      if (message.type === 'transcript' && message.transcript && message.transcriptType !== 'partial') {
+        setTranscript((prev) => [...prev, message.transcript!]);
       }
     });
 
@@ -101,7 +108,8 @@ export function VapiVoiceChat({ publicKey, onClose }: VapiVoiceChatProps) {
   const handleStart = () => {
     setError(null);
     setTranscript([]);
-    vapiRef.current?.start(RECEPTION_ASSISTANT_ID);
+    const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
+    vapiRef.current?.start(RECEPTION_ASSISTANT_ID, { firstMessage: greeting });
   };
 
   const handleEnd = () => {
