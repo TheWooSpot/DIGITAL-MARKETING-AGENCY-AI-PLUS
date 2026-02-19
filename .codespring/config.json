@@ -2,8 +2,11 @@
   "version": "1.0",
   "projectId": "419856ba-2bae-40c3-a556-deef297d387b",
   "projectName": "DIGITAL MARKETING AGENCY AI PLUS",
+  "name": "DIGITAL MARKETING AGENCY AI PLUS",
+  "description": "AI+ Digitally Infused, Revenue-Oriented Marketing Agency for Startups, Enterprises, SMBs, and Non-Profits",
+  "selectedStarterKit": "codespring",
   "organizationId": null,
   "linkedAt": "2026-01-28T05:33:00.000Z",
   "githubRepository": "https://github.com/TheWooSpot/DIGITAL-MARKETING-AGENCY-AI-PLUS",
-  "lastSynced": "2026-02-18T18:30:00.000Z"
+  "lastSynced": "2026-02-19T07:24:00.000Z"
 }

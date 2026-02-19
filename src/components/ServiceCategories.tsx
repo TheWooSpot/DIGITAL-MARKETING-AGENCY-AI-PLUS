@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, MessageCircle, DollarSign, Settings, GraduationCap, Sparkles, Info } from 'lucide-react';
+import { TrendingUp, MessageCircle, DollarSign, Settings, GraduationCap, Sparkles, Info, BarChart3, Shield, Handshake } from 'lucide-react';
 import { ServiceDetailSheet } from '@/components/ServiceDetailSheet';
 import type { ServiceDetail } from '@/types/services';
 
@@ -84,9 +84,9 @@ const growthServices: ServiceDetail[] = [
   {
     id: 'signal-surge',
     name: 'Signal Surge™ Paid Traffic Lab',
-    tagline: 'Engineered traffic. Predictable growth.',
+    tagline: 'Accelerate demand with precision deployment.',
     description:
-      'Strategic paid acquisition campaigns designed for ROI — not vanity metrics. We attract qualified buyers, optimize cost per acquisition, and scale performance methodically.',
+      'Signal Surge™ activates high-conversion paid campaigns across search and social platforms, engineered to convert attention into measurable growth with optimized targeting and performance feedback loops.',
     howItWorks: [
       'Paid search campaigns',
       'Paid social campaigns',
@@ -305,6 +305,264 @@ const appointmentsServices: ServiceDetail[] = [
   },
 ];
 
+const systemsOperationsServices: ServiceDetail[] = [
+  {
+    id: 'coresync',
+    name: 'CoreSync™ CRM Architecture',
+    tagline: 'Centralize data. Clarify pipelines.',
+    description:
+      'CoreSync™ structures your CRM environment to align contacts, pipelines, automations, and reporting — creating operational clarity across your organization.',
+    howItWorks: [
+      'CRM architecture and data modeling',
+      'Contact and pipeline alignment',
+      'Automation workflow design',
+      'Reporting and dashboard setup',
+      'Integration with sales and marketing tools',
+    ],
+    businessImpact: [
+      'Single source of truth for customer data',
+      'Clear pipeline visibility',
+      'Reduced manual data entry',
+      'Faster decision-making',
+    ],
+    infrastructure:
+      'Powered by enterprise CRM platforms, automation builders, and data sync systems.',
+    tier: 1,
+    cta: 'Structure Your CRM →',
+  },
+  {
+    id: 'flowforge',
+    name: 'FlowForge™ Automation Lab',
+    tagline: 'Eliminate repetitive work. Scale intelligently.',
+    description:
+      'FlowForge™ engineers workflow automations and system integrations that remove bottlenecks, connect tools, and reduce manual dependency.',
+    howItWorks: [
+      'Workflow mapping and design',
+      'System integration architecture',
+      'Trigger-based automation flows',
+      'Error handling and monitoring',
+      'Scalable automation patterns',
+    ],
+    businessImpact: [
+      'Reduced manual workload',
+      'Faster process execution',
+      'Fewer human errors',
+      'Scalable operations',
+    ],
+    infrastructure:
+      'Delivered through automation platforms, API integrations, and workflow orchestration systems.',
+    tier: 1,
+    cta: 'Engineer Automations →',
+  },
+  {
+    id: 'commanddesk',
+    name: 'CommandDesk™ Client Portal System',
+    tagline: 'Create a unified client experience.',
+    description:
+      'CommandDesk™ deploys secure workspace portals for communication, document sharing, project visibility, and controlled collaboration.',
+    howItWorks: [
+      'Portal architecture and access design',
+      'Document and file management',
+      'Project visibility dashboards',
+      'Secure communication channels',
+      'Role-based permissions',
+    ],
+    businessImpact: [
+      'Unified client experience',
+      'Reduced email and status requests',
+      'Faster project transparency',
+      'Professional collaboration',
+    ],
+    infrastructure:
+      'Powered by portal platforms, secure file storage, and collaboration tools.',
+    tier: 2,
+    cta: 'Deploy Client Portal →',
+  },
+];
+
+const knowledgeActivationServices: ServiceDetail[] = [
+  {
+    id: 'launchpad',
+    name: 'LaunchPad™ Learning Hub',
+    tagline: 'Turn expertise into scalable assets.',
+    description:
+      'LaunchPad™ builds structured learning and training ecosystems that convert knowledge into repeatable education and onboarding environments.',
+    howItWorks: [
+      'Learning path and curriculum design',
+      'Course and module creation',
+      'Assessment and certification',
+      'Progress tracking and analytics',
+      'Onboarding sequence automation',
+    ],
+    businessImpact: [
+      'Scalable knowledge transfer',
+      'Consistent training quality',
+      'Reduced onboarding time',
+      'Retention of institutional knowledge',
+    ],
+    infrastructure:
+      'Delivered through learning management systems, content platforms, and assessment tools.',
+    tier: 1,
+    cta: 'Build Learning Hub →',
+  },
+  {
+    id: 'onboardx',
+    name: 'OnboardX™ Client Activation System',
+    tagline: 'Accelerate confidence from day one.',
+    description:
+      'OnboardX™ installs guided onboarding sequences and welcome systems that reduce confusion, increase retention, and activate client momentum immediately.',
+    howItWorks: [
+      'Onboarding sequence design',
+      'Welcome and orientation flows',
+      'Checklist and milestone tracking',
+      'Resource and tool introduction',
+      'Success metric activation',
+    ],
+    businessImpact: [
+      'Faster time to value',
+      'Higher retention rates',
+      'Reduced support burden',
+      'Stronger client relationships',
+    ],
+    infrastructure:
+      'Powered by onboarding platforms, automation builders, and communication tools.',
+    tier: 1,
+    cta: 'Activate Clients →',
+  },
+];
+
+const brandVoiceServices: ServiceDetail[] = [
+  {
+    id: 'vibe-signal',
+    name: 'Vibe & Signal™ Production Engine',
+    tagline: 'Engineer recognition across sound, presence, and platform.',
+    description:
+      'Vibe & Signal™ develops structured sonic identity systems, voice assets, branded audio frameworks, and signature production elements that increase memorability and recognition speed across digital environments. This is engineered brand signal infrastructure designed to scale across media, AI voice, and emerging platforms.',
+    howItWorks: [
+      'Sonic identity and voice design',
+      'Branded audio asset creation',
+      'Production framework development',
+      'Multi-platform deployment',
+      'AI voice and emerging channel readiness',
+    ],
+    businessImpact: [
+      'Faster brand recognition',
+      'Distinctive audio presence',
+      'Scalable across media and AI',
+      'Memorable brand signals',
+    ],
+    infrastructure:
+      'Powered by audio production tools, voice platforms, and media distribution systems.',
+    tier: 2,
+    cta: 'Build Sonic Identity →',
+  },
+  {
+    id: 'storyframe',
+    name: 'StoryFrame™ Brand Narrative Suite',
+    tagline: 'Architect the message behind the momentum.',
+    description:
+      'StoryFrame™ designs positioning frameworks, messaging hierarchies, and persuasive narrative systems that align your voice across platforms — ensuring clarity, cohesion, and influence at every touchpoint.',
+    howItWorks: [
+      'Positioning and messaging strategy',
+      'Narrative hierarchy design',
+      'Copy and content frameworks',
+      'Platform-specific adaptation',
+      'Influence and persuasion architecture',
+    ],
+    businessImpact: [
+      'Clear, consistent messaging',
+      'Stronger brand cohesion',
+      'Higher conversion influence',
+      'Aligned voice across touchpoints',
+    ],
+    infrastructure:
+      'Delivered through brand strategy frameworks, content systems, and messaging tools.',
+    tier: 1,
+    cta: 'Architect Your Narrative →',
+  },
+];
+
+const performanceInsightsServices: ServiceDetail[] = [
+  {
+    id: 'insightloop',
+    name: 'InsightLoop™ Analytics Dashboard',
+    tagline: 'Turn data into direction.',
+    description:
+      'InsightLoop™ consolidates campaign, revenue, and engagement metrics into structured dashboards that drive informed strategic decisions.',
+    howItWorks: [
+      'Data source integration',
+      'Dashboard and visualization design',
+      'Metric and KPI definition',
+      'Automated reporting flows',
+      'Strategic insight surfacing',
+    ],
+    businessImpact: [
+      'Data-driven decision-making',
+      'Faster performance visibility',
+      'Reduced manual reporting',
+      'Clear strategic direction',
+    ],
+    infrastructure:
+      'Powered by analytics platforms, data warehouses, and visualization tools.',
+    tier: 1,
+    cta: 'Build Your Dashboard →',
+  },
+];
+
+const governanceGuardrailsServices: ServiceDetail[] = [
+  {
+    id: 'trustguard',
+    name: 'TrustGuard™ Governance Layer',
+    tagline: 'Operate responsibly. Scale securely.',
+    description:
+      'TrustGuard™ implements structured permissions, compliance oversight, AI usage governance, and operational safeguards to protect your brand and clients.',
+    howItWorks: [
+      'Permission and access design',
+      'Compliance framework implementation',
+      'AI usage policy and guardrails',
+      'Operational safeguard deployment',
+      'Audit and monitoring setup',
+    ],
+    businessImpact: [
+      'Protected brand and client trust',
+      'Compliance confidence',
+      'Controlled AI deployment',
+      'Scalable governance',
+    ],
+    infrastructure:
+      'Delivered through governance platforms, compliance tools, and monitoring systems.',
+    tier: 2,
+    cta: 'Implement Governance →',
+  },
+];
+
+const partnershipsExpansionServices: ServiceDetail[] = [
+  {
+    id: 'allianceos',
+    name: 'AllianceOS™ Growth Partnerships Engine',
+    tagline: 'Multiply reach without multiplying overhead.',
+    description:
+      'AllianceOS™ structures white-label systems, joint ventures, reseller pathways, and strategic alliances that expand capacity and accelerate growth.',
+    howItWorks: [
+      'Partnership model design',
+      'White-label system architecture',
+      'Reseller and JV pathway setup',
+      'Alliance structure and agreements',
+      'Revenue share and tracking',
+    ],
+    businessImpact: [
+      'Expanded market reach',
+      'Scaled capacity without headcount',
+      'New revenue streams',
+      'Strategic growth acceleration',
+    ],
+    infrastructure:
+      'Powered by partnership platforms, white-label systems, and alliance management tools.',
+    tier: 2,
+    cta: 'Scale Through Partnerships →',
+  },
+];
+
 interface ServiceCategory {
   id: number;
   title: string;
@@ -354,48 +612,63 @@ const ServiceCategories = () => {
     },
     {
       id: 4,
-      title: 'Operations & Infrastructure',
-      purpose: 'Run the business efficiently, consistently, and at scale',
+      title: 'Systems & Operations',
+      purpose: 'Build infrastructure that runs without friction',
+      subheader: 'Run efficiently. Scale intelligently.',
       icon: <Settings className="w-8 h-8" />,
       color: 'from-orange-300 to-amber-300',
       gradient: 'bg-gradient-to-br from-orange-100/80 to-amber-100/80',
-      details: [
-        'Business Operating Systems',
-        'Workflow Automation',
-        'Data Management & Analytics',
-        'Integration & APIs',
-        'Performance Monitoring',
-      ],
+      details: systemsOperationsServices,
     },
     {
       id: 5,
-      title: 'Knowledge, Training & Enablement',
-      purpose: 'Ensure adoption, understanding, and long-term success for clients and teams',
+      title: 'Knowledge & Activation',
+      purpose: 'Educate. Equip. Empower.',
+      subheader: 'Turn expertise into scalable assets.',
       icon: <GraduationCap className="w-8 h-8" />,
       color: 'from-indigo-300 to-purple-300',
       gradient: 'bg-gradient-to-br from-indigo-100/80 to-purple-100/80',
-      details: [
-        'Team Training Programs',
-        'Documentation & Resources',
-        'Onboarding & Support',
-        'Best Practices Consulting',
-        'Ongoing Education',
-      ],
+      details: knowledgeActivationServices,
     },
     {
       id: 6,
-      title: 'Brand, Media & Experience',
-      purpose: 'Shape perception, recall, and emotional connection across all touchpoints',
+      title: 'Brand & Voice',
+      purpose: 'Define how your brand is heard, felt, and remembered',
+      subheader: 'Engineer recognition across sound and presence.',
       icon: <Sparkles className="w-8 h-8" />,
       color: 'from-rose-300 to-pink-300',
       gradient: 'bg-gradient-to-br from-rose-100/80 to-pink-100/80',
-      details: [
-        'Brand Strategy & Identity',
-        'Creative Design Services',
-        'Video & Content Production',
-        'User Experience Design',
-        'Multi-Channel Campaigns',
-      ],
+      details: brandVoiceServices,
+    },
+    {
+      id: 7,
+      title: 'Performance & Insights',
+      purpose: 'Measure what matters. Improve what works.',
+      subheader: 'Turn data into direction.',
+      icon: <BarChart3 className="w-8 h-8" />,
+      color: 'from-teal-300 to-cyan-300',
+      gradient: 'bg-gradient-to-br from-teal-100/80 to-cyan-100/80',
+      details: performanceInsightsServices,
+    },
+    {
+      id: 8,
+      title: 'Governance & Guardrails',
+      purpose: 'Protect trust. Maintain control.',
+      subheader: 'Operate responsibly. Scale securely.',
+      icon: <Shield className="w-8 h-8" />,
+      color: 'from-slate-300 to-gray-400',
+      gradient: 'bg-gradient-to-br from-slate-100/80 to-gray-200/80',
+      details: governanceGuardrailsServices,
+    },
+    {
+      id: 9,
+      title: 'Partnerships & Expansion',
+      purpose: 'Scale through leverage.',
+      subheader: 'Multiply reach without multiplying overhead.',
+      icon: <Handshake className="w-8 h-8" />,
+      color: 'from-violet-300 to-purple-300',
+      gradient: 'bg-gradient-to-br from-violet-100/80 to-purple-100/80',
+      details: partnershipsExpansionServices,
     },
   ];
 
