@@ -21,27 +21,63 @@ import { cn } from '@/lib/utils';
 
 interface ServiceDetailSheetProps {
   service: ServiceDetail | null;
+  servicesInCategory?: ServiceDetail[];
+  onServiceSelect?: (service: ServiceDetail) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function ServiceDetailSheet({
   service,
+  servicesInCategory = [],
+  onServiceSelect,
   open,
   onOpenChange,
 }: ServiceDetailSheetProps) {
   if (!service) return null;
+
+  const hasNav = servicesInCategory.length > 1 && onServiceSelect;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className={cn(
-          'w-full sm:max-w-[60vw] sm:min-w-[400px] overflow-y-auto p-4',
+          'w-full sm:max-w-[75vw] sm:min-w-[480px] overflow-hidden p-0 flex flex-col',
           'glass dark:glass-dark border-l-2 border-white/50 dark:border-gray-700/50',
           'transition-all duration-300 ease-out'
         )}
       >
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left sidebar: service list for same-category navigation */}
+          {hasNav && (
+            <aside className="w-52 flex-shrink-0 border-r border-white/30 dark:border-gray-600/50 bg-white/30 dark:bg-gray-800/30 overflow-y-auto">
+              <div className="p-3">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  Services in category
+                </p>
+                <nav className="space-y-0.5">
+                  {servicesInCategory.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => onServiceSelect(s)}
+                      className={cn(
+                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        s.id === service.id
+                          ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-gray-100'
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </aside>
+          )}
+
+          {/* Main content */}
+          <div className="flex-1 min-w-0 overflow-y-auto p-4">
         <SheetHeader className="text-left pb-2 border-b border-white/50 dark:border-gray-600/50">
           <SheetTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
             {service.name}
@@ -114,6 +150,8 @@ export function ServiceDetailSheet({
               {service.cta}
             </Button>
           </motion.div>
+        </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

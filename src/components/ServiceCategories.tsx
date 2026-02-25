@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, MessageCircle, DollarSign, Settings, GraduationCap, Sparkles, Info, BarChart3, Shield, Handshake } from 'lucide-react';
+import { TrendingUp, MessageCircle, DollarSign, Settings, GraduationCap, Sparkles, Info, BarChart3, Shield, Handshake, Crown, ChevronDown } from 'lucide-react';
 import { ServiceDetailSheet } from '@/components/ServiceDetailSheet';
 import type { ServiceDetail } from '@/types/services';
 
@@ -29,22 +29,22 @@ const growthServices: ServiceDetail[] = [
       'Long-term digital asset growth',
     ],
     infrastructure:
-      'Powered by advanced SEO architecture, AI publishing systems, and structured indexing frameworks.',
+      'Powered by uSBO (Search Optimization) and advanced SEO architecture.',
     tier: 1,
     cta: 'Explore Implementation →',
   },
   {
-    id: 'spotlight-streams',
-    name: 'Spotlight Streams™ OTT Boost',
-    tagline: 'Appear where premium attention lives.',
+    id: 'directalign',
+    name: 'DirectAlign™ Media Engine',
+    tagline: 'Own the screen before competitors appear.',
     description:
-      'Your brand is placed inside streaming environments — not just social feeds. This elevates perception, expands reach beyond traditional ads, and builds high-impact awareness across connected TV ecosystems.',
+      'DirectAlign™ deploys your brand across connected TV, streaming platforms, and digital out-of-home networks — turning passive audiences into high-trust brand familiarity.',
     howItWorks: [
       'OTT / CTV campaign placement',
+      'Digital out-of-home network deployment',
       'Audience targeting refinement',
       'Cross-device attribution',
       'Brand lift optimization',
-      'Streaming platform distribution',
     ],
     businessImpact: [
       'Elevated brand credibility',
@@ -53,16 +53,16 @@ const growthServices: ServiceDetail[] = [
       'Premium positioning advantage',
     ],
     infrastructure:
-      'Delivered through advanced streaming ad networks and cross-platform attribution systems.',
+      'Delivered through uEVERYWHERE OPM, JamLoop, OTT / CTV, and OOH platforms.',
     tier: 2,
     cta: 'Explore Campaign Strategy →',
   },
   {
     id: 'authority-amplifier',
     name: 'Authority Amplifier™ PR System',
-    tagline: 'Trust built at scale.',
+    tagline: 'Credibility compounds visibility.',
     description:
-      'We secure digital placements that position your brand as established, credible, and newsworthy. Authority visibility builds trust faster than ads and strengthens search credibility simultaneously.',
+      'Authority Amplifier™ positions your brand across digital media outlets to generate trust, backlinks, and reputation signals that strengthen both SEO and buyer confidence.',
     howItWorks: [
       'Digital PR distribution',
       'Media placement strategy',
@@ -77,16 +77,16 @@ const growthServices: ServiceDetail[] = [
       'Strengthened SEO authority',
     ],
     infrastructure:
-      'Powered by national media distribution networks and structured authority amplification frameworks.',
+      'Powered by uPR and national media distribution networks.',
     tier: 2,
     cta: 'Build Authority →',
   },
   {
     id: 'signal-surge',
     name: 'Signal Surge™ Paid Traffic Lab',
-    tagline: 'Accelerate demand with precision deployment.',
+    tagline: 'Precision paid acquisition across search, social, and display.',
     description:
-      'Signal Surge™ activates high-conversion paid campaigns across search and social platforms, engineered to convert attention into measurable growth with optimized targeting and performance feedback loops.',
+      'Signal Surge™ activates controlled ad campaigns across search, social, and display networks designed to generate immediate leads while feeding long-term data intelligence.',
     howItWorks: [
       'Paid search campaigns',
       'Paid social campaigns',
@@ -101,9 +101,33 @@ const growthServices: ServiceDetail[] = [
       'Faster revenue velocity',
     ],
     infrastructure:
-      'Powered by advanced ad platform orchestration and real-time performance optimization systems.',
+      'Powered by paid ads fulfillment partners and advanced ad platform orchestration.',
     tier: 1,
     cta: 'Launch Paid Strategy →',
+  },
+  {
+    id: 'nearrank',
+    name: 'NearRank™ Local Discovery Engine',
+    tagline: 'When customers search "near me," you must appear first — not fourth.',
+    description:
+      'NearRank™ dominates local map pack visibility across Google, Apple Maps, voice search, and 200+ discovery platforms. This is automated local search infrastructure.',
+    howItWorks: [
+      'Local map pack optimization',
+      'Google Business Profile management',
+      'Apple Maps and voice search alignment',
+      'Multi-platform local listing sync',
+      'NearMe campaign management',
+    ],
+    businessImpact: [
+      'Dominant local search visibility',
+      'Higher "near me" conversion share',
+      'Voice search readiness',
+      'Scalable local presence',
+    ],
+    infrastructure:
+      'Powered by uMNM (NearMe Campaign Management) and local discovery platforms.',
+    tier: 1,
+    cta: 'Dominate Local Search →',
   },
 ];
 
@@ -111,9 +135,9 @@ const engagementServices: ServiceDetail[] = [
   {
     id: 'convoflow',
     name: 'ConvoFlow™ AI Chat Suite',
-    tagline: 'Turn visitors into conversations — automatically.',
+    tagline: 'Intelligent conversational automation across web, SMS, and social.',
     description:
-      'ConvoFlow™ deploys intelligent AI agents across web and SMS channels to answer, guide, qualify, and convert in real time — creating frictionless engagement at scale.',
+      'ConvoFlow™ qualifies leads, answers questions, and routes opportunities across web, SMS, and social messaging channels — without human bottlenecks.',
     howItWorks: [
       'AI chat deployment across web and SMS',
       'Intent detection and routing logic',
@@ -135,9 +159,9 @@ const engagementServices: ServiceDetail[] = [
   {
     id: 'inboxignite',
     name: 'InboxIgnite™ Smart Email Engine',
-    tagline: 'Build relationships that nurture revenue.',
+    tagline: 'High-volume, targeted email deployment engineered for ROI.',
     description:
-      'InboxIgnite™ engineers automated email ecosystems designed to educate, re-engage, and convert — ensuring your audience stays informed and activated.',
+      'InboxIgnite™ transforms email from a newsletter tool into a measurable revenue channel using segmentation, automation, and campaign intelligence.',
     howItWorks: [
       'Automated email sequence design',
       'Behavioral trigger workflows',
@@ -152,16 +176,16 @@ const engagementServices: ServiceDetail[] = [
       'Reduced manual campaign work',
     ],
     infrastructure:
-      'Delivered through enterprise email platforms, automation builders, and deliverability monitoring systems.',
+      'Delivered through uBLAST (Insane Email Marketing) and enterprise email platforms.',
     tier: 1,
     cta: 'Launch Email Engine →',
   },
   {
     id: 'textpulse',
     name: 'TextPulse™ SMS Automation',
-    tagline: 'Reach customers where response rates are highest.',
+    tagline: 'Real-time SMS engagement designed to increase response rates.',
     description:
-      'TextPulse™ builds intelligent SMS sequences that trigger reminders, promotions, and follow-ups — driving immediate action with personal precision.',
+      'TextPulse™ turns mobile messaging into a high-conversion communication layer for reminders, offers, and engagement.',
     howItWorks: [
       'SMS campaign design and sequencing',
       'Opt-in and consent management',
@@ -183,9 +207,9 @@ const engagementServices: ServiceDetail[] = [
   {
     id: 'voicebridge',
     name: 'VoiceBridge™ AI Receptionist',
-    tagline: 'Never miss a call. Never miss an opportunity.',
+    tagline: '24/7 intelligent voice response and lead routing.',
     description:
-      'VoiceBridge™ installs AI-powered voice agents that answer, route, qualify, and schedule — transforming inbound calls into booked revenue 24/7.',
+      'VoiceBridge™ answers, qualifies, books, and escalates calls without missing opportunities or overloading staff.',
     howItWorks: [
       'AI voice agent deployment',
       'Call routing and qualification',
@@ -234,9 +258,9 @@ const appointmentsServices: ServiceDetail[] = [
   {
     id: 'closecraft',
     name: 'CloseCraft™ Funnel Builder',
-    tagline: 'Engineer conversion pathways that perform.',
+    tagline: 'Architect high-conversion pathways from click to commitment.',
     description:
-      'CloseCraft™ designs landing pages and structured offer funnels that guide prospects through persuasive decision sequences — built for clarity, velocity, and measurable results.',
+      'CloseCraft™ builds optimized landing flows that guide prospects toward action with clarity and persuasive sequencing.',
     howItWorks: [
       'Landing page and funnel design',
       'Offer structure and copy',
@@ -258,9 +282,9 @@ const appointmentsServices: ServiceDetail[] = [
   {
     id: 'dealdrive',
     name: 'DealDrive™ Proposal Automation',
-    tagline: 'Accelerate agreement. Eliminate friction.',
+    tagline: 'Accelerate decision-making with structured, automated proposals.',
     description:
-      'DealDrive™ automates smart proposals, approvals, and structured follow-ups — compressing sales cycles and increasing close rates.',
+      'DealDrive™ shortens sales cycles and increases close velocity with dynamic pricing logic and automated proposal flows.',
     howItWorks: [
       'Proposal generation and templates',
       'E-signature and approval flows',
@@ -282,9 +306,9 @@ const appointmentsServices: ServiceDetail[] = [
   {
     id: 'payportal',
     name: 'PayPortal™ Dynamic Checkout',
-    tagline: 'Monetize with precision and flexibility.',
+    tagline: 'Seamless payment processing with intelligent pricing logic.',
     description:
-      'PayPortal™ deploys secure, adaptive payment systems with dynamic pricing capability — enabling seamless transactions across service tiers and custom offers.',
+      'PayPortal™ enables subscription, one-time, and performance-based payment structures with frictionless checkout.',
     howItWorks: [
       'Payment gateway integration',
       'Dynamic pricing and tiers',
@@ -307,11 +331,11 @@ const appointmentsServices: ServiceDetail[] = [
 
 const systemsOperationsServices: ServiceDetail[] = [
   {
-    id: 'coresync',
-    name: 'CoreSync™ CRM Architecture',
-    tagline: 'Centralize data. Clarify pipelines.',
+    id: 'hubai',
+    name: 'HubAI™ CRM Architecture',
+    tagline: 'Your central intelligence layer.',
     description:
-      'CoreSync™ structures your CRM environment to align contacts, pipelines, automations, and reporting — creating operational clarity across your organization.',
+      'HubAI™ unifies contacts, automation, pipeline management, and reporting into one operational command center.',
     howItWorks: [
       'CRM architecture and data modeling',
       'Contact and pipeline alignment',
@@ -326,16 +350,16 @@ const systemsOperationsServices: ServiceDetail[] = [
       'Faster decision-making',
     ],
     infrastructure:
-      'Powered by enterprise CRM platforms, automation builders, and data sync systems.',
+      'Powered by umbrella CRM and automation stack platforms.',
     tier: 1,
     cta: 'Structure Your CRM →',
   },
   {
     id: 'flowforge',
     name: 'FlowForge™ Automation Lab',
-    tagline: 'Eliminate repetitive work. Scale intelligently.',
+    tagline: 'Build once, automate forever.',
     description:
-      'FlowForge™ engineers workflow automations and system integrations that remove bottlenecks, connect tools, and reduce manual dependency.',
+      'FlowForge™ connects systems, triggers workflows, and eliminates repetitive manual processes across your tech stack.',
     howItWorks: [
       'Workflow mapping and design',
       'System integration architecture',
@@ -357,9 +381,9 @@ const systemsOperationsServices: ServiceDetail[] = [
   {
     id: 'commanddesk',
     name: 'CommandDesk™ Client Portal System',
-    tagline: 'Create a unified client experience.',
+    tagline: 'Centralized client visibility and collaboration.',
     description:
-      'CommandDesk™ deploys secure workspace portals for communication, document sharing, project visibility, and controlled collaboration.',
+      'CommandDesk™ provides branded portals for reporting, assets, communication, and shared deliverables.',
     howItWorks: [
       'Portal architecture and access design',
       'Document and file management',
@@ -382,11 +406,11 @@ const systemsOperationsServices: ServiceDetail[] = [
 
 const knowledgeActivationServices: ServiceDetail[] = [
   {
-    id: 'launchpad',
-    name: 'LaunchPad™ Learning Hub',
-    tagline: 'Turn expertise into scalable assets.',
+    id: 'skillsprint',
+    name: 'SkillSprint™ Academy',
+    tagline: 'Structured learning environments for internal teams or clients.',
     description:
-      'LaunchPad™ builds structured learning and training ecosystems that convert knowledge into repeatable education and onboarding environments.',
+      'SkillSprint™ delivers guided educational tracks, certifications, and competency development.',
     howItWorks: [
       'Learning path and curriculum design',
       'Course and module creation',
@@ -408,9 +432,9 @@ const knowledgeActivationServices: ServiceDetail[] = [
   {
     id: 'onboardx',
     name: 'OnboardX™ Client Activation System',
-    tagline: 'Accelerate confidence from day one.',
+    tagline: 'Transform new clients into activated partners quickly.',
     description:
-      'OnboardX™ installs guided onboarding sequences and welcome systems that reduce confusion, increase retention, and activate client momentum immediately.',
+      'OnboardX™ standardizes intake, setup, and early momentum milestones.',
     howItWorks: [
       'Onboarding sequence design',
       'Welcome and orientation flows',
@@ -431,13 +455,13 @@ const knowledgeActivationServices: ServiceDetail[] = [
   },
 ];
 
-const brandVoiceServices: ServiceDetail[] = [
+const brandSignalServices: ServiceDetail[] = [
   {
-    id: 'vibe-signal',
-    name: 'Vibe & Signal™ Production Engine',
-    tagline: 'Engineer recognition across sound, presence, and platform.',
+    id: 'voice-vibe',
+    name: 'Voice & Vibe™ Production Engine',
+    tagline: 'Your brand\'s sound, style, and signal clarity.',
     description:
-      'Vibe & Signal™ develops structured sonic identity systems, voice assets, branded audio frameworks, and signature production elements that increase memorability and recognition speed across digital environments. This is engineered brand signal infrastructure designed to scale across media, AI voice, and emerging platforms.',
+      'Voice & Vibe™ produces visual and narrative assets that align messaging, aesthetics, and authority across channels.',
     howItWorks: [
       'Sonic identity and voice design',
       'Branded audio asset creation',
@@ -459,9 +483,9 @@ const brandVoiceServices: ServiceDetail[] = [
   {
     id: 'storyframe',
     name: 'StoryFrame™ Brand Narrative Suite',
-    tagline: 'Architect the message behind the momentum.',
+    tagline: 'Positioning clarity drives performance.',
     description:
-      'StoryFrame™ designs positioning frameworks, messaging hierarchies, and persuasive narrative systems that align your voice across platforms — ensuring clarity, cohesion, and influence at every touchpoint.',
+      'StoryFrame™ builds structured messaging architecture that aligns brand voice, audience psychology, and market differentiation.',
     howItWorks: [
       'Positioning and messaging strategy',
       'Narrative hierarchy design',
@@ -486,9 +510,9 @@ const performanceInsightsServices: ServiceDetail[] = [
   {
     id: 'insightloop',
     name: 'InsightLoop™ Analytics Dashboard',
-    tagline: 'Turn data into direction.',
+    tagline: 'Data without interpretation is noise.',
     description:
-      'InsightLoop™ consolidates campaign, revenue, and engagement metrics into structured dashboards that drive informed strategic decisions.',
+      'InsightLoop™ centralizes performance data into actionable intelligence dashboards for growth optimization.',
     howItWorks: [
       'Data source integration',
       'Dashboard and visualization design',
@@ -503,7 +527,7 @@ const performanceInsightsServices: ServiceDetail[] = [
       'Clear strategic direction',
     ],
     infrastructure:
-      'Powered by analytics platforms, data warehouses, and visualization tools.',
+      'Powered by reporting and analytics platforms.',
     tier: 1,
     cta: 'Build Your Dashboard →',
   },
@@ -513,9 +537,9 @@ const governanceGuardrailsServices: ServiceDetail[] = [
   {
     id: 'trustguard',
     name: 'TrustGuard™ Governance Layer',
-    tagline: 'Operate responsibly. Scale securely.',
+    tagline: 'Protect the ecosystem.',
     description:
-      'TrustGuard™ implements structured permissions, compliance oversight, AI usage governance, and operational safeguards to protect your brand and clients.',
+      'TrustGuard™ establishes data governance, automation boundaries, brand safety, and compliance protocols.',
     howItWorks: [
       'Permission and access design',
       'Compliance framework implementation',
@@ -540,9 +564,9 @@ const partnershipsExpansionServices: ServiceDetail[] = [
   {
     id: 'allianceos',
     name: 'AllianceOS™ Growth Partnerships Engine',
-    tagline: 'Multiply reach without multiplying overhead.',
+    tagline: 'Scale through leverage.',
     description:
-      'AllianceOS™ structures white-label systems, joint ventures, reseller pathways, and strategic alliances that expand capacity and accelerate growth.',
+      'AllianceOS™ structures white-label, reseller, and JV frameworks to expand distribution without operational overload.',
     howItWorks: [
       'Partnership model design',
       'White-label system architecture',
@@ -563,6 +587,40 @@ const partnershipsExpansionServices: ServiceDetail[] = [
   },
 ];
 
+interface MembershipItem {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+}
+
+const membershipLayer: MembershipItem[] = [
+  {
+    id: 'socialutely-circle',
+    name: 'Socialutely Circle™',
+    tagline: 'Annual ecosystem access.',
+    description: 'Select tools, learning resources, and strategic updates for members.',
+  },
+  {
+    id: 'momentum-vault',
+    name: 'Momentum Vault™',
+    tagline: 'Curated resource library.',
+    description: 'Templates, playbooks, and intelligence assets for members.',
+  },
+  {
+    id: 'concierge-access',
+    name: 'Concierge Access™',
+    tagline: 'Premium access layer.',
+    description: 'Travel and experiential benefits aligned with strategic relationship tiers. FORA / Travel Partnerships.',
+  },
+  {
+    id: 'ai-maturity-diagnostic',
+    name: 'AI Maturity Diagnostic & Blueprint™',
+    tagline: 'Structured AI readiness assessment.',
+    description: 'Comprehensive assessment of your AI readiness and a tailored blueprint to mature your marketing operations.',
+  },
+];
+
 interface ServiceCategory {
   id: number;
   title: string;
@@ -577,7 +635,9 @@ interface ServiceCategory {
 const ServiceCategories = () => {
   const [activePanel, setActivePanel] = useState<number | null>(null);
   const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
+  const [servicesInCategory, setServicesInCategory] = useState<ServiceDetail[]>([]);
   const [serviceSheetOpen, setServiceSheetOpen] = useState(false);
+  const [membershipExpanded, setMembershipExpanded] = useState(false);
 
   const categories: ServiceCategory[] = [
     {
@@ -632,13 +692,13 @@ const ServiceCategories = () => {
     },
     {
       id: 6,
-      title: 'Brand & Voice',
+      title: 'Brand & Signal',
       purpose: 'Define how your brand is heard, felt, and remembered',
       subheader: 'Engineer recognition across sound and presence.',
       icon: <Sparkles className="w-8 h-8" />,
       color: 'from-rose-300 to-pink-300',
       gradient: 'bg-gradient-to-br from-rose-100/80 to-pink-100/80',
-      details: brandVoiceServices,
+      details: brandSignalServices,
     },
     {
       id: 7,
@@ -672,7 +732,9 @@ const ServiceCategories = () => {
     },
   ];
 
-  const handleServiceClick = (service: ServiceDetail) => {
+  const handleServiceClick = (service: ServiceDetail, categoryDetails: Array<string | ServiceDetail>) => {
+    const services = categoryDetails.filter((d): d is ServiceDetail => isServiceDetail(d));
+    setServicesInCategory(services);
     setSelectedService(service);
     setServiceSheetOpen(true);
   };
@@ -816,7 +878,7 @@ const ServiceCategories = () => {
                                 className="flex items-center gap-2 cursor-pointer rounded-lg px-3 py-2 -mx-3 opacity-85 hover:opacity-100 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-purple-200/30 dark:hover:shadow-purple-900/20"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleServiceClick(detail);
+                                  handleServiceClick(detail, category.details);
                                 }}
                                 whileHover={{ y: -2 }}
                               >
@@ -847,6 +909,63 @@ const ServiceCategories = () => {
           ))}
         </div>
 
+        {/* Membership & Access Layer — Ecosystem strip (distinct treatment) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-12"
+        >
+          <motion.button
+            onClick={() => setMembershipExpanded(!membershipExpanded)}
+            className="w-full flex items-center justify-between gap-4 rounded-2xl px-6 py-4 bg-gradient-to-r from-amber-900/90 via-amber-800/80 to-yellow-900/90 dark:from-amber-950 dark:via-amber-900/90 dark:to-amber-950 border-2 border-amber-500/40 shadow-xl hover:shadow-2xl transition-all duration-300 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-500/20">
+                <Crown className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-amber-50">Membership & Access Layer</h3>
+                <p className="text-sm text-amber-200/80">Ecosystem offerings beyond core SKUs</p>
+              </div>
+            </div>
+            <motion.span
+              animate={{ rotate: membershipExpanded ? 180 : 0 }}
+              className="text-amber-300"
+            >
+              <ChevronDown className="w-6 h-6" />
+            </motion.span>
+          </motion.button>
+          <AnimatePresence>
+            {membershipExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {membershipLayer.map((item, idx) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.08 }}
+                      className="rounded-xl p-4 bg-amber-950/50 dark:bg-amber-950/70 border border-amber-600/30 hover:border-amber-500/50 transition-colors"
+                    >
+                      <h4 className="font-semibold text-amber-100 mb-1">{item.name}</h4>
+                      <p className="text-xs text-amber-300/80 italic mb-2">{item.tagline}</p>
+                      <p className="text-sm text-amber-200/70">{item.description}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
         {/* Call to Action */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -867,6 +986,8 @@ const ServiceCategories = () => {
 
       <ServiceDetailSheet
         service={selectedService}
+        servicesInCategory={servicesInCategory}
+        onServiceSelect={setSelectedService}
         open={serviceSheetOpen}
         onOpenChange={setServiceSheetOpen}
       />
