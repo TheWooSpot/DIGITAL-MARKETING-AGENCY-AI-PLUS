@@ -1,3 +1,6 @@
+# npm pack artifacts
+*.tgz
+
 # Logs
 logs
 *.log
@@ -13,6 +16,9 @@ dist-ssr
 *.local
 .env
 .env.local
+
+# Claude Code exports (may contain private planning)
+docs/exports
 
 # Editor directories and files
 .vscode/*

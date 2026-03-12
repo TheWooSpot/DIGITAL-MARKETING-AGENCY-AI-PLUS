@@ -184,7 +184,7 @@ const Hero = () => {
           className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto"
         >
           {[
-            { number: '500+', label: 'Clients Served' },
+            { number: '237', label: 'Clients Served' },
             { number: '98%', label: 'Success Rate' },
             { number: '24/7', label: 'AI Support' },
             { number: '$2M+', label: 'Revenue Generated' },
