@@ -743,7 +743,7 @@ const ServiceCategories = () => {
     <section className="relative py-24 px-6 overflow-hidden">
       {/* Background with gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors" />
-
+      
       {/* Animated background elements */}
       <motion.div
         className="absolute top-20 left-10 w-72 h-72 bg-purple-200/30 dark:bg-purple-900/20 rounded-full blur-3xl"
@@ -888,15 +888,15 @@ const ServiceCategories = () => {
                                 <Info className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0" />
                               </motion.li>
                             ) : (
-                              <motion.li
-                                key={idx}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className="flex items-start"
-                              >
-                                <span className="text-gray-700 dark:text-gray-300">{detail}</span>
-                              </motion.li>
+                            <motion.li
+                              key={idx}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.1 }}
+                              className="flex items-start"
+                            >
+                              <span className="text-gray-700 dark:text-gray-300">{detail}</span>
+                            </motion.li>
                             )
                           )}
                         </ul>

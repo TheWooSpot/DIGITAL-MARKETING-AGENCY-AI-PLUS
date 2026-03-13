@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Diagnostic from "./pages/Diagnostic";
+import DiagnosticResults from "./pages/DiagnosticResults";
+import DiagnosticUnlock from "./pages/DiagnosticUnlock";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +21,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/diagnostic" element={<Diagnostic />} />
+            <Route path="/diagnostic/results" element={<DiagnosticResults />} />
+            <Route path="/diagnostic/unlock" element={<DiagnosticUnlock />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../Downloads/ai readiness - from claude - for cursor"
 		}
 	],
 	"settings": {}

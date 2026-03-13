@@ -1,0 +1,19 @@
+assessment_type,score_min,score_max,tier,label,description
+AI_IQ,0,20,1,AI Absent,Little or no meaningful AI use in operations
+AI_IQ,21,40,2,Experimental,Isolated tools being tested; low integration
+AI_IQ,41,60,3,Emerging,Useful AI pockets; weak orchestration
+AI_IQ,61,80,4,Integrated,AI materially supporting core operations
+AI_IQ,81,100,5,Intelligent Infrastructure,Coordinated; measured; strategic AI
+AI_MATURITY,0,24,1,Analog,AI is absent or wholly unmanaged
+AI_MATURITY,25,44,2,Assisted,AI supports isolated tasks without architecture
+AI_MATURITY,45,64,3,Emerging,AI creating value but lacking governance
+AI_MATURITY,65,84,4,Integrated,AI is coordinated; strategically useful
+AI_MATURITY,85,100,5,Optimized,AI is governed; scalable; resilient
+COMPETENCY,0,24,1,Unprepared,Minimal AI literacy; adoption uneven
+COMPETENCY,25,49,2,Aware but Uneven,Some awareness; inconsistent capability
+COMPETENCY,50,74,3,Capable,Solid AI operational fluency
+COMPETENCY,75,100,4,Operationally Fluent,Deep AI literacy; strategic thinking evident
+GOVERNANCE,0,24,1,Reactive,No structured AI governance
+GOVERNANCE,25,49,2,Developing,Initial governance structures; inconsistent
+GOVERNANCE,50,74,3,Structured,Clear policies; enforcement inconsistent
+GOVERNANCE,75,100,4,Enterprise-Ready,Comprehensive governance; audit-ready

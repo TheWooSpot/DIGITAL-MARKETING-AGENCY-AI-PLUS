@@ -1,0 +1,24 @@
+gap_category,gap_condition,recommended_service_id,recommended_service_name,priority,rationale
+Deployment,AI IQ < 40,201,ConvoFlow™ AI Chat Suite,high,Foundation for basic AI engagement at scale
+Deployment,AI IQ < 40,204,VoiceBridge™ AI Receptionist,high,Covers inbound calls; first touchpoint
+Deployment,AI IQ < 40,301,BookStream™ Smart Scheduling Hub,high,Core conversion infrastructure
+Deployment,AI IQ < 40,401,CoreSync™ CRM Architecture,high,Foundational system clarity needed
+Integration,Integration Score < 40,401,CoreSync™ CRM Architecture,high,Unify fragmented data and systems
+Integration,Integration Score < 40,402,FlowForge™ Automation Lab,high,Connect tools; reduce manual work
+Integration,Integration Score < 40,403,CommandDesk™ Client Portal System,medium,Unify client communication layer
+Revenue,Revenue Alignment < 40,302,CloseCraft™ Funnel Builder,high,Engineer conversion pathways
+Revenue,Revenue Alignment < 40,303,DealDrive™ Proposal Automation,high,Accelerate agreement and close
+Revenue,Revenue Alignment < 40,304,PayPortal™ Dynamic Checkout,high,Monetize cleanly; reduce friction
+Automation,Automation Score < 40,402,FlowForge™ Automation Lab,high,Eliminate repetitive work at scale
+Automation,Automation Score < 40,502,OnboardX™ Client Activation System,high,Systematic onboarding removes chaos
+Governance,Governance Score < 50,801,TrustGuard™ Governance Layer,high,Critical when AI is customer-facing
+Governance,Governance Score < 50 AND AI IQ > 50,1004,AI Maturity Diagnostic & Blueprint™,high,Unblock scaling with AI risk architecture
+Competency,Competency Score < 40,501,SkillSprint™ Academy,high,Train team on AI workflows
+Competency,Competency Score < 40,502,OnboardX™ Client Activation System,high,Systemize adoption
+Risk,Risk Score > 60,801,TrustGuard™ Governance Layer,critical,Unmanaged AI risk is business risk
+Risk,Risk Score > 60 AND Customer Facing = true,1003,Concierge Access™,critical,Advisory layer for high-risk deployments
+Analytics,Analytics Gap Detected,701,InsightLoop™ Analytics Dashboard,medium,Measure what's working; iterate
+Brand,Brand Maturity Low,601,Voice & Vibe™ Production Engine,medium,Engineer recognition at scale
+Brand,Brand Maturity Low,602,StoryFrame™ Brand Narrative Suite,medium,Align messaging; increase authority
+Authority,Competitive Position Weak,103,Authority Amplifier™ PR System,medium,Earn credibility; strengthen positioning
+Growth,Scale Readiness High,901,AllianceOS™ Growth Partnerships Engine,medium,Multiply reach through partnerships

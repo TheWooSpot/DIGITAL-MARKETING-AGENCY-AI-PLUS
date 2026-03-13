@@ -1,0 +1,15 @@
+score_condition,recommended_tier,membership_recommendation,rationale
+AI IQ < 40,Essentials,Socialutely Circle™,Foundation layer for beginning AI adoption
+AI IQ 40-65 AND Governance >= 50,Momentum,Momentum Vault™,Growth; optimization phase; safe operations
+AI IQ 40-65 AND Governance < 50,Signature,Concierge Access™,Immediate governance attention needed
+AI IQ > 65 AND Governance >= 60,Signature,Concierge Access™,Advanced capability; strategic advisory
+AI IQ > 65 AND Governance < 60,Concierge,Concierge Access™,Risk management critical before scaling
+Risk > 60,Concierge,Concierge Access™,High operational or legal exposure
+Competency < 40,Momentum,Momentum Vault™,Add training and adoption layer
+Customer Facing AI = true AND Governance < 40,Concierge,Concierge Access™,Brand risk requires immediate attention
+AI Maturity < 25,Essentials,Socialutely Circle™,Foundational diagnostic and education only
+AI Maturity 25-65,Momentum,Momentum Vault™,Growth and optimization pathway
+AI Maturity > 65,Signature,Concierge Access™,Strategic guidance on advanced maturity
+Automation Orchestration < 40,Momentum,Momentum Vault™,Workflow integration needed
+Multiple AI Tools > 5 AND No Owner,Concierge,Concierge Access™,Chaos risk; need coordination
+Benchmark Percentile > 80th,Signature,Concierge Access™,High capability; should leverage partnerships

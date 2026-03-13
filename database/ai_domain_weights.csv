@@ -1,0 +1,14 @@
+assessment_type,domain,weight,max_score
+AI_IQ,Deployment Depth,0.20,20
+AI_IQ,Integration Maturity,0.20,20
+AI_IQ,Revenue Alignment,0.25,20
+AI_IQ,Automation Orchestration,0.20,20
+AI_IQ,Oversight Awareness,0.15,20
+AI_MATURITY,AI IQ,0.35,100
+AI_MATURITY,Governance Readiness,0.25,100
+AI_MATURITY,AI Competency,0.20,100
+AI_MATURITY,Resilience/Risk,0.20,100
+COMPETENCY,Leadership Fluency,0.25,100
+COMPETENCY,Team Capability,0.25,100
+COMPETENCY,Workflow Design Skill,0.25,100
+COMPETENCY,Training/Adoption Discipline,0.25,100

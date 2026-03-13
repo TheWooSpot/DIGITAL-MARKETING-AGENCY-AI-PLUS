@@ -1,0 +1,35 @@
+question_id,assessment_type,domain,question_text,response_type,option_a,score_a,option_b,score_b,option_c,score_c,option_d,score_d
+AIQ_01,AI_IQ,Deployment,Does your organization currently use AI tools?,multiple_choice,No,0,Experimentally,5,In multiple teams,12,Embedded across operations,20
+AIQ_02,AI_IQ,Deployment,In how many functional areas is AI currently deployed?,multiple_choice,0 areas,0,1 area,4,2-3 areas,12,4+ areas,20
+AIQ_03,AI_IQ,Deployment,Are any AI systems customer-facing or public?,multiple_choice,No,0,Internal only,5,Limited customer-facing,12,Multiple customer channels,20
+AIQ_04,AI_IQ,Integration,Are AI tools connected to your CRM or core business systems?,multiple_choice,Not connected,0,Manual exports/imports,6,Some integrations,12,Directly integrated,20
+AIQ_05,AI_IQ,Integration,Are AI outputs stored and reusable in your systems?,multiple_choice,No,0,Occasionally,7,Usually,14,Systematically,20
+AIQ_06,AI_IQ,Integration,Do AI tools pull from internal data sources or knowledge bases?,multiple_choice,No,0,Rarely,5,Some systems do,12,Most important systems do,20
+AIQ_07,AI_IQ,Revenue,Does AI directly support lead generation or revenue operations?,multiple_choice,No,0,Indirectly only,6,Some contribution,12,Clear measurable contribution,20
+AIQ_08,AI_IQ,Revenue,Can you tie any AI activity to measurable business KPIs?,multiple_choice,No,0,Loosely,7,Partially,14,Clearly and consistently,20
+AIQ_09,AI_IQ,Revenue,Is AI used in any revenue-critical workflow (sales/conversion/retention)?,multiple_choice,No,0,Limited test,7,One key workflow,14,Multiple key workflows,20
+AIQ_10,AI_IQ,Automation,Do AI tools trigger follow-up actions automatically?,multiple_choice,Never,0,Sometimes,7,Often,14,Core operating behavior,20
+AIQ_11,AI_IQ,Automation,Are multiple tools connected via Zapier/Make/API/native automations?,multiple_choice,No,0,Minimal,6,Moderate,12,Extensive,20
+AIQ_12,AI_IQ,Automation,Are there multi-step AI workflows in place?,multiple_choice,No,0,Very limited,5,Some,12,Multiple repeatable flows,20
+AIQ_13,AI_IQ,Oversight,Do you have internal guidelines for AI use?,multiple_choice,No,0,Informal only,7,Partial written,14,Clear documented standards,20
+AIQ_14,AI_IQ,Oversight,Are important AI outputs reviewed by humans?,multiple_choice,Never,0,Rarely,5,Sometimes,12,Always (high-impact cases),20
+AIQ_15,AI_IQ,Oversight,Is anyone explicitly responsible for AI oversight?,multiple_choice,No,0,Informally,6,Partially assigned,12,Clearly assigned,20
+MAT_01,AI_MATURITY,Governance,Does your company disclose AI use to customers?,boolean,No,0,Yes,20,N/A,0,N/A,0
+MAT_02,AI_MATURITY,Governance,Are AI prompts standardized or documented?,boolean,No,0,Yes,20,N/A,0,N/A,0
+MAT_03,AI_MATURITY,Governance,Are AI outputs logged or recorded?,boolean,No,0,Yes,20,N/A,0,N/A,0
+MAT_04,AI_MATURITY,Governance,Is sensitive data filtered before AI processing?,boolean,No,0,Yes,20,N/A,0,N/A,0
+MAT_05,AI_MATURITY,Governance,Are AI models/tools approved before company use?,boolean,No,0,Yes,20,N/A,0,N/A,0
+MAT_06,AI_MATURITY,Governance,Are AI policies documented internally?,boolean,No,0,Yes,20,N/A,0,N/A,0
+COMP_01,AI_COMPETENCY,Leadership,Does leadership understand AI beyond content generation?,scale,Not at all,0,Somewhat,10,Moderately,15,Strongly,20
+COMP_02,AI_COMPETENCY,Leadership,Can leaders identify 3+ high-value AI use cases?,boolean,No,0,Yes,20,N/A,0,N/A,0
+COMP_03,AI_COMPETENCY,Team,Are team members trained in prompt design or AI workflows?,boolean,No,0,Yes,20,N/A,0,N/A,0
+COMP_04,AI_COMPETENCY,Team,Can staff distinguish between experimentation and production AI?,boolean,No,0,Yes,20,N/A,0,N/A,0
+COMP_05,AI_COMPETENCY,Workflow,Are repeatable AI workflows documented?,boolean,No,0,Yes,20,N/A,0,N/A,0
+COMP_06,AI_COMPETENCY,Workflow,Are teams coached on AI-caused role changes?,scale,Not at all,0,Somewhat,10,Moderately,15,Strongly,20
+COMP_07,AI_COMPETENCY,Training,Is there a structured AI training cadence?,boolean,No,0,Yes,20,N/A,0,N/A,0
+COMP_08,AI_COMPETENCY,Training,Are teams evaluated on AI-assisted productivity?,boolean,No,0,Yes,20,N/A,0,N/A,0
+RISK_01,GOVERNANCE,Risk,Does AI produce customer-facing content automatically?,boolean,No,0,Yes,20,N/A,0,N/A,0
+RISK_02,GOVERNANCE,Risk,Does AI interact with customers autonomously?,boolean,No,0,Yes,20,N/A,0,N/A,0
+RISK_03,GOVERNANCE,Risk,Does AI process customer personal data?,boolean,No,0,Yes,20,N/A,0,N/A,0
+RISK_04,GOVERNANCE,Risk,Are AI outputs reviewed before publishing?,boolean,No,0,Yes,-20,N/A,0,N/A,0
+RISK_05,GOVERNANCE,Risk,Do you have incident response logic for AI failures?,boolean,No,0,Yes,-20,N/A,0,N/A,0
