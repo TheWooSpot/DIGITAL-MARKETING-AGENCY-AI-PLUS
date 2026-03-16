@@ -48,7 +48,7 @@ The Service Catalog is the core client-facing presentation of the AI+ marketing 
 
 ### 5. Knowledge & Activation
 - **SkillSprint™** Academy
-- **OnboardX™** Client Activation System
+- **Onboardly™** Client Activation System
 
 ### 6. Brand & Signal
 - **Voice & Vibe™** Production Engine
@@ -59,6 +59,7 @@ The Service Catalog is the core client-facing presentation of the AI+ marketing 
 
 ### 8. Governance & Guardrails
 - **TrustGuard™** Governance Layer
+- **ReputationStack™** Reviews Engine
 
 ### 9. Partnerships & Expansion
 - **AllianceOS™** Growth Partnerships Engine

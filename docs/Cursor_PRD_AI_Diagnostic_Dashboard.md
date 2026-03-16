@@ -359,7 +359,7 @@ IF ai_iq < 40 AND governance < 40 THEN
 ENDIF
 
 IF competency < 40 THEN
-  RECOMMEND: SkillSprint™, OnboardX™
+  RECOMMEND: SkillSprint™, Onboardly™
 ENDIF
 
 IF governance < 50 AND ai_iq > 50 THEN

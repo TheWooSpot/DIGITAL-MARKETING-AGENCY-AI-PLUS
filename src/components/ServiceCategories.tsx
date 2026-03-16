@@ -30,7 +30,7 @@ const growthServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by uSBO (Search Optimization) and advanced SEO architecture.',
-    tier: 1,
+    tier: 2,
     cta: 'Explore Implementation →',
   },
   {
@@ -54,7 +54,7 @@ const growthServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Delivered through uEVERYWHERE OPM, JamLoop, OTT / CTV, and OOH platforms.',
-    tier: 2,
+    tier: 3,
     cta: 'Explore Campaign Strategy →',
   },
   {
@@ -78,7 +78,7 @@ const growthServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by uPR and national media distribution networks.',
-    tier: 2,
+    tier: 3,
     cta: 'Build Authority →',
   },
   {
@@ -102,7 +102,7 @@ const growthServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by paid ads fulfillment partners and advanced ad platform orchestration.',
-    tier: 1,
+    tier: 2,
     cta: 'Launch Paid Strategy →',
   },
   {
@@ -153,7 +153,7 @@ const engagementServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by AI conversation platforms, natural language processing, and multi-channel orchestration systems.',
-    tier: 1,
+    tier: 2,
     cta: 'Deploy AI Chat →',
   },
   {
@@ -225,7 +225,7 @@ const engagementServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by AI voice platforms, telephony integrations, and real-time speech processing.',
-    tier: 1,
+    tier: 3,
     cta: 'Deploy Voice AI →',
   },
 ];
@@ -276,7 +276,7 @@ const appointmentsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Delivered through landing page builders, analytics platforms, and conversion optimization tools.',
-    tier: 1,
+    tier: 2,
     cta: 'Build Your Funnel →',
   },
   {
@@ -324,7 +324,7 @@ const appointmentsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by payment processors, checkout platforms, and PCI-compliant systems.',
-    tier: 1,
+    tier: 2,
     cta: 'Enable Payments →',
   },
 ];
@@ -351,7 +351,7 @@ const systemsOperationsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by umbrella CRM and automation stack platforms.',
-    tier: 1,
+    tier: 2,
     cta: 'Structure Your CRM →',
   },
   {
@@ -375,7 +375,7 @@ const systemsOperationsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Delivered through automation platforms, API integrations, and workflow orchestration systems.',
-    tier: 1,
+    tier: 2,
     cta: 'Engineer Automations →',
   },
   {
@@ -399,7 +399,7 @@ const systemsOperationsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by portal platforms, secure file storage, and collaboration tools.',
-    tier: 2,
+    tier: 3,
     cta: 'Deploy Client Portal →',
   },
 ];
@@ -426,15 +426,15 @@ const knowledgeActivationServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Delivered through learning management systems, content platforms, and assessment tools.',
-    tier: 1,
+    tier: 3,
     cta: 'Build Learning Hub →',
   },
   {
-    id: 'onboardx',
-    name: 'OnboardX™ Client Activation System',
+    id: 'onboardly',
+    name: 'Onboardly™ Client Activation System',
     tagline: 'Transform new clients into activated partners quickly.',
     description:
-      'OnboardX™ standardizes intake, setup, and early momentum milestones.',
+      'Onboardly™ standardizes intake, setup, and early momentum milestones.',
     howItWorks: [
       'Onboarding sequence design',
       'Welcome and orientation flows',
@@ -450,7 +450,7 @@ const knowledgeActivationServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by onboarding platforms, automation builders, and communication tools.',
-    tier: 1,
+    tier: 2,
     cta: 'Activate Clients →',
   },
 ];
@@ -477,7 +477,7 @@ const brandSignalServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by audio production tools, voice platforms, and media distribution systems.',
-    tier: 2,
+    tier: 3,
     cta: 'Build Sonic Identity →',
   },
   {
@@ -501,7 +501,7 @@ const brandSignalServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Delivered through brand strategy frameworks, content systems, and messaging tools.',
-    tier: 1,
+    tier: 3,
     cta: 'Architect Your Narrative →',
   },
 ];
@@ -528,7 +528,7 @@ const performanceInsightsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by reporting and analytics platforms.',
-    tier: 1,
+    tier: 3,
     cta: 'Build Your Dashboard →',
   },
 ];
@@ -555,8 +555,32 @@ const governanceGuardrailsServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Delivered through governance platforms, compliance tools, and monitoring systems.',
-    tier: 2,
+    tier: 3,
     cta: 'Implement Governance →',
+  },
+  {
+    id: 'reputationstack',
+    name: 'ReputationStack™ Reviews Engine',
+    tagline: 'Engineer review gravity and trust velocity.',
+    description:
+      'ReputationStack™ centralizes review capture, response workflows, and reputation signals across key platforms to compound trust and inbound demand.',
+    howItWorks: [
+      'Review profile and listing audit',
+      'Automated review request sequences',
+      'Response and escalation workflows',
+      'Highlight and social proof distribution',
+      'Reporting on review volume and sentiment',
+    ],
+    businessImpact: [
+      'Higher review volume and freshness',
+      'Improved star ratings and trust',
+      'More conversions from social proof',
+      'Defensible reputation infrastructure',
+    ],
+    infrastructure:
+      'Powered by review management platforms, listing tools, automation workflows, and reporting systems.',
+    tier: 1,
+    cta: 'Systematize Reviews →',
   },
 ];
 
@@ -582,7 +606,7 @@ const partnershipsExpansionServices: ServiceDetail[] = [
     ],
     infrastructure:
       'Powered by partnership platforms, white-label systems, and alliance management tools.',
-    tier: 2,
+    tier: 3,
     cta: 'Scale Through Partnerships →',
   },
 ];
