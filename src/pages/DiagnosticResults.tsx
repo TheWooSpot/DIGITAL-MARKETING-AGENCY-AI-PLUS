@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ScoreGauge } from '@/components/diagnostic/ScoreGauge';
+import { getRecommendations } from '@/lib/diagnostic/routing-engine';
 import type { ScoreResult } from '@/lib/diagnostic/types';
 
 const DiagnosticResults = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const result = state?.result as ScoreResult | undefined;
+  const routing = result ? getRecommendations(result.ai_iq_score) : null;
 
   if (!result) {
     return (
@@ -101,6 +103,55 @@ const DiagnosticResults = () => {
               </ul>
             </CardContent>
           </Card>
+
+          {/* Recommended tier & membership */}
+          {routing && (
+            <Card className="bg-[#1a1f2e] border-[#2a3f5f] mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg text-[#00d9ff]">Recommended for you</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-[#e8eef5] font-medium">
+                  {routing.recommendedTier} · {routing.recommendedMembership}
+                </p>
+                <p className="text-sm text-[#a0aac0] mt-1">
+                  Based on your AI IQ score, we recommend this tier to get the most value.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recommended services */}
+          {routing && routing.recommendedServices.length > 0 && (
+            <Card className="bg-[#1a1f2e] border-[#2a3f5f] mb-8">
+              <CardHeader>
+                <CardTitle className="text-lg text-[#10b981]">Socialutely services that fit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {routing.recommendedServices.map((svc, i) => (
+                    <motion.li
+                      key={svc.id}
+                      className="flex flex-col gap-0.5 text-[#e8eef5]"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.1 + i * 0.08 }}
+                    >
+                      <span className="font-medium text-[#00d9ff]">{svc.name}</span>
+                      <span className="text-sm text-[#a0aac0]">{svc.rationale}</span>
+                    </motion.li>
+                  ))}
+                </ul>
+                <Button
+                  variant="outline"
+                  className="mt-4 border-[#2a3f5f] text-[#00d9ff] hover:bg-[#00d9ff]/10"
+                  onClick={() => navigate('/')}
+                >
+                  Explore full service catalog
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* CTA */}
           <motion.div
