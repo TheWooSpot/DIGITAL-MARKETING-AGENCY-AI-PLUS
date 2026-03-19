@@ -4,11 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Diagnostic from "./pages/Diagnostic";
-import DiagnosticResults from "./pages/DiagnosticResults";
-import DiagnosticUnlock from "./pages/DiagnosticUnlock";
+import Index from "./views/Index";
+import NotFound from "./views/NotFound";
+import Diagnostic from "./views/Diagnostic";
+import DiagnosticResults from "./views/DiagnosticResults";
+import DiagnosticUnlock from "./views/DiagnosticUnlock";
 
 const queryClient = new QueryClient();
 

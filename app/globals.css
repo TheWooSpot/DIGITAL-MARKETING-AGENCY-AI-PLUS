@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Any Door Engine — dark navy + gold */
+@layer base {
+  :root {
+    --anydoor-navy: #0b0f1a;
+    --anydoor-gold: #d4a843;
+    --anydoor-gold-muted: #b8923a;
+    --anydoor-surface: #131a2b;
+    --anydoor-border: #1e2a42;
+    --anydoor-text: #e8eef5;
+    --anydoor-muted: #8b9bb5;
+    --anydoor-green: #22c55e;
+    --anydoor-amber: #f59e0b;
+    --anydoor-red: #ef4444;
+  }
+}
+
+body {
+  background-color: var(--anydoor-navy);
+  color: var(--anydoor-text);
+}

@@ -1,0 +1,10 @@
+AI READINESS LABS – v2
+RungNameCore ConceptDescription (Including Who This Is For)1AwarenessAI-Curious PhaseA low-lift, high-clarity entry point for teams that know AI matters but are unsure where to start. This phase assesses current AI understanding, identifies workflow friction, and surfaces fast, practical wins—turning curiosity into a clear, confident path forward.
+
+Who this is for: Leaders and teams seeking a safe introduction to AI and clarity on next steps.2AdaptationShifting from Knowing to DoingA self-paced, hands-on learning experience that moves AI from theory into daily execution. Participants build prompt confidence, learn repeatable workflows, and begin replacing manual tasks with AI-assisted productivity—on their own schedule.
+
+Who this is for: Individuals and teams ready to start using AI immediately with flexible, practical training.3OptimizationPeak Performance PhaseAn instructor-led sprint workshop (1, 3, or 5 days) focused on measurable ROI. Teams design, test, and refine advanced AI workflows, moving beyond basic prompts into reliable, high-performance systems tailored to real business outcomes.
+
+Who this is for: Teams already using AI who want faster output, higher quality, and consistent results.4StewardshipGuardian PhaseA white-glove, multi-month AI implementation delivered as Done-For-You (DFY) or Done-With-You (DWY). This phase institutionalizes AI with secure deployment, governance, ethical guardrails, and long-term scalability—ensuring AI remains effective and responsible as the organization grows.
+
+Who this is for: Organizations ready to operationalize AI at scale with enterprise-grade oversight and sustainability.
