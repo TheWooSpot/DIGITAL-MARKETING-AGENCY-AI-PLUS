@@ -2,8 +2,8 @@ gap_category,gap_condition,recommended_service_id,recommended_service_name,prior
 Deployment,AI IQ < 40,201,ConvoFlow™ AI Chat Labs,high,Foundation for basic AI engagement at scale
 Deployment,AI IQ < 40,204,VoiceBridge™ AI Receptionist,high,Covers inbound calls; first touchpoint
 Deployment,AI IQ < 40,301,BookStream™ Smart Scheduling Hub,high,Core conversion infrastructure
-Deployment,AI IQ < 40,401,CoreSync™ CRM Architecture,high,Foundational system clarity needed
-Integration,Integration Score < 40,401,CoreSync™ CRM Architecture,high,Unify fragmented data and systems
+Deployment,AI IQ < 40,401,HubAI™ CRM Architecture,high,Foundational system clarity needed
+Integration,Integration Score < 40,401,HubAI™ CRM Architecture,high,Unify fragmented data and systems
 Integration,Integration Score < 40,402,FlowForge™ Automation Lab,high,Connect tools; reduce manual work
 Integration,Integration Score < 40,403,CommandDesk™ Client Portal System,medium,Unify client communication layer
 Revenue,Revenue Alignment < 40,302,CloseCraft™ Funnel Builder,high,Engineer conversion pathways

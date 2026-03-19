@@ -37,8 +37,8 @@ const SERVICE_RULES: Array<{
   {
     condition: (s) => s < 40,
     services: [
-      { id: '201', name: 'ConvoFlow™ AI Chat Suite', priority: 'high', rationale: 'Foundation for basic AI engagement at scale' },
-      { id: '204', name: 'VoiceBridge™ AI Receptionist', priority: 'high', rationale: 'Covers inbound calls; first touchpoint' },
+      { id: '201', name: 'VoiceBridge™ AI ChatLabs', priority: 'high', rationale: 'Foundation for AI engagement and conversational capture' },
+      { id: '106', name: 'AutoRank™ Search Box Optimizer', priority: 'high', rationale: 'Improves discovery surfaces for faster inbound qualification' },
       { id: '301', name: 'BookStream™ Smart Scheduling Hub', priority: 'high', rationale: 'Core conversion infrastructure' },
       { id: '401', name: 'HubAI™ CRM Architecture', priority: 'high', rationale: 'Foundational system clarity needed' },
     ],
@@ -49,13 +49,13 @@ const SERVICE_RULES: Array<{
       { id: '402', name: 'FlowForge™ Automation Lab', priority: 'high', rationale: 'Connect tools; reduce manual work' },
       { id: '501', name: 'SkillSprint™ Academy', priority: 'high', rationale: 'Train team on AI workflows' },
       { id: '701', name: 'InsightLoop™ Analytics Dashboard', priority: 'medium', rationale: 'Measure what\'s working; iterate' },
-      { id: '1004', name: 'AI Maturity Diagnostic & Blueprint™', priority: 'high', rationale: 'Unblock scaling with AI risk architecture' },
+      { id: '205', name: 'AI Adaptation™', priority: 'high', rationale: 'Unblock scaling with tailored AI adaptation guidance' },
     ],
   },
   {
     condition: (s) => s >= 65,
     services: [
-      { id: '1004', name: 'AI Maturity Diagnostic & Blueprint™', priority: 'high', rationale: 'Strategic guidance on advanced maturity' },
+      { id: '205', name: 'AI Adaptation™', priority: 'high', rationale: 'Strategic guidance on advanced AI adaptation' },
       { id: '801', name: 'TrustGuard™ Governance Layer', priority: 'high', rationale: 'Critical when AI is customer-facing' },
       { id: '901', name: 'AllianceOS™ Growth Partnerships Engine', priority: 'medium', rationale: 'High capability; leverage partnerships' },
     ],

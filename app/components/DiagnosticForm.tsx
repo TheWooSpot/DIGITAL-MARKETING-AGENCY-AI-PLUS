@@ -17,14 +17,25 @@ export interface DiagnosticResult {
   };
   detected_gaps: Array<{
     service_id: number;
+    service_name?: string;
     gap_description: string;
-    priority: string;
+    priority: "high" | "medium" | "low" | string;
   }>;
-  recommended_services: number[];
+  recommended_services:
+    | number[]
+    | Array<{
+        service_id: number;
+        service_name?: string;
+        reason?: string;
+      }>;
   recommended_tier: string;
   prospect_summary: string;
   estimated_monthly_value: number;
-  _meta?: { duration_ms?: number; saved_to?: string };
+  _meta?: {
+    duration_ms?: number;
+    saved_to?: string;
+    service_catalog_version?: string;
+  };
 }
 
 interface DiagnosticFormProps {

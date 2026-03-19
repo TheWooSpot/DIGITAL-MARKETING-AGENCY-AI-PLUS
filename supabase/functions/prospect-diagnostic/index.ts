@@ -14,7 +14,11 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const ALLOWED_SERVICE_IDS = [101, 105, 201, 202, 203, 204, 301, 302, 401, 402, 701, 802];
+/** All catalog service IDs — aligned with docs/Service-Tiers.csv (28 services). */
+const ALLOWED_SERVICE_IDS = [
+  101, 102, 103, 104, 105, 201, 202, 203, 204, 301, 302, 303, 304, 401, 402, 403, 501, 502, 601, 602,
+  701, 801, 802, 901, 1001, 1002, 1003, 1004,
+];
 
 const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 
