@@ -1,6 +1,17 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "npm run build:next",
-  "devCommand": "npm run dev:next",
-  "installCommand": "npm install"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/prospect-diagnostic",
+      "destination": "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/prospect-diagnostic"
+    },
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

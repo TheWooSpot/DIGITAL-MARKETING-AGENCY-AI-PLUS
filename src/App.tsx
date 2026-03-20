@@ -10,6 +10,7 @@ import Diagnostic from "./views/Diagnostic";
 import DiagnosticResults from "./views/DiagnosticResults";
 import DiagnosticUnlock from "./views/DiagnosticUnlock";
 import DoorsUrlDiagnostic from "./views/DoorsUrlDiagnostic";
+import SharedReportPage from "./views/SharedReportPage";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/doors/url-diagnostic" element={<DoorsUrlDiagnostic />} />
+            <Route path="/report/:token" element={<SharedReportPage />} />
             <Route path="/diagnostic" element={<Diagnostic />} />
             <Route path="/diagnostic/results" element={<DiagnosticResults />} />
             <Route path="/diagnostic/unlock" element={<DiagnosticUnlock />} />

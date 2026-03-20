@@ -5,11 +5,14 @@ import { PLATFORM_CATEGORIES, PLATFORM_SERVICE_COUNT } from "@/data/platformCata
 const GOLD = "#c9973a";
 const BG = "#07080d";
 
+/**
+ * Optional override if the URL diagnostic is hosted on another origin.
+ * Default: same app — `/doors/url-diagnostic` on this Vite deployment.
+ */
 function getAnyDoorOrigin(): string {
   const env = import.meta.env.VITE_ANYDOOR_ORIGIN as string | undefined;
   if (env) return env.replace(/\/$/, "");
-  if (import.meta.env.DEV) return "http://localhost:3002";
-  return "https://socialutely-any-door-engine.vercel.app";
+  return "";
 }
 
 type DoorStatus = "live" | "building" | "planned";
@@ -131,8 +134,8 @@ const PlatformHome = () => {
 
   const analyzeHref =
     diagnosticUrl.trim().length > 0
-      ? `${anyDoorOrigin}/?url=${encodeURIComponent(diagnosticUrl.trim())}`
-      : `${anyDoorOrigin}/`;
+      ? `${anyDoorOrigin}/doors/url-diagnostic?url=${encodeURIComponent(diagnosticUrl.trim())}`
+      : `${anyDoorOrigin}/doors/url-diagnostic`;
 
   return (
     <div

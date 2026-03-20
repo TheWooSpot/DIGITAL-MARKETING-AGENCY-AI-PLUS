@@ -294,3 +294,131 @@ All colors MUST be HSL.
     scrollbar-gutter: stable;
   }
 }
+
+/* AnyDoor URL diagnostic (Door b1) — matches index.html Google fonts */
+:root {
+  --font-cormorant: "Cormorant Garamond", Georgia, serif;
+  --font-dm-mono: "DM Mono", ui-monospace, monospace;
+  --font-archivo: "Archivo", system-ui, sans-serif;
+  --anydoor-ink: #07080d;
+  --anydoor-gold: #c9973a;
+  --anydoor-gold-muted: #b8923a;
+  --anydoor-surface: #131a2b;
+  --anydoor-border: #1e2a42;
+  --anydoor-text: #e8eef5;
+  --anydoor-muted: #8b9bb5;
+  --anydoor-green: #22c55e;
+  --anydoor-amber: #f59e0b;
+  --anydoor-red: #ef4444;
+}
+
+@keyframes anydoor-pulse-gold {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(201, 151, 58, 0);
+  }
+}
+
+.anydoor-pulse-gold {
+  animation: anydoor-pulse-gold 2.4s ease-in-out infinite;
+}
+
+@keyframes anydoor-tap-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(201, 151, 58, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0);
+  }
+}
+
+.anydoor-tap-pulse {
+  animation: anydoor-tap-pulse 2s ease-out infinite;
+}
+
+@keyframes anydoor-loading-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
+}
+
+.anydoor-loading-pulse-dot {
+  animation: anydoor-loading-dot-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(201, 151, 58, 0.45);
+}
+
+@keyframes anydoor-ring-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.anydoor-ring-in {
+  animation: anydoor-ring-in 0.7s ease-out forwards;
+}
+
+.anydoor-loading-shimmer {
+  position: relative;
+}
+
+.anydoor-loading-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(201, 151, 58, 0.08) 45%,
+    rgba(201, 151, 58, 0.22) 50%,
+    rgba(201, 151, 58, 0.08) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: anydoor-card-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes anydoor-card-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  #diagnostic-report {
+    max-width: 100% !important;
+  }
+
+  #diagnostic-report a[href^="http"] {
+    text-decoration: underline;
+  }
+}
