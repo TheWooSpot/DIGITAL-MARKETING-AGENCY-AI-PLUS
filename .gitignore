@@ -34,3 +34,6 @@ docs/exports
 ~$*
 
 .vercel
+
+# TypeScript incremental build metadata
+*.tsbuildinfo
