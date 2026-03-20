@@ -1,55 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DiagnosticForm, type DiagnosticResult } from "./components/DiagnosticForm";
 import { DiagnosticResults } from "./components/DiagnosticResults";
 
 export default function AnyDoorPage() {
   const [result, setResult] = useState<DiagnosticResult | null>(null);
+  const [submittedUrl, setSubmittedUrl] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (!result) return;
+    const id = window.requestAnimationFrame(() => {
+      document.getElementById("diagnostic-report")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [result]);
+
   return (
-    <div className="min-h-screen bg-[#0b0f1a]">
-      <main className="container mx-auto px-4 py-8 sm:py-12 max-w-4xl">
-        {/* Hero */}
-        <header className="text-center mb-10 sm:mb-14">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#e8eef5] leading-tight">
-            Discover What&apos;s Holding Your Business Back
+    <div
+      id="anydoor-door-b1"
+      className="min-h-screen"
+      style={{ backgroundColor: "#07080d", cursor: "crosshair" }}
+    >
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
+        <header className={`mb-10 text-center sm:mb-14${result ? " no-print" : ""}`}>
+          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">AnyDoor Engine · Door b1</p>
+          <h1
+            className="mt-3 text-3xl font-light leading-tight text-white sm:text-4xl md:text-5xl"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+          >
+            <span className="italic text-[#c9973a]">URL diagnostic</span>
+            <span className="block text-white">Socialutely | AI Marketing Platform</span>
           </h1>
-          <p className="mt-4 text-lg sm:text-xl text-[#8b9bb5] max-w-2xl mx-auto">
-            Enter your website URL for a free 30-second digital marketing diagnostic
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-white/50">
+            Enter your website URL for a free digital marketing diagnostic — powered by AnyDoor Engine v12.
           </p>
         </header>
 
-        {/* Form or loading / results */}
-        {!result ? (
-          <>
-            <DiagnosticForm
-              onResult={(r) => {
-                setError("");
-                setResult(r);
-              }}
-              onError={setError}
-            />
-            {error && (
-              <p className="mt-4 text-center text-[#ef4444] text-sm">{error}</p>
-            )}
-          </>
-        ) : (
-          <DiagnosticResults result={result} />
-        )}
+        <section id="get-started" className="mx-auto w-full max-w-md">
+          <DiagnosticForm
+            onResult={(r, ctx) => {
+              setError("");
+              setSubmittedUrl(ctx.submittedUrl);
+              setResult(r);
+            }}
+            onError={setError}
+          />
+          {error && <p className="mt-4 text-center text-sm text-red-400">{error}</p>}
+        </section>
 
-        {/* Optional: run again */}
         {result && (
-          <div className="mt-12 text-center">
-            <button
-              type="button"
-              onClick={() => setResult(null)}
-              className="text-sm text-[#8b9bb5] hover:text-[#d4a843] underline focus:outline-none"
-            >
-              Analyze another URL
-            </button>
-          </div>
+          <>
+            <DiagnosticResults result={result} submittedUrl={submittedUrl} />
+            <div className="no-print mt-12 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setResult(null);
+                  setSubmittedUrl("");
+                }}
+                className="text-sm text-white/45 underline decoration-[#c9973a]/50 hover:text-[#c9973a]"
+              >
+                Analyze another URL
+              </button>
+            </div>
+          </>
         )}
       </main>
     </div>

@@ -5,10 +5,31 @@ import { useState } from "react";
 // Use same-origin API route to avoid CORS; the route proxies to Supabase Edge Function.
 const PROSPECT_DIAGNOSTIC_URL = "/api/prospect-diagnostic";
 
+/** Optional row when API returns full category breakdown (otherwise derived client-side). */
+export interface DiagnosticCategoryReport {
+  id: string;
+  name: string;
+  score: number;
+  trend: "up" | "down" | "flat";
+  items: Array<{ ok: boolean; label: string; finding: string }>;
+}
+
 export interface DiagnosticResult {
   business_name: string;
   industry: string;
   estimated_size?: string;
+  /** Shown in header when provided by API / enrichment */
+  business_address?: string;
+  business_phone?: string;
+  pages_checked?: number;
+  /** ISO date string */
+  scan_date?: string;
+  /** Overrides auto-generated benchmark line */
+  benchmark_message?: string;
+  /** Used inside benchmark copy, e.g. "CA" */
+  benchmark_region?: string;
+  /** Full seven-panel data from crawler/API; if omitted, UI synthesizes from pillar scores + gaps */
+  category_reports?: DiagnosticCategoryReport[];
   scores: {
     visibility: number;
     engagement: number;
@@ -39,7 +60,7 @@ export interface DiagnosticResult {
 }
 
 interface DiagnosticFormProps {
-  onResult: (result: DiagnosticResult) => void;
+  onResult: (result: DiagnosticResult, ctx: { submittedUrl: string }) => void;
   onError: (message: string) => void;
 }
 
@@ -71,7 +92,7 @@ export function DiagnosticForm({ onResult, onError }: DiagnosticFormProps) {
         onError(data?.error ?? `Request failed (${res.status})`);
         return;
       }
-      onResult(data as DiagnosticResult);
+      onResult(data as DiagnosticResult, { submittedUrl: trimmedUrl });
     } catch (err) {
       onError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -82,7 +103,7 @@ export function DiagnosticForm({ onResult, onError }: DiagnosticFormProps) {
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto space-y-4">
       <div>
-        <label htmlFor="url" className="block text-sm font-medium text-[#d4a843] mb-1">
+        <label htmlFor="url" className="mb-1 block text-sm font-medium text-[#c9973a]">
           Website URL
         </label>
         <input
@@ -92,11 +113,11 @@ export function DiagnosticForm({ onResult, onError }: DiagnosticFormProps) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           disabled={loading}
-          className="w-full px-4 py-3 rounded-lg bg-[#131a2b] border border-[#1e2a42] text-[#e8eef5] placeholder-[#8b9bb5] focus:outline-none focus:ring-2 focus:ring-[#d4a843] focus:border-transparent disabled:opacity-60"
+          className="w-full rounded-lg border border-white/[0.08] bg-[#07080d] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:border-[#c9973a]/50 focus:outline-none focus:ring-2 focus:ring-[#c9973a]/30 disabled:opacity-60"
         />
       </div>
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-[#8b9bb5] mb-1">
+        <label htmlFor="email" className="mb-1 block text-sm font-medium text-white/50">
           Email <span className="text-[#6b7280]">(optional)</span>
         </label>
         <input
@@ -106,13 +127,13 @@ export function DiagnosticForm({ onResult, onError }: DiagnosticFormProps) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading}
-          className="w-full px-4 py-3 rounded-lg bg-[#131a2b] border border-[#1e2a42] text-[#e8eef5] placeholder-[#8b9bb5] focus:outline-none focus:ring-2 focus:ring-[#d4a843] focus:border-transparent disabled:opacity-60"
+          className="w-full rounded-lg border border-white/[0.08] bg-[#07080d] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:border-[#c9973a]/50 focus:outline-none focus:ring-2 focus:ring-[#c9973a]/30 disabled:opacity-60"
         />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 px-6 rounded-lg bg-[#d4a843] text-[#0b0f1a] font-semibold hover:bg-[#b8923a] focus:outline-none focus:ring-2 focus:ring-[#d4a843] focus:ring-offset-2 focus:ring-offset-[#0b0f1a] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        className="w-full rounded-lg bg-[#c9973a] px-6 py-3 font-semibold text-[#07080d] transition-colors hover:bg-[#c9973a]/90 focus:outline-none focus:ring-2 focus:ring-[#c9973a] focus:ring-offset-2 focus:ring-offset-[#07080d] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Analyzing…" : "Get free diagnostic"}
       </button>

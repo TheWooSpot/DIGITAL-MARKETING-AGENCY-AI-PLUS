@@ -9,6 +9,7 @@ import NotFound from "./views/NotFound";
 import Diagnostic from "./views/Diagnostic";
 import DiagnosticResults from "./views/DiagnosticResults";
 import DiagnosticUnlock from "./views/DiagnosticUnlock";
+import DoorsUrlDiagnostic from "./views/DoorsUrlDiagnostic";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/doors/url-diagnostic" element={<DoorsUrlDiagnostic />} />
             <Route path="/diagnostic" element={<Diagnostic />} />
             <Route path="/diagnostic/results" element={<DiagnosticResults />} />
             <Route path="/diagnostic/unlock" element={<DiagnosticUnlock />} />

@@ -2,11 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Any Door Engine — dark navy + gold */
+/* AnyDoor / platform ink + gold (Door b1) */
 @layer base {
   :root {
-    --anydoor-navy: #0b0f1a;
-    --anydoor-gold: #d4a843;
+    --anydoor-ink: #07080d;
+    --anydoor-navy: #07080d;
+    --anydoor-gold: #c9973a;
     --anydoor-gold-muted: #b8923a;
     --anydoor-surface: #131a2b;
     --anydoor-border: #1e2a42;
@@ -19,6 +20,40 @@
 }
 
 body {
-  background-color: var(--anydoor-navy);
+  background-color: var(--anydoor-ink);
   color: var(--anydoor-text);
+}
+
+@keyframes anydoor-pulse-gold {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(201, 151, 58, 0);
+  }
+}
+
+.anydoor-pulse-gold {
+  animation: anydoor-pulse-gold 2.4s ease-in-out infinite;
+}
+
+/* Print / Save as PDF — diagnostic report */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  #diagnostic-report {
+    max-width: 100% !important;
+  }
+
+  #diagnostic-report a[href^="http"] {
+    text-decoration: underline;
+  }
 }

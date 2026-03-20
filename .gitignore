@@ -32,3 +32,5 @@ docs/exports
 *.sln
 *.sw?
 ~$*
+
+.vercel

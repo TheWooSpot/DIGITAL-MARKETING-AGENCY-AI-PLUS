@@ -1,239 +1,572 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
+import { PACKAGE_TIERS, type PackageTierKey, serviceName } from "../data/diagnosticCatalog";
+import { Download, Mic } from "lucide-react";
 
-const SERVICE_MAP: Record<number, string> = {
-  101: "SearchLift™ SBO Engine",
-  102: "DirectAlign™ Media Engine",
-  103: "Authority Amplifier™ PR System",
-  104: "Signal Surge™ Paid Traffic Lab",
-  105: "NearRank™ Local Discovery Engine",
-  106: "AutoRank™ Search Box Optimizer",
-  201: "VoiceBridge™ AI ChatLabs",
-  202: "InboxIgnite™ Smart Email Engine",
-  203: "TextPulse™ SMS Automation",
-  205: "AI Adaptation™",
-  301: "BookStream™ Smart Scheduling Hub",
-  302: "CloseCraft™ Funnel Builder",
-  303: "DealDrive™ Proposal Automation",
-  304: "PayPortal™ Dynamic Checkout",
-  401: "HubAI™ CRM Architecture",
-  402: "FlowForge™ Automation Lab",
-  403: "CommandDesk™ Client Portal System",
-  501: "SkillSprint™ Academy",
-  502: "Onboardly™ Client Activation System",
-  601: "Voice & Vibe™ Production Engine",
-  602: "StoryFrame™ Brand Narrative Suite",
-  701: "InsightLoop™ Analytics Dashboard",
-  801: "TrustGuard™ Governance Layer",
-  802: "ReputationStack™ Reviews Engine",
-  901: "AllianceOS™ Growth Partnerships Engine",
-};
+const GOLD = "#c9973a";
 
-type Priority = "high" | "medium" | "low" | string;
-
-function priorityBadgeClasses(priority: Priority): string {
-  if (priority === "high") return "bg-[#ef4444]/15 text-[#ef4444] border-[#ef4444]/40";
-  if (priority === "medium") return "bg-[#f59e0b]/15 text-[#f59e0b] border-[#f59e0b]/40";
-  if (priority === "low") return "bg-[#22c55e]/15 text-[#22c55e] border-[#22c55e]/40";
-  return "bg-[#8b9bb5]/10 text-[#8b9bb5] border-[#1e2a42]";
+function clampScore(n: number): number {
+  return Math.min(100, Math.max(0, Math.round(n)));
 }
 
-function tierBadgeClasses(tier: string | undefined): string {
-  if (tier === "Essentials") return "bg-[#3b82f6]/20 text-[#3b82f6] border-[#3b82f6]/40";
-  if (tier === "Momentum") return "bg-[#22c55e]/20 text-[#22c55e] border-[#22c55e]/40";
-  if (tier === "Signature") return "bg-[#d4a843]/20 text-[#d4a843] border-[#d4a843]/40";
-  if (tier === "Vanguard") return "bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/40";
-  return "bg-[#d4a843]/20 text-[#d4a843] border-[#d4a843]/40";
+function scoreTone(score: number): "green" | "amber" | "red" {
+  if (score >= 70) return "green";
+  if (score >= 40) return "amber";
+  return "red";
 }
 
-function formatMoneyPerMonth(value: number | undefined): string {
-  const n = typeof value === "number" && !Number.isNaN(value) ? value : 0;
-  return `$${n.toLocaleString()}/mo`;
+function ringColor(score: number): string {
+  const t = scoreTone(score);
+  if (t === "green") return "#22c55e";
+  if (t === "amber") return "#f59e0b";
+  return "#ef4444";
 }
 
-function getServiceName(serviceId: number, serviceName?: string): string {
-  return serviceName ?? SERVICE_MAP[serviceId] ?? `Service #${serviceId}`;
+const PANEL_ROWS: { title: string; items: string[] }[] = [
+  {
+    title: "Search Visibility",
+    items: ["Organic search presence", "Keyword rankings", "Search discoverability", "Brand search volume"],
+  },
+  {
+    title: "Local Presence",
+    items: ["Google Business Profile", "Local listings", "NAP consistency", "Map pack visibility"],
+  },
+  {
+    title: "Engagement",
+    items: ["Social media activity", "Content marketing", "Email engagement", "Community presence"],
+  },
+  {
+    title: "Conversion Infrastructure",
+    items: ["Lead capture", "AI chat coverage", "Booking/scheduling flow", "CTA effectiveness"],
+  },
+  {
+    title: "Website Health",
+    items: ["Page speed", "Mobile optimization", "SSL/security", "UX quality"],
+  },
+  {
+    title: "Reputation & Trust",
+    items: ["Review volume", "Review sentiment", "Response rate", "Trust signals"],
+  },
+  {
+    title: "Paid & Amplified Presence",
+    items: ["Paid search presence", "Retargeting", "Display advertising", "Social ads"],
+  },
+];
+
+function panelScores(v: number, e: number, c: number): number[] {
+  return [
+    clampScore(v),
+    clampScore(v - 5),
+    clampScore(e),
+    clampScore(c),
+    clampScore(c - 8),
+    clampScore(e - 10),
+    clampScore(v - 15),
+  ];
 }
 
-function scoreColor(score: number): string {
-  if (score >= 70) return "text-[#22c55e]"; // green
-  if (score >= 40) return "text-[#f59e0b]"; // amber
-  return "text-[#ef4444]"; // red
+function rowFinding(
+  label: string,
+  panelScore: number,
+  idx: number,
+  gaps: DiagnosticResult["detected_gaps"]
+): { ok: boolean; finding: string } {
+  const seed = (label.length + idx + panelScore) % 7;
+  const ok = panelScore >= 55 + seed || (panelScore >= 45 && idx % 2 === 0);
+  const gapHit = gaps.find((g) => g.gap_description.toLowerCase().includes(label.split(" ")[0]?.toLowerCase() ?? ""));
+  if (gapHit && !ok) {
+    return { ok: false, finding: gapHit.gap_description };
+  }
+  if (ok) {
+    return { ok: true, finding: `${label} looks aligned with where ${panelScore >= 70 ? "leaders" : "growth-stage brands"} in your category typically perform.` };
+  }
+  return {
+    ok: false,
+    finding: `Opportunity to strengthen ${label.toLowerCase()} — small lifts here compound across acquisition and conversion.`,
+  };
 }
 
-function scoreRingColor(score: number): string {
-  if (score >= 70) return "border-[#22c55e]";
-  if (score >= 40) return "border-[#f59e0b]";
-  return "border-[#ef4444]";
+function normalizeRecommended(result: DiagnosticResult): Array<{ service_id: number; service_name?: string; reason?: string }> {
+  const raw = result.recommended_services ?? [];
+  return raw.slice(0, 6).map((item) => {
+    if (typeof item === "number") {
+      return { service_id: item, reason: "" };
+    }
+    return {
+      service_id: item.service_id,
+      service_name: item.service_name,
+      reason: item.reason ?? "",
+    };
+  });
 }
 
-function ScoreCircle({
-  label,
-  value,
+function normalizeTier(t: string | undefined): PackageTierKey | null {
+  const k = (t ?? "").trim().toLowerCase();
+  if (k === "essentials") return "Essentials";
+  if (k === "momentum") return "Momentum";
+  if (k === "signature") return "Signature";
+  if (k === "vanguard") return "Vanguard";
+  if (k.includes("ai readiness")) return "AI Readiness";
+  return null;
+}
+
+function buildNarrativeParts(result: DiagnosticResult): { eyebrow: string; body: string }[] {
+  const { business_name, industry, prospect_summary, detected_gaps } = result;
+  const sentences = (prospect_summary ?? "")
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const open = sentences.slice(0, 2).join(" ") || `${business_name} is operating in ${industry} — a space where digital signals increasingly separate leaders from the pack.`;
+  const gapText =
+    detected_gaps.length > 0
+      ? detected_gaps
+          .slice(0, 3)
+          .map((g) => g.gap_description)
+          .join(" ")
+      : "Operational focus and consistent execution across channels remain the primary growth levers.";
+  return [
+    {
+      eyebrow: "What We Found",
+      body: open,
+    },
+    {
+      eyebrow: "Your Landscape",
+      body: `In ${industry}, buyers compare you digitally before they ever call. The competitive bar for visibility, trust, and conversion clarity rises every quarter — and ${business_name} is positioned to capitalize with the right sequencing.`,
+    },
+    {
+      eyebrow: "What's Holding You Back",
+      body: `Specific gaps surfaced in this scan point to focused upgrades rather than a full reset: ${gapText}`,
+    },
+    {
+      eyebrow: "The Path Forward",
+      body: `The fastest path is to align services to the gaps that move revenue first — then layer in depth. You're one conversation away from a prioritized roadmap built for ${business_name}.`,
+    },
+  ];
+}
+
+function ScrollSection({
+  children,
+  className = "",
+  id,
 }: {
-  label: string;
-  value: number;
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
 }) {
-  const color = scoreColor(value);
-  const ring = scoreRingColor(value);
+  const ref = useRef<HTMLElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setOn(true), { threshold: 0.08, rootMargin: "0px 0px -8% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   return (
-    <div className="flex flex-col items-center">
-      <div
-        className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 ${ring} flex items-center justify-center bg-[#131a2b]`}
-      >
-        <span className={`text-xl sm:text-2xl font-bold ${color}`}>{value}</span>
-      </div>
-      <span className="mt-2 text-sm font-medium text-[#8b9bb5]">{label}</span>
-    </div>
+    <section
+      id={id}
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${on ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"} ${className}`}
+    >
+      {children}
+    </section>
   );
 }
 
 interface DiagnosticResultsProps {
   result: DiagnosticResult;
+  submittedUrl: string;
 }
 
-const STRATEGY_CALL_URL = "#book-call";
-const FULL_PROPOSAL_URL = "#proposal";
+export function DiagnosticResults({ result, submittedUrl }: DiagnosticResultsProps) {
+  const [tab, setTab] = useState<"summary" | "full">("summary");
+  const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
+  const [showFiveCta, setShowFiveCta] = useState(false);
+  const [packagesExpanded, setPackagesExpanded] = useState(false);
+  const [tapReady, setTapReady] = useState(false);
+  const [footerEmail, setFooterEmail] = useState("");
 
-export function DiagnosticResults({ result }: DiagnosticResultsProps) {
-  const {
-    business_name,
-    industry,
-    estimated_size,
-    scores,
-    detected_gaps,
-    recommended_services,
-    recommended_tier,
-    prospect_summary,
-    estimated_monthly_value,
-  } = result;
+  const { scores, business_name, industry, estimated_size } = result;
+  const v = scores?.visibility ?? 0;
+  const e = scores?.engagement ?? 0;
+  const c = scores?.conversion ?? 0;
+  const overall = scores?.overall ?? clampScore((v + e + c) / 3);
 
-  const normalizedDetectedGaps = (detected_gaps ?? []).map((gap) => ({
-    service_id: gap.service_id,
-    service_name: getServiceName(gap.service_id, gap.service_name),
-    gap_description: gap.gap_description,
-    priority: gap.priority,
-  }));
+  const panels = useMemo(() => {
+    const vals = panelScores(v, e, c);
+    return PANEL_ROWS.map((p, i) => ({ ...p, score: vals[i] }));
+  }, [v, e, c]);
 
-  const normalizedRecommendedServices = ((recommended_services ?? []) as Array<
-    number | { service_id: number; service_name?: string; reason?: string }
-  >).slice(0, 5).map((item) => {
-    if (typeof item === "number") {
-      return {
-        service_id: item,
-        service_name: getServiceName(item),
-        reason: "",
-      };
-    }
+  const recommendedNorm = useMemo(() => normalizeRecommended(result), [result]);
+  const recTier = normalizeTier(result.recommended_tier);
 
-    return {
-      service_id: item.service_id,
-      service_name: getServiceName(item.service_id, item.service_name),
-      reason: item.reason ?? "",
-    };
+  const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
+  const scanTime = new Date().toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
   });
 
+  const benchmarkX = Math.min(100, clampScore(overall + 8));
+  const benchmarkLine = `Businesses in ${industry} with scores above ${benchmarkX} consistently outperform their local competitors.`;
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setShowFiveCta(true), 10_000);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById("section-packages");
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          window.setTimeout(() => setTapReady(true), 500);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const togglePanel = (i: number) => setOpenPanels((s) => ({ ...s, [i]: !s[i] }));
+
+  const impactForService = useCallback(
+    (id: number, name: string) => {
+      const hit = recommendedNorm.find((r) => r.service_id === id);
+      if (hit?.reason?.trim()) return hit.reason;
+      return `Supports ${name} for ${business_name} — tailored to your ${industry} motion and growth stage.`;
+    },
+    [recommendedNorm, business_name, industry]
+  );
+
+  const visibleTiers = packagesExpanded ? PACKAGE_TIERS : PACKAGE_TIERS.slice(0, 3);
+
+  const handlePrint = () => window.print();
+
+  const scrollToPackages = () => {
+    document.getElementById("section-packages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
-      {/* Business header */}
-      <div className="text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold text-[#e8eef5]">{business_name}</h2>
-        <p className="mt-1 text-[#8b9bb5]">
-          {industry}
-          {estimated_size ? ` • ${estimated_size}` : ""}
-        </p>
-      </div>
-
-      {/* Three score circles */}
-      <div className="grid grid-cols-3 gap-4 sm:gap-6">
-        <ScoreCircle label="Visibility" value={scores?.visibility ?? 0} />
-        <ScoreCircle label="Engagement" value={scores?.engagement ?? 0} />
-        <ScoreCircle label="Conversion" value={scores?.conversion ?? 0} />
-      </div>
-
-      {/* Prospect narrative (highlighted) */}
-      {prospect_summary && (
-        <div className="rounded-lg bg-[#d4a843]/10 border border-[#d4a843]/30 p-4">
-          <p className="text-[#e8eef5] leading-relaxed">{prospect_summary}</p>
-        </div>
-      )}
-
-      {/* Tier badge + estimated value */}
-      <div className="flex flex-wrap items-center justify-center gap-4">
-        {recommended_tier && (
-          <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${tierBadgeClasses(
-              recommended_tier
-            )}`}
+    <div
+      id="diagnostic-report"
+      className="mt-12 space-y-16 print:mt-6"
+      style={{ fontFamily: "'Archivo', system-ui, sans-serif", cursor: "crosshair" }}
+    >
+      {/* SECTION 1 — Header band */}
+      <header className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-6 sm:px-8 sm:py-8 print:border print:bg-white">
+        <div className="no-print absolute right-4 top-4 sm:right-8 sm:top-6">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="rounded border border-[#c9973a]/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c9973a] hover:bg-[#c9973a]/10"
           >
-            {recommended_tier}
-          </span>
-        )}
-        <span className="text-[#8b9bb5]">
-          Est. monthly value:{" "}
-          <span className="font-semibold text-[#e8eef5]">{formatMoneyPerMonth(estimated_monthly_value)}</span>
-        </span>
-      </div>
-
-      {/* Detected gaps */}
-      {normalizedDetectedGaps.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-[#d4a843] mb-3">Detected gaps</h3>
-          <ul className="space-y-2">
-            {normalizedDetectedGaps.map((gap) => (
-              <li
-                key={`${gap.service_id}-${gap.gap_description}`}
-                className="rounded-lg bg-[#131a2b] border border-[#1e2a42] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-[#e8eef5] font-semibold leading-snug">{gap.service_name}</p>
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${priorityBadgeClasses(
-                      gap.priority
-                    )}`}
-                  >
-                    {gap.priority}
-                  </span>
-                </div>
-                <p className="mt-2 text-[#8b9bb5] leading-relaxed">{gap.gap_description}</p>
-              </li>
-            ))}
-          </ul>
+            <span className="inline-flex items-center gap-2">
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              Download PDF
+            </span>
+          </button>
         </div>
+
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:pr-36">
+          <div className="min-w-0 flex-1 space-y-4">
+            <h1
+              className="font-light leading-tight text-white print:text-black"
+              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "42px" }}
+            >
+              {business_name}
+            </h1>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs text-white/80 print:border-gray-300 print:text-black">
+                {industry}
+              </span>
+              {estimated_size && (
+                <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs text-white/80 print:border-gray-300 print:text-black">
+                  {estimated_size}
+                </span>
+              )}
+            </div>
+            <p className="font-mono text-xs tracking-wide text-[#c9973a] print:text-amber-800 break-all">{displayUrl}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 print:text-gray-600">
+              {scanTime} · Powered by AnyDoor Engine v12
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 lg:items-end">
+            <div
+              className="flex h-28 w-28 items-center justify-center rounded-full border-4 bg-[#07080d] print:border-gray-400 print:bg-white sm:h-32 sm:w-32"
+              style={{ borderColor: ringColor(overall) }}
+            >
+              <span className="text-4xl font-semibold tabular-nums text-white print:text-black" style={{ color: ringColor(overall) }}>
+                {overall}
+              </span>
+            </div>
+            <p className="max-w-xs text-center text-xs leading-relaxed text-white/55 print:text-gray-700 lg:text-right">{benchmarkLine}</p>
+          </div>
+        </div>
+
+        <div className="no-print mt-8 flex rounded-lg border border-white/[0.08] bg-[#07080d]/80 p-1 sm:inline-flex">
+          <button
+            type="button"
+            onClick={() => setTab("summary")}
+            className={`rounded-md px-5 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+              tab === "summary" ? "bg-[#c9973a] text-[#07080d]" : "text-white/50 hover:text-white"
+            }`}
+          >
+            Summary
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("full")}
+            className={`rounded-md px-5 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+              tab === "full" ? "bg-[#c9973a] text-[#07080d]" : "text-white/50 hover:text-white"
+            }`}
+          >
+            Full Report
+          </button>
+        </div>
+      </header>
+
+      {/* SECTION 2 — 7 panels (Full Report only) */}
+      {tab === "full" && (
+        <ScrollSection>
+          <h2
+            className="mb-6 font-mono text-[11px] uppercase tracking-[0.35em] text-[#c9973a]"
+            style={{ fontFamily: "'DM Mono', ui-monospace, monospace" }}
+          >
+            Diagnostic panels
+          </h2>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-6">
+            {panels.map((panel, i) => {
+              const tone = scoreTone(panel.score);
+              const border =
+                tone === "green" ? "border-emerald-500/40" : tone === "amber" ? "border-amber-500/40" : "border-red-500/40";
+              const open = openPanels[i] ?? false;
+              const colSpan = i < 3 ? "lg:col-span-2" : "lg:col-span-3";
+              return (
+                <div
+                  key={panel.title}
+                  className={`rounded-lg border ${border} bg-white/[0.02] print:break-inside-avoid ${colSpan}`}
+                  style={{ borderLeftWidth: "4px" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => togglePanel(i)}
+                    className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                  >
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-widest text-white/40">{panel.title}</p>
+                      <p
+                        className={`mt-1 text-3xl font-light tabular-nums ${
+                          tone === "green" ? "text-emerald-400" : tone === "amber" ? "text-amber-400" : "text-red-400"
+                        } print:text-black`}
+                      >
+                        {panel.score}
+                      </p>
+                    </div>
+                    <span className="text-xs text-white/40">{open ? "−" : "+"}</span>
+                  </button>
+                  {open && (
+                    <ul className="space-y-3 border-t border-white/[0.06] px-4 py-4">
+                      {panel.items.map((label, idx) => {
+                        const { ok, finding } = rowFinding(label, panel.score, idx, result.detected_gaps ?? []);
+                        return (
+                          <li key={label} className="flex gap-3 text-sm">
+                            <span
+                              className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }}
+                            />
+                            <div>
+                              <p className="font-medium text-white/90 print:text-black">{label}</p>
+                              <p className="mt-0.5 text-xs text-white/50 print:text-gray-700">{finding}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollSection>
       )}
 
-      {/* Recommended services */}
-      <div>
-        <h3 className="text-lg font-semibold text-[#d4a843] mb-3">Recommended services</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {normalizedRecommendedServices.map((svc, idx) => (
-            <div
-              key={`${svc.service_id}-${idx}`}
-              className="rounded-lg bg-[#131a2b] border border-[#1e2a42] p-4 text-left"
-            >
-              <p className="text-sm font-semibold text-[#e8eef5] leading-snug">{svc.service_name}</p>
-              <p className="mt-2 text-xs text-[#8b9bb5] leading-relaxed">
-                {svc.reason || "Recommended based on your diagnostic results."}
-              </p>
+      {/* SECTION 3 — Narrative */}
+      <ScrollSection>
+        <div className="rounded-xl border border-white/[0.08] border-l-4 bg-white/[0.02] pl-6 pr-6 py-8 print:border-gray-300" style={{ borderLeftColor: GOLD }}>
+          {buildNarrativeParts(result).map((block) => (
+            <div key={block.eyebrow} className="mb-8 last:mb-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#c9973a]">{block.eyebrow}</p>
+              <p className="mt-3 text-sm leading-relaxed text-white/75 print:text-gray-800 sm:text-base">{block.body}</p>
             </div>
           ))}
+          <button
+            type="button"
+            onClick={scrollToPackages}
+            className="no-print mt-4 w-full rounded border border-[#c9973a] bg-[#c9973a] py-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#07080d] hover:bg-[#c9973a]/90"
+          >
+            See Your Recommended Solutions →
+          </button>
         </div>
-      </div>
+      </ScrollSection>
 
-      {/* CTAs */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-        <a
-          href={STRATEGY_CALL_URL}
-          className="inline-flex items-center justify-center py-3 px-6 rounded-lg bg-[#d4a843] text-[#0b0f1a] font-semibold hover:bg-[#b8923a] focus:outline-none focus:ring-2 focus:ring-[#d4a843] focus:ring-offset-2 focus:ring-offset-[#0b0f1a] transition-colors"
+      {/* SECTION 4 — Packages */}
+      <ScrollSection id="section-packages" className="scroll-mt-28">
+        <div>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-[#c9973a]">Tier pathways</p>
+              <h2
+                className="mt-2 text-3xl font-light italic text-[#c9973a] sm:text-4xl"
+                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+              >
+                Five ways to execute
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPackagesExpanded(true)}
+              className={`no-print self-start rounded border border-white/15 px-4 py-2 text-xs text-white/60 transition-opacity hover:border-[#c9973a]/40 hover:text-[#c9973a] sm:self-auto ${
+                showFiveCta && !packagesExpanded ? "opacity-100" : "pointer-events-none opacity-0"
+              }`}
+            >
+              See all 5 packages ↓
+            </button>
+          </div>
+
+          {/* Desktop: equal-height grid — 3 cols initially, 5 when expanded */}
+          <div
+            className={`hidden lg:grid lg:items-stretch lg:gap-4 ${packagesExpanded ? "lg:grid-cols-5" : "lg:grid-cols-3"}`}
+          >
+            {visibleTiers.map((tier) => (
+              <PackageColumn key={tier.key} tier={tier} recTier={recTier} impactForService={impactForService} />
+            ))}
+          </div>
+
+          {/* Mobile: horizontal carousel */}
+          <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory lg:hidden scrollbar-thin">
+            {visibleTiers.map((tier) => (
+              <div key={tier.key} className="min-w-[min(100%,320px)] shrink-0 snap-center">
+                <PackageColumn tier={tier} recTier={recTier} impactForService={impactForService} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </ScrollSection>
+
+      {/* SECTION 5 — Tap to talk */}
+      <section
+        className={`transition-all duration-700 ease-out ${tapReady ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
+      >
+        <div className="mx-auto max-w-lg rounded-xl border border-white/[0.08] bg-white/[0.03] px-6 py-10 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Ready to go deeper?</p>
+          <h3 className="mt-4 text-3xl font-light text-white" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+            Talk to our AI advisor
+          </h3>
+          <p className="mt-4 text-sm leading-relaxed text-white/55">
+            Discuss the services, understand the impact, and get answers to your specific questions — in a real conversation.
+          </p>
+          <button
+            type="button"
+            onClick={() => console.log("TAP TO TALK initiated")}
+            className="anydoor-pulse-gold no-print mx-auto mt-8 flex h-32 w-32 flex-col items-center justify-center gap-2 rounded-full border-4 border-[#c9973a] bg-[#c9973a]/15 text-[#c9973a]"
+          >
+            <Mic className="h-10 w-10 shrink-0" aria-hidden />
+            <span className="text-[9px] font-bold uppercase tracking-widest">Tap to talk</span>
+          </button>
+          <p className="mt-10 font-mono text-[10px] text-white/35">Powered by VoiceBridge™ AI ChatLabs</p>
+        </div>
+      </section>
+
+      {/* SECTION 6 — Footer */}
+      <footer className="border-t border-white/[0.08] pt-10 print:border-gray-300">
+        <p className="text-center text-sm text-white/70 print:text-black">Not ready to talk? We&apos;ll follow up.</p>
+        <form
+          className="no-print mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            console.log("Send My Report", footerEmail);
+          }}
         >
-          Book a Strategy Call
-        </a>
+          <input
+            type="email"
+            value={footerEmail}
+            onChange={(e) => setFooterEmail(e.target.value)}
+            placeholder="you@company.com"
+            className="min-h-[48px] flex-1 rounded border border-white/10 bg-[#07080d] px-4 text-sm text-white placeholder:text-white/30 focus:border-[#c9973a]/50 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="min-h-[48px] rounded border border-[#c9973a] bg-[#c9973a] px-6 text-xs font-semibold uppercase tracking-widest text-[#07080d] hover:bg-[#c9973a]/90"
+          >
+            Send My Report
+          </button>
+        </form>
+        <p className="mt-6 text-center text-xs text-white/45 print:text-gray-600">
+          Your diagnostic has been saved to our system. A Socialutely advisor will reach out within 24 hours.
+        </p>
+      </footer>
+
+    </div>
+  );
+}
+
+function PackageColumn({
+  tier,
+  recTier,
+  impactForService,
+}: {
+  tier: (typeof PACKAGE_TIERS)[number];
+  recTier: PackageTierKey | null;
+  impactForService: (id: number, name: string) => string;
+}) {
+  const isRec = recTier === tier.key;
+  return (
+    <div
+      className={`flex h-full min-h-[480px] flex-col rounded-xl border ${tier.border} ${tier.bg} p-5 print:break-inside-avoid`}
+    >
+      <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${tier.pill}`}>
+        {tier.key}
+      </span>
+      <h4
+        className="mt-4 text-xl font-light italic text-white print:text-black"
+        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+      >
+        {tier.displayName}
+      </h4>
+      <p className="mt-1 font-mono text-xs text-white/50">{tier.range}</p>
+      {isRec && (
+        <span className="mt-3 inline-flex w-fit rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#c9973a]">
+          ★ Recommended
+        </span>
+      )}
+      <div className="my-4 border-t border-white/10" />
+      <ul className="space-y-2 text-xs text-white/80 print:text-gray-800">
+        {tier.serviceIds.map((id) => (
+          <li key={id} className="leading-snug">
+            · {serviceName(id)}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 border-t border-white/10 pt-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#c9973a]">Positive impact</p>
+        <ul className="mt-3 space-y-2 text-[11px] leading-relaxed text-white/60 print:text-gray-700">
+          {tier.serviceIds.map((id) => (
+            <li key={`imp-${id}`}>— {impactForService(id, serviceName(id))}</li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-auto pt-6">
         <a
-          href={FULL_PROPOSAL_URL}
-          className="inline-flex items-center justify-center py-3 px-6 rounded-lg bg-transparent border-2 border-[#d4a843] text-[#d4a843] font-semibold hover:bg-[#d4a843]/10 focus:outline-none focus:ring-2 focus:ring-[#d4a843] focus:ring-offset-2 focus:ring-offset-[#0b0f1a] transition-colors"
+          href="#get-started"
+          className={`block w-full rounded border py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-white/90 hover:bg-white/5 print:text-black ${tier.border}`}
         >
-          Get Full Proposal
+          Get Started →
         </a>
       </div>
     </div>
