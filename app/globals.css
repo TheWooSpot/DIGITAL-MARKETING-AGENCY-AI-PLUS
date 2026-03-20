@@ -38,6 +38,107 @@ body {
   animation: anydoor-pulse-gold 2.4s ease-in-out infinite;
 }
 
+/* Tap to Talk — ring pulse (spec) */
+@keyframes anydoor-tap-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(201, 151, 58, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0);
+  }
+}
+
+.anydoor-tap-pulse {
+  animation: anydoor-tap-pulse 2s ease-out infinite;
+}
+
+/* Multi-stage diagnostic loading */
+@keyframes anydoor-loading-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
+}
+
+.anydoor-loading-pulse-dot {
+  animation: anydoor-loading-dot-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(201, 151, 58, 0.45);
+}
+
+@keyframes anydoor-ring-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.anydoor-ring-in {
+  animation: anydoor-ring-in 0.7s ease-out forwards;
+}
+
+@keyframes anydoor-shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.anydoor-shimmer-sweep {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(201, 151, 58, 0.25) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  animation: anydoor-shimmer-sweep 2.2s ease-in-out infinite;
+}
+
+.anydoor-loading-shimmer {
+  position: relative;
+}
+
+.anydoor-loading-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(201, 151, 58, 0.08) 45%,
+    rgba(201, 151, 58, 0.22) 50%,
+    rgba(201, 151, 58, 0.08) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: anydoor-card-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes anydoor-card-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 /* Print / Save as PDF — diagnostic report */
 @media print {
   .no-print {

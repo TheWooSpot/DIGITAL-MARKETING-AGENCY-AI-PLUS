@@ -4,7 +4,7 @@
  * Analyzes a business by URL (using Claude's knowledge), scores it, maps gaps
  * to Socialutely services, and writes the result to layer5_prospects.
  *
- * POST body: { "url": "businessdomain.com", "email": "optional@example.com" }
+ * POST body: { "url": "businessdomain.com", "email": "optional@example.com", "share_token": "optional" }
  * Env: ANTHROPIC_API_KEY, SUPABASE_URL (auto), SUPABASE_SERVICE_ROLE_KEY (auto)
  */
 
@@ -147,9 +147,9 @@ Deno.serve(async (req) => {
     if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL");
     if (!SERVICE_KEY) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
-    let body: { url?: string; email?: string };
+    let body: { url?: string; email?: string; share_token?: string };
     try {
-      body = (await req.json()) as { url?: string; email?: string };
+      body = (await req.json()) as { url?: string; email?: string; share_token?: string };
     } catch {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
@@ -158,6 +158,8 @@ Deno.serve(async (req) => {
     if (!url) return jsonResponse({ error: "Missing required field: url" }, 400);
 
     const email = typeof body.email === "string" ? body.email.trim() || null : null;
+    const shareTokenRaw = typeof body.share_token === "string" ? body.share_token.trim() : "";
+    const share_token = shareTokenRaw.length > 0 ? shareTokenRaw.slice(0, 64) : null;
 
     const result = await callAnthropic(url, ANTHROPIC_API_KEY);
     const scores = result.scores ?? {
@@ -167,9 +169,10 @@ Deno.serve(async (req) => {
       overall: 0,
     };
 
-    const prospectRow = {
+    const prospectRow: Record<string, unknown> = {
       url,
       email,
+      ...(share_token ? { share_token } : {}),
       business_name: result.business_name ?? "Unknown",
       industry: result.industry ?? "Unknown",
       overall_score: scores.overall ?? 0,
@@ -199,6 +202,7 @@ Deno.serve(async (req) => {
       recommended_tier: result.recommended_tier,
       prospect_summary: result.prospect_summary,
       estimated_monthly_value: result.estimated_monthly_value,
+      ...(share_token ? { share_token } : {}),
       _meta: { duration_ms: duration, saved_to: "layer5_prospects" },
     });
   } catch (err) {

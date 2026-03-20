@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { DiagnosticLoadingOverlay, runLoadingStages } from "./DiagnosticLoadingOverlay";
+import { generateShareToken } from "../lib/diagnosticShare";
 
 // Use same-origin API route to avoid CORS; the route proxies to Supabase Edge Function.
 const PROSPECT_DIAGNOSTIC_URL = "/api/prospect-diagnostic";
@@ -57,6 +59,8 @@ export interface DiagnosticResult {
     saved_to?: string;
     service_catalog_version?: string;
   };
+  /** Echoed from scan request; used for /report/[token] links */
+  share_token?: string;
 }
 
 interface DiagnosticFormProps {
@@ -68,6 +72,8 @@ export function DiagnosticForm({ onResult, onError }: DiagnosticFormProps) {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,31 +83,59 @@ export function DiagnosticForm({ onResult, onError }: DiagnosticFormProps) {
       return;
     }
     setLoading(true);
+    setLoadingStage(0);
+    setLoadingProgress(0);
     onError("");
+    const shareToken = generateShareToken();
+
+    const apiPromise = fetch(PROSPECT_DIAGNOSTIC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: trimmedUrl,
+        ...(email.trim() ? { email: email.trim() } : {}),
+        share_token: shareToken,
+      }),
+    }).then(async (res) => {
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      return { ok: res.ok, data };
+    });
+
     try {
-      const res = await fetch(PROSPECT_DIAGNOSTIC_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: trimmedUrl,
-          ...(email.trim() ? { email: email.trim() } : {}),
-        }),
+      const out = await runLoadingStages(apiPromise, (stageIndex, progress) => {
+        setLoadingStage(stageIndex);
+        setLoadingProgress(progress);
       });
-      const data = await res.json();
-      if (!res.ok) {
-        onError(data?.error ?? `Request failed (${res.status})`);
+
+      if (!out.ok) {
+        const msg =
+          typeof out.data === "object" && out.data && "error" in out.data
+            ? String((out.data as { error?: string }).error ?? "")
+            : "";
+        onError(msg || "Request failed");
         return;
       }
-      onResult(data as DiagnosticResult, { submittedUrl: trimmedUrl });
+
+      const data = out.data as DiagnosticResult & { share_token?: string };
+      onResult(
+        {
+          ...data,
+          share_token: data.share_token ?? shareToken,
+        },
+        { submittedUrl: trimmedUrl }
+      );
     } catch (err) {
       onError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
+      setLoadingStage(0);
+      setLoadingProgress(0);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto space-y-4">
+    <form onSubmit={handleSubmit} className="relative w-full max-w-md mx-auto space-y-4">
+      <DiagnosticLoadingOverlay active={loading} stageIndex={loadingStage} progress={loadingProgress} />
       <div>
         <label htmlFor="url" className="mb-1 block text-sm font-medium text-[#c9973a]">
           Website URL

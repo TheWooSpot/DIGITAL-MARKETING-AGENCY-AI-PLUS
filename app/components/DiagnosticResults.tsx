@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { PACKAGE_TIERS, type PackageTierKey, serviceName } from "../data/diagnosticCatalog";
+import { getReportShareBaseUrl } from "../lib/diagnosticShare";
 import { Download, Mic } from "lucide-react";
 
 const GOLD = "#c9973a";
@@ -178,15 +179,18 @@ function ScrollSection({
 interface DiagnosticResultsProps {
   result: DiagnosticResult;
   submittedUrl: string;
+  /** When viewing `/report/[token]`, pass the token from the URL for the share link. */
+  reportShareToken?: string;
 }
 
-export function DiagnosticResults({ result, submittedUrl }: DiagnosticResultsProps) {
+export function DiagnosticResults({ result, submittedUrl, reportShareToken }: DiagnosticResultsProps) {
   const [tab, setTab] = useState<"summary" | "full">("summary");
   const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
   const [showFiveCta, setShowFiveCta] = useState(false);
   const [packagesExpanded, setPackagesExpanded] = useState(false);
   const [tapReady, setTapReady] = useState(false);
   const [footerEmail, setFooterEmail] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
 
   const { scores, business_name, industry, estimated_size } = result;
   const v = scores?.visibility ?? 0;
@@ -203,6 +207,11 @@ export function DiagnosticResults({ result, submittedUrl }: DiagnosticResultsPro
   const recTier = normalizeTier(result.recommended_tier);
 
   const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
+  const shareToken = reportShareToken ?? result.share_token;
+  const shareReportUrl =
+    typeof shareToken === "string" && shareToken.length > 0
+      ? `${getReportShareBaseUrl().replace(/\/$/, "")}/report/${shareToken}`
+      : "";
   const scanTime = new Date().toLocaleString(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -294,6 +303,38 @@ export function DiagnosticResults({ result, submittedUrl }: DiagnosticResultsPro
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 print:text-gray-600">
               {scanTime} · Powered by AnyDoor Engine v12
             </p>
+
+            {shareReportUrl && (
+              <div className="no-print mt-4 w-full max-w-full rounded-lg border border-white/[0.08] bg-[#07080d]/90 px-3 py-3 sm:flex sm:items-center sm:gap-3 sm:px-4">
+                <p
+                  className="shrink-0 text-[10px] uppercase tracking-[0.2em] text-[#c9973a]"
+                  style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
+                >
+                  Share this report:
+                </p>
+                <p
+                  className="mt-2 min-w-0 flex-1 break-all text-[11px] text-white/70 sm:mt-0"
+                  style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
+                >
+                  {shareReportUrl}
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(shareReportUrl);
+                      setShareCopied(true);
+                      window.setTimeout(() => setShareCopied(false), 2000);
+                    } catch {
+                      setShareCopied(false);
+                    }
+                  }}
+                  className="no-print mt-3 w-full shrink-0 rounded border border-[#c9973a]/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-[#c9973a] hover:bg-[#c9973a]/10 sm:mt-0 sm:w-auto"
+                >
+                  {shareCopied ? "Copied!" : "Copy Link"}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col items-center gap-3 lg:items-end">
@@ -459,27 +500,51 @@ export function DiagnosticResults({ result, submittedUrl }: DiagnosticResultsPro
         </div>
       </ScrollSection>
 
-      {/* SECTION 5 — Tap to talk */}
+      {/* SECTION 5 — Tap to talk (fade in 0.5s after packages enter view) */}
       <section
-        className={`transition-all duration-700 ease-out ${tapReady ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
+        className={`w-full transition-opacity duration-500 ease-out ${tapReady ? "opacity-100" : "pointer-events-none opacity-0"}`}
       >
-        <div className="mx-auto max-w-lg rounded-xl border border-white/[0.08] bg-white/[0.03] px-6 py-10 text-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Ready to go deeper?</p>
-          <h3 className="mt-4 text-3xl font-light text-white" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+        <div className="w-full rounded-xl border border-white/[0.08] bg-[#07080d] px-6 py-10 text-center sm:px-10">
+          <p
+            className="text-[10px] uppercase tracking-[0.35em] text-[#c9973a]"
+            style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
+          >
+            READY TO GO DEEPER?
+          </p>
+          <h3
+            className="mt-4 font-light italic leading-tight text-white"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: "42px" }}
+          >
             Talk to our AI advisor
           </h3>
-          <p className="mt-4 text-sm leading-relaxed text-white/55">
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/55">
             Discuss the services, understand the impact, and get answers to your specific questions — in a real conversation.
           </p>
           <button
             type="button"
-            onClick={() => console.log("TAP TO TALK initiated")}
-            className="anydoor-pulse-gold no-print mx-auto mt-8 flex h-32 w-32 flex-col items-center justify-center gap-2 rounded-full border-4 border-[#c9973a] bg-[#c9973a]/15 text-[#c9973a]"
+            onClick={() =>
+              console.log("TAP TO TALK initiated", {
+                business: result.business_name,
+                tier: result.recommended_tier,
+                score: result.scores.overall,
+              })
+            }
+            className="anydoor-tap-pulse no-print mx-auto mt-8 flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border-2 border-[#c9973a] bg-[#c9973a]/10 text-[#c9973a]"
           >
-            <Mic className="h-10 w-10 shrink-0" aria-hidden />
-            <span className="text-[9px] font-bold uppercase tracking-widest">Tap to talk</span>
+            <Mic className="h-7 w-7 shrink-0" aria-hidden />
+            <span
+              className="text-[8px] font-bold uppercase leading-tight tracking-widest"
+              style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
+            >
+              TAP TO TALK
+            </span>
           </button>
-          <p className="mt-10 font-mono text-[10px] text-white/35">Powered by VoiceBridge™ AI ChatLabs</p>
+          <p
+            className="mt-8 text-[10px] text-white/35"
+            style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
+          >
+            Powered by VoiceBridge™ AI ChatLabs
+          </p>
         </div>
       </section>
 
