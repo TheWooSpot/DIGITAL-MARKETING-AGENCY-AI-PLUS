@@ -43,6 +43,15 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 
 There is **one** [`package.json`](../package.json) at the **repo root**. It includes both `pnpm run build` (Vite → `dist/`) and `pnpm run build:next` (Next). **Vercel should use the root** — no subdirectory package file.
 
+## Local dev (`.env.local`)
+
+Vite reads **`VITE_*`** from **`.env.local`** at the project root. Use at least:
+
+- `VITE_DIAGNOSTIC_URL` — full Edge Function URL (local dev has no `/api` proxy).
+- `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — for shared reports (`/report/:token`).
+
+[`vite.config.ts`](../vite.config.ts) uses **`loadEnv`** so these values are not overwritten by empty `process.env` during config load.
+
 ## Environment variables (Vercel → Project → Settings → Environment Variables)
 
 Set for **Production** (and Preview if needed). Client code uses **`VITE_*`** only, inlined at build time via [`vite.config.ts`](../vite.config.ts) `define`.
