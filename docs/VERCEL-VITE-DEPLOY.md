@@ -1,5 +1,30 @@
 # Vercel deploy — Vite platform + AnyDoor (Door b1)
 
+## Repository check: `vercel.json` (root)
+
+Confirm [`vercel.json`](../vercel.json) contains:
+
+- **`buildCommand`:** `pnpm run build` (Vite → `dist/`)
+- **`outputDirectory`:** `dist`
+- **`rewrites`** (order matters):
+  1. `/api/prospect-diagnostic` → `https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/prospect-diagnostic`
+  2. `/(.*)` → `/index.html` (SPA / React Router)
+
+The repo also sets **`framework`: `vite`** and **`installCommand`: `pnpm install`** so Vercel does not auto-detect Next.js.
+
+## Dashboard check (manual — cannot be changed from git)
+
+In **Vercel → your project → Settings → General** (and **Build & Development Settings**), verify:
+
+| Setting | Correct value |
+|--------|----------------|
+| **Framework Preset** | **Vite** (not Next.js) |
+| **Root Directory** | **`.`** (repository root — **not** `/app`) |
+| **Build Command** | `pnpm run build` (or leave default if overrides are off and `vercel.json` applies) |
+| **Output Directory** | `dist` |
+
+If **Framework** is still **Next.js** or **Root** is **`app`**, the live site will build the wrong app until you fix these in the dashboard.
+
 ## Where the Vite app lives in this repo
 
 | Area | Path |
@@ -54,7 +79,7 @@ Vite reads **`VITE_*`** from **`.env.local`** at the project root. Use at least:
 
 ## Environment variables (Vercel → Project → Settings → Environment Variables)
 
-Set for **Production** (and Preview if needed). Client code uses **`VITE_*`** only, inlined at build time via [`vite.config.ts`](../vite.config.ts) `define`.
+Set for **Production** (and Preview if needed). Client code uses **`VITE_*`**, loaded via [`vite.config.ts`](../vite.config.ts) **`loadEnv`** + `define`.
 
 | Variable                 | Purpose |
 |--------------------------|---------|
