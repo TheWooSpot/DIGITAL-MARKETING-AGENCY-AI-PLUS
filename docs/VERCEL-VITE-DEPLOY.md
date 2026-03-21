@@ -32,20 +32,27 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 | Output directory   | `dist`             |
 | Framework          | Vite               |
 
-## API proxy
+## API proxy & SPA
 
-`POST /api/prospect-diagnostic` is rewritten to the Supabase Edge Function so the browser stays same-origin (no CORS issues).
+[`vercel.json`](../vercel.json) rewrites (order matters):
+
+1. `POST /api/prospect-diagnostic` → Supabase Edge Function (same-origin fetch from the app).
+2. `/(.*)` → `/index.html` so React Router works on refresh.
+
+## Single `package.json`
+
+There is **one** [`package.json`](../package.json) at the **repo root**. It includes both `pnpm run build` (Vite → `dist/`) and `pnpm run build:next` (Next). **Vercel should use the root** — no subdirectory package file.
 
 ## Environment variables (Vercel → Project → Settings → Environment Variables)
 
-Set for **Production** (and Preview if needed). Client code reads **`VITE_*`** via [`vite.config.ts`](../vite.config.ts) `define` (which also falls back to legacy **`NEXT_PUBLIC_SUPABASE_*`** from an old Next setup at build time).
+Set for **Production** (and Preview if needed). Client code uses **`VITE_*`** only, inlined at build time via [`vite.config.ts`](../vite.config.ts) `define`.
 
-| Variable                   | Purpose                                      |
-|----------------------------|----------------------------------------------|
-| `VITE_SUPABASE_URL`        | Shared report page: Supabase project URL     |
-| `VITE_SUPABASE_ANON_KEY`   | Shared report page: anon public key          |
-| `VITE_SITE_URL`            | Optional; canonical URL for “Copy link” text |
-| `NEXT_PUBLIC_SUPABASE_*`   | Optional fallback if not yet renamed to `VITE_*` |
+| Variable                 | Purpose |
+|--------------------------|---------|
+| `VITE_DIAGNOSTIC_URL`    | Optional full Edge Function URL; if unset, app uses `/api/prospect-diagnostic` (rewrite above). |
+| `VITE_SUPABASE_URL`      | Shared report page: Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Shared report page: anon public key |
+| `VITE_SITE_URL`          | Optional; canonical URL for “Copy link” text |
 
 ## Routes (client-side)
 

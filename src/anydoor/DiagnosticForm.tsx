@@ -2,7 +2,12 @@ import { useState } from "react";
 import { DiagnosticLoadingOverlay, runLoadingStages } from "./DiagnosticLoadingOverlay";
 import { generateShareToken } from "./lib/diagnosticShare";
 
-const PROSPECT_DIAGNOSTIC_URL = "/api/prospect-diagnostic";
+/** Same-origin proxy on Vercel by default; override with VITE_DIAGNOSTIC_URL (full Edge Function URL). */
+function getProspectDiagnosticUrl(): string {
+  const fromEnv = (import.meta.env.VITE_DIAGNOSTIC_URL as string | undefined)?.trim();
+  if (fromEnv) return fromEnv;
+  return "/api/prospect-diagnostic";
+}
 
 /** Optional row when API returns full category breakdown (otherwise derived client-side). */
 export interface DiagnosticCategoryReport {
@@ -81,7 +86,7 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
     onError("");
     const shareToken = generateShareToken();
 
-    const apiPromise = fetch(PROSPECT_DIAGNOSTIC_URL, {
+    const apiPromise = fetch(getProspectDiagnosticUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
