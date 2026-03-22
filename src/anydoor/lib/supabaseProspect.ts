@@ -1,14 +1,20 @@
 import type { DiagnosticResult } from "../DiagnosticForm";
+import { normalizeReportPathToken } from "./diagnosticShare";
 
-/** Client fetch: one prospect row by public share_token (RPC must exist in Supabase). */
-export async function getProspectByShareToken(token: string): Promise<Record<string, unknown> | null> {
-  const trimmed = token.trim();
-  if (!trimmed) return null;
+/**
+ * Client fetch: one row from layer5_prospects where share_token = p_token.
+ * Uses RPC public.get_prospect_by_share_token (SECURITY DEFINER) — see supabase/migrations.
+ */
+export async function getProspectByShareToken(pathToken: string): Promise<Record<string, unknown> | null> {
+  const token = normalizeReportPathToken(pathToken);
+  if (!token) return null;
 
   const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "");
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (!base || !key) {
-    console.warn("getProspectByShareToken: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
+    console.warn(
+      "getProspectByShareToken: missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY — shared reports cannot load. Set them in .env.local and Vercel."
+    );
     return null;
   }
 
@@ -19,12 +25,26 @@ export async function getProspectByShareToken(token: string): Promise<Record<str
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ p_token: trimmed }),
+    body: JSON.stringify({ p_token: token }),
   });
 
-  if (!res.ok) return null;
-  const rows = (await res.json()) as unknown;
-  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const bodyText = await res.text();
+  if (!res.ok) {
+    console.warn("[getProspectByShareToken] RPC failed", { status: res.status, body: bodyText.slice(0, 500) });
+    return null;
+  }
+
+  let rows: unknown;
+  try {
+    rows = JSON.parse(bodyText) as unknown;
+  } catch {
+    console.warn("[getProspectByShareToken] invalid JSON from RPC");
+    return null;
+  }
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return null;
+  }
   return rows[0] as Record<string, unknown>;
 }
 

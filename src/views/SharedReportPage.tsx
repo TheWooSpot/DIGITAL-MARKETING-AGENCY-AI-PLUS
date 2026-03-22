@@ -1,29 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DiagnosticResults } from "@/anydoor/DiagnosticResults";
+import { normalizeReportPathToken } from "@/anydoor/lib/diagnosticShare";
 import { getProspectByShareToken, prospectRowToDiagnosticResult } from "@/anydoor/lib/supabaseProspect";
 import type { DiagnosticResult } from "@/anydoor/DiagnosticForm";
 
 /**
  * Public shared report: `/report/:token` (client-side fetch via Supabase anon + RPC).
+ * Token matches layer5_prospects.share_token (plain alphanumeric, not base64).
  */
 export default function SharedReportPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: tokenParam } = useParams<{ token: string }>();
+  const normalizedToken = tokenParam ? normalizeReportPathToken(tokenParam) : "";
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [submittedUrl, setSubmittedUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const t = token?.trim();
-    if (!t) {
-      setError("Invalid link.");
-      return;
-    }
+    if (!normalizedToken) return;
 
+    setResult(null);
+    setSubmittedUrl("");
     (async () => {
       setError(null);
-      const row = await getProspectByShareToken(t);
+      const row = await getProspectByShareToken(normalizedToken);
       if (cancelled) return;
       if (!row) {
         setError("Report not found or link expired.");
@@ -41,7 +42,18 @@ export default function SharedReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [normalizedToken]);
+
+  if (!normalizedToken) {
+    return (
+      <div className="min-h-screen px-4 py-16 text-center" style={{ backgroundColor: "#07080d", color: "#e8eef5" }}>
+        <p className="text-white/70">Invalid link.</p>
+        <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
+          Run a new diagnostic →
+        </Link>
+      </div>
+    );
+  }
 
   if (error && !result) {
     return (
@@ -75,7 +87,7 @@ export default function SharedReportPage() {
         </Link>
       </div>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
-        <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={token} />
+        <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={normalizedToken} />
       </main>
     </div>
   );
