@@ -415,7 +415,7 @@ const PlatformHome = () => {
                 {[
                   "Structured scoring across visibility, engagement, and conversion.",
                   "Gap detection mapped to your live service catalog (v12).",
-                  "Five tier pathways — Essentials through Vanguard.",
+                  "Five tier pathways — Essentials through Sovereign.",
                   "Results designed to drop into pipeline follow-up.",
                 ].map((t) => (
                   <li key={t} className="flex gap-3">

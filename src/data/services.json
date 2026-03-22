@@ -1,0 +1,18 @@
+{
+  "summariesByTier": {
+    "Essentials": "Supports {{service}} for {{business}} — tailored to your {{industry}} motion and growth stage.",
+    "Momentum": "Supports {{service}} for {{business}} — optimized to accelerate your {{industry}} motion and growth. Deeper implementation runway, faster iteration cycles, and expanded channel coordination.",
+    "Signature": "Supports {{service}} for {{business}} — advanced configuration to maximize your {{industry}} motion and growth. Priority routing, expanded scope, and proactive optimization cadence.",
+    "Vanguard": "Supports {{service}} for {{business}} — elite-tier delivery customized to your {{industry}} motion and growth stage. Dedicated specialists, elevated SLAs, and full-stack integration support.",
+    "Sovereign": "Supports {{service}} for {{business}} — our highest level of execution and intelligence for your {{industry}} motion and growth. Unlimited strategic scope, bespoke automation and AI depth, multi-market orchestration, and 24/7 advisory access."
+  },
+  "serviceOverrides": {
+    "101": {
+      "Essentials": "Supports SearchLift™ SBO Engine for {{business}} — tailored to your {{industry}} motion and growth stage.",
+      "Momentum": "Supports SearchLift™ SBO Engine for {{business}} — optimized to accelerate your {{industry}} motion and growth. Increased site crawl frequency and keyword tracking.",
+      "Signature": "Supports SearchLift™ SBO Engine for {{business}} — advanced configuration to maximize your {{industry}} motion and growth. Prioritized indexing, expanded keyword sets, and competitor tracking.",
+      "Vanguard": "Supports SearchLift™ SBO Engine for {{business}} — elite-tier service fully customized to your {{industry}} motion and growth stage. Dedicated optimization team, enterprise SLAs, and full integration with your digital stack.",
+      "Sovereign": "Supports SearchLift™ SBO Engine for {{business}} — our highest level of search optimization and intelligence, with unlimited scale and resources to propel your {{industry}} motion and growth. Includes bespoke AI model training, multi-market localization, and 24/7 strategic advisory."
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DiagnosticLoadingOverlay, runLoadingStages } from "./DiagnosticLoadingOverlay";
-import { generateShareToken } from "./lib/diagnosticShare";
+import { generateShareToken, getReportShareBaseUrl } from "./lib/diagnosticShare";
+import { generateReportLink } from "@/utils/urls";
 
 /** Same-origin proxy on Vercel by default; override with VITE_DIAGNOSTIC_URL (full Edge Function URL). */
 function getProspectDiagnosticUrl(): string {
@@ -59,6 +60,8 @@ export interface DiagnosticResult {
   share_token?: string;
   /** Canonical public report URL from the API (production host), not derived from window.location. */
   share_url?: string;
+  /** layer5_prospects.id — used with permanent /report/{id}?k= links */
+  prospect_id?: string;
 }
 
 interface DiagnosticFormProps {
@@ -116,14 +119,26 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
         return;
       }
 
-      const data = out.data as DiagnosticResult & { share_token?: string; share_url?: string };
+      const data = out.data as DiagnosticResult & {
+        share_token?: string;
+        share_url?: string;
+        prospect_id?: string;
+      };
       const shareUrlFromApi =
         typeof data.share_url === "string" && data.share_url.trim().length > 0 ? data.share_url.trim() : undefined;
+      const prospectId = typeof data.prospect_id === "string" && data.prospect_id.trim() ? data.prospect_id.trim() : undefined;
+      const builtLink = generateReportLink({
+        siteBaseUrl: getReportShareBaseUrl(),
+        prospectId,
+        shareToken: data.share_token ?? shareToken,
+      });
+      const fallbackShareUrl = shareUrlFromApi ?? (builtLink.trim() ? builtLink : undefined);
       onResult(
         {
           ...data,
           share_token: data.share_token ?? shareToken,
-          share_url: shareUrlFromApi,
+          share_url: fallbackShareUrl,
+          prospect_id: prospectId,
         },
         { submittedUrl: trimmedUrl }
       );

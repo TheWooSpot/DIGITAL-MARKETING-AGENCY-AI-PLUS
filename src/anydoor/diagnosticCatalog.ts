@@ -29,9 +29,10 @@ export const SERVICE_MAP: Record<number, string> = {
   1001: "Socialutely Circle™",
   1002: "Momentum Vault™",
   1003: "Concierge Access™",
+  1004: "AI Maturity Diagnostic & Blueprint™",
 };
 
-export type PackageTierKey = "Essentials" | "Momentum" | "Signature" | "Vanguard" | "AI Readiness";
+export type PackageTierKey = "Essentials" | "Momentum" | "Signature" | "Vanguard" | "Sovereign";
 
 export interface PackageTierDef {
   key: PackageTierKey;
@@ -84,8 +85,8 @@ export const PACKAGE_TIERS: PackageTierDef[] = [
     serviceIds: VANGUARD_12,
   },
   {
-    key: "AI Readiness",
-    displayName: "AI Readiness",
+    key: "Sovereign",
+    displayName: "Sovereign",
     range: "$2,500 – $4,500/mo",
     bg: "bg-[#1a2a2a]/90",
     border: "border-teal-500/25",

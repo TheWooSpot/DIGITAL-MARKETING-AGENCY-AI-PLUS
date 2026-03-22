@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { PACKAGE_TIERS, type PackageTierKey, serviceName } from "./diagnosticCatalog";
 import { getReportShareBaseUrl } from "./lib/diagnosticShare";
+import { getServiceSummaryForTier } from "@/lib/serviceTierSummaries";
 import { Download, Mic } from "lucide-react";
 
 const GOLD = "#c9973a";
@@ -107,7 +108,7 @@ function normalizeTier(t: string | undefined): PackageTierKey | null {
   if (k === "momentum") return "Momentum";
   if (k === "signature") return "Signature";
   if (k === "vanguard") return "Vanguard";
-  if (k.includes("ai readiness")) return "AI Readiness";
+  if (k === "sovereign" || k.includes("ai readiness")) return "Sovereign";
   return null;
 }
 
@@ -247,10 +248,10 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const togglePanel = (i: number) => setOpenPanels((s) => ({ ...s, [i]: !s[i] }));
 
   const impactForService = useCallback(
-    (id: number, name: string) => {
+    (id: number, name: string, columnTier: PackageTierKey) => {
       const hit = recommendedNorm.find((r) => r.service_id === id);
       if (hit?.reason?.trim()) return hit.reason;
-      return `Supports ${name} for ${business_name} — tailored to your ${industry} motion and growth stage.`;
+      return getServiceSummaryForTier(id, columnTier, business_name, industry);
     },
     [recommendedNorm, business_name, industry]
   );
@@ -591,7 +592,7 @@ function PackageColumn({
 }: {
   tier: (typeof PACKAGE_TIERS)[number];
   recTier: PackageTierKey | null;
-  impactForService: (id: number, name: string) => string;
+  impactForService: (id: number, name: string, columnTier: PackageTierKey) => string;
 }) {
   const isRec = recTier === tier.key;
   return (
@@ -625,7 +626,7 @@ function PackageColumn({
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#c9973a]">Positive impact</p>
         <ul className="mt-3 space-y-2 text-[11px] leading-relaxed text-white/60 print:text-gray-700">
           {tier.serviceIds.map((id) => (
-            <li key={`imp-${id}`}>— {impactForService(id, serviceName(id))}</li>
+            <li key={`imp-${id}`}>— {impactForService(id, serviceName(id), tier.key)}</li>
           ))}
         </ul>
       </div>
