@@ -206,10 +206,15 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
   const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
   const shareToken = reportShareToken ?? result.share_token;
-  const shareReportUrl =
-    typeof shareToken === "string" && shareToken.length > 0
-      ? `${getReportShareBaseUrl().replace(/\/$/, "")}/report/${shareToken}`
-      : "";
+  /** Prefer API-provided canonical URL; fallback for older responses / shared rows without share_url. */
+  const shareReportUrl = useMemo(() => {
+    const fromApi = result.share_url?.trim();
+    if (fromApi) return fromApi;
+    if (typeof shareToken === "string" && shareToken.length > 0) {
+      return `${getReportShareBaseUrl().replace(/\/$/, "")}/report/${shareToken}`;
+    }
+    return "";
+  }, [result.share_url, shareToken]);
   const scanTime = new Date().toLocaleString(undefined, {
     dateStyle: "medium",
     timeStyle: "short",

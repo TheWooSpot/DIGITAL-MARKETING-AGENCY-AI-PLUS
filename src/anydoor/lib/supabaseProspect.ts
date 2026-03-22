@@ -52,6 +52,12 @@ export function prospectRowToDiagnosticResult(row: Record<string, unknown>): Dia
         estimated_monthly_value: r.estimated_monthly_value ?? 0,
         _meta: r._meta,
         share_token: row.share_token != null ? String(row.share_token) : r.share_token,
+        share_url:
+          typeof r.share_url === "string" && r.share_url.trim()
+            ? r.share_url.trim()
+            : typeof row.share_url === "string" && row.share_url.trim()
+              ? row.share_url.trim()
+              : undefined,
       };
     }
   }
@@ -73,5 +79,7 @@ export function prospectRowToDiagnosticResult(row: Record<string, unknown>): Dia
     prospect_summary: String(row.prospect_summary ?? ""),
     estimated_monthly_value: Number(row.estimated_value ?? 0),
     share_token: row.share_token != null ? String(row.share_token) : undefined,
+    share_url:
+      typeof row.share_url === "string" && row.share_url.trim() ? row.share_url.trim() : undefined,
   };
 }

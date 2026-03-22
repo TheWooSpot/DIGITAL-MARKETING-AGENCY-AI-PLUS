@@ -161,6 +161,12 @@ Deno.serve(async (req) => {
     const shareTokenRaw = typeof body.share_token === "string" ? body.share_token.trim() : "";
     const share_token = shareTokenRaw.length > 0 ? shareTokenRaw.slice(0, 64) : null;
 
+    /** Public site origin for share links (set in Supabase secrets as DIAGNOSTIC_SHARE_BASE_URL if needed). */
+    const shareBase = (
+      Deno.env.get("DIAGNOSTIC_SHARE_BASE_URL") ?? "https://socialutely-any-door-engine.vercel.app"
+    ).replace(/\/$/, "");
+    const share_url = share_token ? `${shareBase}/report/${share_token}` : undefined;
+
     const result = await callAnthropic(url, ANTHROPIC_API_KEY);
     const scores = result.scores ?? {
       visibility: 0,
@@ -184,7 +190,10 @@ Deno.serve(async (req) => {
       detected_gaps: result.detected_gaps ?? [],
       estimated_value: result.estimated_monthly_value ?? 0,
       prospect_summary: result.prospect_summary ?? "",
-      raw_result: result as unknown as Record<string, unknown>,
+      raw_result: {
+        ...(result as unknown as Record<string, unknown>),
+        ...(share_token && share_url ? { share_token, share_url } : {}),
+      },
       source: "prospect-diagnostic",
     };
 
@@ -203,6 +212,7 @@ Deno.serve(async (req) => {
       prospect_summary: result.prospect_summary,
       estimated_monthly_value: result.estimated_monthly_value,
       ...(share_token ? { share_token } : {}),
+      ...(share_url ? { share_url } : {}),
       _meta: { duration_ms: duration, saved_to: "layer5_prospects" },
     });
   } catch (err) {
