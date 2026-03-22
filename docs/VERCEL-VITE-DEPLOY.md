@@ -4,11 +4,12 @@
 
 Confirm [`vercel.json`](../vercel.json) contains:
 
-- **`version`:** `2`
+- **`$schema`:** Vercel OpenAPI (optional, for editor hints)
+- **`framework`:** `vite` (forces Vite builder instead of Next.js auto-detect)
 - **`buildCommand`:** `pnpm run build` (Vite → `dist/`)
 - **`outputDirectory`:** `dist`
 - **`installCommand`:** `pnpm install`
-- **`framework`:** `null` (disables framework auto-detect so Next.js in `package.json` does not override the build)
+- **`devCommand`:** `pnpm run dev` (optional; for `vercel dev`)
 - **`rewrites`** (order matters):
   1. `/api/prospect-diagnostic` → `https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/prospect-diagnostic`
   2. `/(.*)` → `/index.html` (SPA / React Router)
@@ -19,7 +20,7 @@ In **Vercel → your project → Settings → General** (and **Build & Developme
 
 | Setting | Correct value |
 |--------|----------------|
-| **Framework Preset** | **Other** / no Next (or match `vercel.json` `framework: null`) |
+| **Framework Preset** | **Vite** (or leave defaults if `vercel.json` applies) |
 | **Root Directory** | **`.`** (repository root — **not** `/app`) |
 | **Build Command** | `pnpm run build` (or leave default if overrides are off and `vercel.json` applies) |
 | **Output Directory** | `dist` |
@@ -58,7 +59,7 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 | Install            | `pnpm install`     |
 | Build              | `pnpm run build`   |
 | Output directory   | `dist`             |
-| Framework          | `null` in `vercel.json` (static / explicit build) |
+| Framework          | `vite` in `vercel.json` |
 
 ## API proxy & SPA
 

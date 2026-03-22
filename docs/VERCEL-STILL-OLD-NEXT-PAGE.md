@@ -15,7 +15,7 @@ The **live site should come from Vite** (`pnpm run build` → `dist/`). If you s
 
 ## 2. Why this happens
 
-- **`next` in `package.json`** and **`next.config.mjs` at the repo root** make Vercel **prefer the Next.js framework**, even when [`vercel.json`](../vercel.json) says `framework: null` and `outputDirectory: dist` (known limitation / ordering with dashboard overrides).
+- **`next` in `package.json`** and **`next.config.mjs` at the repo root** can still make Vercel **prefer the Next.js framework** if dashboard overrides win or cache is stale — [`vercel.json`](../vercel.json) now sets **`"framework": "vite"`** explicitly; confirm build logs show **Vite**.
 - **Dashboard overrides** (Build Command, Output Directory, Framework) can **ignore** `vercel.json` if toggles are ON.
 
 ## 3. Fix in Vercel — try these in order
