@@ -1,9 +1,10 @@
 {
-  "version": 2,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
-  "framework": null,
+  "devCommand": "pnpm run dev",
   "rewrites": [
     {
       "source": "/api/prospect-diagnostic",
