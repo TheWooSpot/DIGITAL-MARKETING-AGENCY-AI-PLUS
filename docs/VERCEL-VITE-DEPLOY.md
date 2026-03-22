@@ -26,6 +26,8 @@ In **Vercel → your project → Settings → General** (and **Build & Developme
 
 If **Framework** is still **Next.js** or **Root** is **`app`**, the live site will build the wrong app until you fix these in the dashboard.
 
+**Still seeing the old Next diagnostic?** See **[VERCEL-STILL-OLD-NEXT-PAGE.md](./VERCEL-STILL-OLD-NEXT-PAGE.md)** (build-log checks + dashboard workarounds).
+
 ## Where the Vite app lives in this repo
 
 | Area | Path |
