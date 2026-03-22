@@ -15,7 +15,7 @@ The **live site should come from Vite** (`pnpm run build` → `dist/`). If you s
 
 ## 2. Why this happens
 
-- **`next` in `package.json`** and **`next.config.mjs` at the repo root** can still make Vercel **prefer the Next.js framework** if dashboard overrides win or cache is stale — [`vercel.json`](../vercel.json) now sets **`"framework": "vite"`** explicitly; confirm build logs show **Vite**.
+The repo **no longer** ships `next` or `next.config.*` — if you still see a Next build, the cause is almost always **Vercel dashboard overrides** or **stale cache**. Redeploy with **Clear build cache** and confirm logs show **Vite**.
 - **Dashboard overrides** (Build Command, Output Directory, Framework) can **ignore** `vercel.json` if toggles are ON.
 
 ## 3. Fix in Vercel — try these in order
@@ -49,4 +49,4 @@ Create a **new Vercel project** linked to the same Git repo, root `.`, framework
 
 ## 5. Repo change that helps detection
 
-`next` is listed under **`devDependencies`** (not `dependencies`) so production-oriented tooling is less likely to treat this repo as a **Next app first**. Local Next dev still works: `pnpm run dev:next` (no `next build` npm script — avoids Vercel picking the wrong builder).
+The **`next`** package has been **removed** from the repo so Vercel should not auto-detect Next.js from dependencies.
