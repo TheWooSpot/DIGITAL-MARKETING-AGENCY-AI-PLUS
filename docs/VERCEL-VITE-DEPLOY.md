@@ -70,7 +70,7 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 
 ## Single `package.json`
 
-There is **one** [`package.json`](../package.json) at the **repo root**. It includes both `pnpm run build` (Vite → `dist/`) and `pnpm run build:nextjs` (Next). **Vercel should use the root** — no subdirectory package file.
+There is **one** [`package.json`](../package.json) at the **repo root**. **`pnpm run build`** runs **Vite** only (`vite build` → `dist/`). Optional Next scripts (`dev:next`, `start:next`) remain for local use of `/app`. **Vercel should use the repo root** — no subdirectory package file.
 
 ## Local dev (`.env.local`)
 

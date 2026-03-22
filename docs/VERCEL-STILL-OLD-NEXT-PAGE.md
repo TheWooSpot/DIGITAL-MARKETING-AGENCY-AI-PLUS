@@ -49,4 +49,4 @@ Create a **new Vercel project** linked to the same Git repo, root `.`, framework
 
 ## 5. Repo change that helps detection
 
-`next` is listed under **`devDependencies`** (not `dependencies`) so production-oriented tooling is less likely to treat this repo as a **Next app first**. Local Next still works: `pnpm run dev:next` / `pnpm run build:nextjs` install dev deps as usual.
+`next` is listed under **`devDependencies`** (not `dependencies`) so production-oriented tooling is less likely to treat this repo as a **Next app first**. Local Next dev still works: `pnpm run dev:next` (no `next build` npm script — avoids Vercel picking the wrong builder).
