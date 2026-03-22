@@ -4,13 +4,14 @@
 
 Confirm [`vercel.json`](../vercel.json) contains:
 
+- **`version`:** `2`
 - **`buildCommand`:** `pnpm run build` (Vite → `dist/`)
 - **`outputDirectory`:** `dist`
+- **`installCommand`:** `pnpm install`
+- **`framework`:** `null` (disables framework auto-detect so Next.js in `package.json` does not override the build)
 - **`rewrites`** (order matters):
   1. `/api/prospect-diagnostic` → `https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/prospect-diagnostic`
   2. `/(.*)` → `/index.html` (SPA / React Router)
-
-The repo also sets **`framework`: `vite`** and **`installCommand`: `pnpm install`** so Vercel does not auto-detect Next.js.
 
 ## Dashboard check (manual — cannot be changed from git)
 
@@ -18,7 +19,7 @@ In **Vercel → your project → Settings → General** (and **Build & Developme
 
 | Setting | Correct value |
 |--------|----------------|
-| **Framework Preset** | **Vite** (not Next.js) |
+| **Framework Preset** | **Other** / no Next (or match `vercel.json` `framework: null`) |
 | **Root Directory** | **`.`** (repository root — **not** `/app`) |
 | **Build Command** | `pnpm run build` (or leave default if overrides are off and `vercel.json` applies) |
 | **Output Directory** | `dist` |
@@ -41,7 +42,7 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 
 ## Vercel dashboard (if the old Next app still deploys)
 
-1. **Project → Settings → General → Framework Preset:** choose **Vite** (or **Other** with no Next override).
+1. **Project → Settings → General → Framework Preset:** choose **Other** or clear Next.js (repo uses `framework: null` + explicit `buildCommand`).
 2. **Root Directory:** repository root (`.`). Do **not** point only at `app/`.
 3. **Build & Development Settings:** either leave **“Override”** toggles **off** so [`vercel.json`](../vercel.json) applies, or set manually:
    - Build: `pnpm run build`
@@ -55,7 +56,7 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 | Install            | `pnpm install`     |
 | Build              | `pnpm run build`   |
 | Output directory   | `dist`             |
-| Framework          | Vite               |
+| Framework          | `null` in `vercel.json` (static / explicit build) |
 
 ## API proxy & SPA
 
@@ -66,7 +67,7 @@ The production site **socialutely-any-door-engine.vercel.app** should build the 
 
 ## Single `package.json`
 
-There is **one** [`package.json`](../package.json) at the **repo root**. It includes both `pnpm run build` (Vite → `dist/`) and `pnpm run build:next` (Next). **Vercel should use the root** — no subdirectory package file.
+There is **one** [`package.json`](../package.json) at the **repo root**. It includes both `pnpm run build` (Vite → `dist/`) and `pnpm run build:nextjs` (Next). **Vercel should use the root** — no subdirectory package file.
 
 ## Local dev (`.env.local`)
 
