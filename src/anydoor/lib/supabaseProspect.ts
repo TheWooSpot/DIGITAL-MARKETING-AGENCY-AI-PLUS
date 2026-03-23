@@ -1,4 +1,5 @@
 import type { DiagnosticResult } from "../DiagnosticForm";
+import { getSupabaseBrowserClient } from "./supabaseBrowserClient";
 
 const PROSPECT_ROW_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -67,99 +68,49 @@ export async function getProspectByPublicAccess(
   return rows[0] as Record<string, unknown>;
 }
 
-type ApiLookupResult =
-  | { kind: "row"; row: Record<string, unknown> | null }
-  | { kind: "fallback" };
-
 /**
- * Production (Vercel): POST /api/report-by-token — server runs
- * GET .../layer5_prospects?share_token=eq.<token>&limit=1 with service role (see docs/REPORT-LOOKUP.md).
- * Returns "fallback" when the API is missing (local Vite), misconfigured (503), or errors.
- */
-async function getProspectByShareTokenViaServerApi(token: string): Promise<ApiLookupResult> {
-  try {
-    const res = await fetch("/api/report-by-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    if (res.status === 503) {
-      console.warn("[getProspectByShareToken] API not configured (503), trying RPC fallback");
-      return { kind: "fallback" };
-    }
-    if (!res.ok) {
-      const t = await res.text();
-      console.warn("[getProspectByShareToken] API failed", { status: res.status, body: t.slice(0, 500) });
-      return { kind: "fallback" };
-    }
-    let data: { row?: unknown };
-    try {
-      data = (await res.json()) as { row?: unknown };
-    } catch {
-      return { kind: "fallback" };
-    }
-    if (data.row != null && typeof data.row === "object" && !Array.isArray(data.row)) {
-      return { kind: "row", row: data.row as Record<string, unknown> };
-    }
-    return { kind: "row", row: null };
-  } catch {
-    return { kind: "fallback" };
-  }
-}
-
-/**
- * Fallback: anon key → RPC public.get_prospect_by_share_token (SECURITY DEFINER).
- */
-async function getProspectByShareTokenViaRpc(token: string): Promise<Record<string, unknown> | null> {
-  const cfg = supabaseAnonConfig();
-  if (!cfg) return null;
-
-  const res = await fetch(`${cfg.base}/rest/v1/rpc/get_prospect_by_share_token`, {
-    method: "POST",
-    headers: {
-      apikey: cfg.key,
-      Authorization: `Bearer ${cfg.key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ p_token: token }),
-  });
-
-  const bodyText = await res.text();
-  if (!res.ok) {
-    console.warn("[getProspectByShareToken] RPC failed", { status: res.status, body: bodyText.slice(0, 500) });
-    return null;
-  }
-
-  let rows: unknown;
-  try {
-    rows = JSON.parse(bodyText) as unknown;
-  } catch {
-    console.warn("[getProspectByShareToken] invalid JSON from RPC");
-    return null;
-  }
-
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return null;
-  }
-  return rows[0] as Record<string, unknown>;
-}
-
-/**
- * Share link: /report/:token
- * 1) Same-origin POST /api/report-by-token (service role on server — exact table filter).
- * 2) If unavailable, anon RPC get_prospect_by_share_token — see docs/REPORT-LOOKUP.md.
+ * Share link: `/report/:token`
+ *
+ * **Client:** `@supabase/supabase-js` from `getSupabaseBrowserClient()` — **anon** key only
+ * (`VITE_SUPABASE_ANON_KEY`). Not the service role.
+ *
+ * **Query (equivalent):**
+ * ```ts
+ * const { data, error } = await supabase
+ *   .from('layer5_prospects')
+ *   .select('*')
+ *   .eq('share_token', token)
+ *   .single();
+ * ```
+ *
+ * `token` must be the raw `useParams().token` string (no decoding).
+ * Requires RLS (or policies) that allow `anon` to `SELECT` the matching row.
  */
 export async function getProspectByShareToken(pathToken: string): Promise<Record<string, unknown> | null> {
-  /** Exact `:token` from the URL path — must equal DB `share_token` with no client-side decoding or trimming. */
   const token = pathToken;
   if (!token) return null;
 
-  const api = await getProspectByShareTokenViaServerApi(token);
-  if (api.kind === "row") {
-    return api.row;
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("layer5_prospects")
+    .select("*")
+    .eq("share_token", token)
+    .single();
+
+  if (error) {
+    console.error("[getProspectByShareToken] Supabase error", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    return null;
   }
 
-  return getProspectByShareTokenViaRpc(token);
+  if (!data || typeof data !== "object") return null;
+  return data as Record<string, unknown>;
 }
 
 export function prospectRowToDiagnosticResult(row: Record<string, unknown>): DiagnosticResult | null {

@@ -1,4 +1,7 @@
 /**
+ * Optional serverless lookup (service role). The `/report/:token` UI uses the browser
+ * Supabase client + anon key instead — see `src/anydoor/lib/supabaseProspect.ts`.
+ *
  * Vercel serverless: public report lookup by share_token.
  * Runs the equivalent of:
  *   SELECT * FROM layer5_prospects WHERE share_token = $1 LIMIT 1

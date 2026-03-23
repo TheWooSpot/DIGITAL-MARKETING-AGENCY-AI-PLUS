@@ -11,8 +11,9 @@ import type { DiagnosticResult } from "@/anydoor/DiagnosticForm";
 
 /**
  * Public shared report:
- * - `/report/{share_token}` — `share_token` column matches the path segment exactly (e.g. raw UUID).
- * - Legacy: `/report/{row_uuid}?k={report_access_key}` — RPC get_prospect_by_public_access.
+ * - `/report/{share_token}` — loaded via `getProspectByShareToken` in `@/anydoor/lib/supabaseProspect.ts`
+ *   using **@supabase/supabase-js** + **anon** key: `.from('layer5_prospects').select('*').eq('share_token', token).single()`.
+ * - Legacy: `/report/{row_uuid}?k={report_access_key}` — `getProspectByPublicAccess` (RPC + anon).
  */
 export default function SharedReportPage() {
   const { token: tokenParam } = useParams<{ token: string }>();

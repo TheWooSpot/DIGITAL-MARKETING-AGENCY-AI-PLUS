@@ -3,58 +3,44 @@
 ## 1. Route handler (file)
 
 - **React route:** `src/App.tsx` — `<Route path="/report/:token" element={<SharedReportPage />} />`
-- **Page component:** `src/views/SharedReportPage.tsx` — reads `useParams().token`, calls `getProspectByShareToken(routeToken)` (or `getProspectByPublicAccess` when `?k=` is present).
+- **Page component:** `src/views/SharedReportPage.tsx` — reads `useParams().token` as **`routeToken`** (raw, no decoding), calls `getProspectByShareToken(routeToken)` unless legacy `?k=` public-access mode is used.
 
-## 2. Exact Supabase operations
+## 2. Share-token lookup (current)
 
-### A) Preferred on production (Vercel): serverless API + service role
+- **Files:**
+  - `src/anydoor/lib/supabaseBrowserClient.ts` — `createClient` with **`VITE_SUPABASE_URL`** + **`VITE_SUPABASE_ANON_KEY`** (**anon** key only).
+  - `src/anydoor/lib/supabaseProspect.ts` — `getProspectByShareToken`.
 
-- **File:** `api/report-by-token.ts` (runs on Vercel only; **not** part of the Vite bundle).
-- **HTTP:** `POST /api/report-by-token` with JSON body `{ "token": "<same string as in URL path>" }`.
-- **Equivalent SQL (what PostgREST runs with the service key):**
+- **Exact client call (Supabase JS):**
 
-```sql
-SELECT * FROM layer5_prospects
-WHERE share_token = '<token_from_request_body>'
-LIMIT 1;
+```ts
+const { data, error } = await supabase
+  .from("layer5_prospects")
+  .select("*")
+  .eq("share_token", token)
+  .single();
 ```
 
-- **PostgREST URL (built server-side):**
+- **`token`:** same string as the URL path segment from `useParams()` (no `decodeURIComponent` / trim).
 
-```
-GET {SUPABASE_URL}/rest/v1/layer5_prospects?share_token=eq.{urlEncodedToken}&select=*&limit=1
-```
+- **Errors:** logged with `console.error("[getProspectByShareToken] Supabase error", { message, code, details, hint })`.
 
-- **Auth headers:** `apikey: <SUPABASE_SERVICE_ROLE_KEY>` and `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`.
+- **RLS:** `anon` must be allowed to `SELECT` the row (e.g. policy on `layer5_prospects` for `share_token IS NOT NULL`).
 
-### B) Fallback: browser → RPC + **anon** key
+## 3. Legacy: `/report/{uuid}?k={key}`
 
-- **File:** `src/anydoor/lib/supabaseProspect.ts` → `getProspectByShareTokenViaRpc`.
-- **HTTP:** `POST {SUPABASE_URL}/rest/v1/rpc/get_prospect_by_share_token`
-- **Body:** `{ "p_token": "<token_from_url>" }`
-- **Auth headers:** `apikey: <VITE_SUPABASE_ANON_KEY>` and `Authorization: Bearer <VITE_SUPABASE_ANON_KEY>`.
-- **Database:** function `public.get_prospect_by_share_token(p_token text)` is `SECURITY DEFINER`, so it **does not use RLS** for the inner `SELECT`; it still requires `GRANT EXECUTE ... TO anon`.
+- **Function:** `getProspectByPublicAccess` in `supabaseProspect.ts`
+- **Mechanism:** PostgREST RPC `get_prospect_by_public_access` with **anon** key (unchanged).
 
-## 3. Anon vs service role
+## 4. Optional: `api/report-by-token.ts`
 
-| Path | Key |
-|------|-----|
-| Browser → `/api/report-by-token` | **No key in browser**; server uses `SUPABASE_SERVICE_ROLE_KEY`. |
-| Browser → Supabase RPC (fallback) | **Anon key** only (`VITE_SUPABASE_ANON_KEY`). |
+- Serverless route using **service role** still exists for emergencies / tooling but is **not** used by the share-link UI anymore.
 
-**Never** put the service role key in `VITE_*` or client code.
+## 5. Environment (Vite / Vercel)
 
-## 4. RLS
+Required in the **browser** build:
 
-- **Direct** `GET /layer5_prospects` with the **anon** key is usually blocked by RLS unless you add a very permissive policy (not recommended).
-- **RPC** with `SECURITY DEFINER` bypasses RLS for the query inside the function (runs as the function owner).
-- **Service role** bypasses RLS entirely — safe only **on the server** (`api/report-by-token.ts`).
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-## 5. Vercel environment variables (Production)
-
-Set in the Vercel project (serverless only):
-
-- `SUPABASE_URL` — same project as `VITE_SUPABASE_URL` (e.g. `https://xxxx.supabase.co`)
-- `SUPABASE_SERVICE_ROLE_KEY` — from Supabase Dashboard → Project Settings → API
-
-If these are missing, the API route returns `503` and the app falls back to the anon RPC.
+**Never** put the service role key in `VITE_*`.
