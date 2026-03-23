@@ -6,13 +6,22 @@
  *
  * POST body: { "url": "businessdomain.com", "email": "optional@example.com" }
  * Env: ANTHROPIC_API_KEY, SUPABASE_URL (auto), SUPABASE_SERVICE_ROLE_KEY (auto)
+ *
+ * Deploy version: confirm in Supabase Dashboard → Edge Functions → prospect-diagnostic
+ * matches the project expectation (Phase 2 target: **v16**). Bump dashboard label on each deploy.
  */
+export const PROSPECT_DIAGNOSTIC_DEPLOY_VERSION = 16;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Expose-Headers": "x-socialutely-diagnostic-version",
 };
+
+const FN_VERSION_HEADERS = {
+  "x-socialutely-diagnostic-version": String(PROSPECT_DIAGNOSTIC_DEPLOY_VERSION),
+} as const;
 
 /** All catalog service IDs — aligned with docs/Service-Tiers.csv (28 services). */
 const ALLOWED_SERVICE_IDS = [
@@ -42,7 +51,7 @@ interface DiagnosticResult {
 function jsonResponse(data: object, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...FN_VERSION_HEADERS },
   });
 }
 
