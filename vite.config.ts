@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(env.VITE_SUPABASE_URL ?? ""),
       "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(env.VITE_SUPABASE_ANON_KEY ?? ""),
       "import.meta.env.VITE_SITE_URL": JSON.stringify(env.VITE_SITE_URL ?? ""),
+      "import.meta.env.VITE_TEAM_PASSWORD": JSON.stringify(env.VITE_TEAM_PASSWORD ?? ""),
     },
   };
 });

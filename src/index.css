@@ -101,7 +101,9 @@ All colors MUST be HSL.
   /* overflow-x: hidden on html/body breaks position:sticky site-wide; clip fixes it on platform home */
   @supports (overflow: clip) {
     html:has(.platform-home),
-    body:has(.platform-home) {
+    body:has(.platform-home),
+    html:has(.team-tiers-page),
+    body:has(.team-tiers-page) {
       overflow-x: clip;
     }
   }
@@ -193,6 +195,51 @@ All colors MUST be HSL.
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* ─── Internal /team/tiers — dark shell + gold (#0b0f1a / #d4a843) ─── */
+:root {
+  --team-bg: #0b0f1a;
+  --team-gold: #d4a843;
+  --team-gold-dim: rgba(212, 168, 67, 0.35);
+  --team-surface: #121826;
+  --team-border: rgba(212, 168, 67, 0.22);
+  --team-text: #e8eef5;
+  --team-muted: #8b9bb5;
+}
+
+.team-tiers-page {
+  --team-gold: #d4a843;
+  background-color: var(--team-bg);
+  color: var(--team-text);
+  font-family: var(--font-archivo, "Archivo", system-ui, sans-serif);
+}
+
+.team-tiers-page .team-tiers-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--team-bg), 0 0 0 4px var(--team-gold-dim);
+  border-color: var(--team-gold);
+}
+
+.team-tiers-card-expanded {
+  animation: team-tiers-expand 0.35s ease-out forwards;
+}
+
+@keyframes team-tiers-expand {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-tiers-card-expanded {
+    animation: none;
   }
 }
 
