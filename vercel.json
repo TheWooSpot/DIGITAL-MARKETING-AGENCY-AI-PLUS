@@ -10,7 +10,7 @@
       "destination": "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/prospect-diagnostic"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
