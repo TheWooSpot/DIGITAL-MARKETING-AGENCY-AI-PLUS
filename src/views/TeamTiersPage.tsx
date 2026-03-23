@@ -10,6 +10,10 @@ function getExpectedPassword(): string {
   return "socialutely2026";
 }
 
+function passwordsMatch(input: string, expected: string): boolean {
+  return input.trim() === expected.trim();
+}
+
 type TierId = "essentials" | "momentum" | "signature" | "vanguard" | "sovereign";
 
 type TierDef = {
@@ -205,7 +209,7 @@ function PasswordGate({ onSuccess }: { onSuccess: () => void }) {
   const submit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
-      if (value === expected) {
+      if (passwordsMatch(value, expected)) {
         sessionStorage.setItem(SESSION_KEY, "1");
         setError(false);
         onSuccess();
