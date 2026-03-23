@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DiagnosticLoadingOverlay, runLoadingStages } from "./DiagnosticLoadingOverlay";
-import { generateShareToken, getReportShareBaseUrl } from "./lib/diagnosticShare";
+import { getReportShareBaseUrl } from "./lib/diagnosticShare";
 import { generateReportLink } from "@/utils/urls";
 
 /** Same-origin proxy on Vercel by default; override with VITE_DIAGNOSTIC_URL (full Edge Function URL). */
@@ -48,6 +48,8 @@ export interface DiagnosticResult {
         service_id: number;
         service_name?: string;
         reason?: string;
+        /** Tier-aligned summary from API (Edge / stored diagnostic) */
+        tier_summary?: string;
       }>;
   recommended_tier: string;
   prospect_summary: string;
@@ -89,7 +91,6 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
     setLoadingStage(0);
     setLoadingProgress(0);
     onError("");
-    const shareToken = generateShareToken();
 
     const apiPromise = fetch(getProspectDiagnosticUrl(), {
       method: "POST",
@@ -97,7 +98,6 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
       body: JSON.stringify({
         url: trimmedUrl,
         ...(email.trim() ? { email: email.trim() } : {}),
-        share_token: shareToken,
       }),
     }).then(async (res) => {
       const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -127,16 +127,17 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
       const shareUrlFromApi =
         typeof data.share_url === "string" && data.share_url.trim().length > 0 ? data.share_url.trim() : undefined;
       const prospectId = typeof data.prospect_id === "string" && data.prospect_id.trim() ? data.prospect_id.trim() : undefined;
+      const st = typeof data.share_token === "string" && data.share_token.length > 0 ? data.share_token : undefined;
       const builtLink = generateReportLink({
         siteBaseUrl: getReportShareBaseUrl(),
         prospectId,
-        shareToken: data.share_token ?? shareToken,
+        shareToken: st,
       });
       const fallbackShareUrl = shareUrlFromApi ?? (builtLink.trim() ? builtLink : undefined);
       onResult(
         {
           ...data,
-          share_token: data.share_token ?? shareToken,
+          share_token: st,
           share_url: fallbackShareUrl,
           prospect_id: prospectId,
         },

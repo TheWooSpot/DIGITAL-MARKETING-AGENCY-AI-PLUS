@@ -3,9 +3,9 @@ import type { DiagnosticResult } from "../DiagnosticForm";
 const PROSPECT_ROW_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/** Path segment is a Postgres uuid (layer5_prospects.id) — not the legacy short share_token. */
+/** True when the path segment looks like a UUID (used only with `?k=` legacy permanent links). */
 export function isProspectRowUuid(segment: string): boolean {
-  return PROSPECT_ROW_UUID_RE.test(segment.trim());
+  return PROSPECT_ROW_UUID_RE.test(segment);
 }
 
 function supabaseAnonConfig(): { base: string; key: string } | null {
@@ -34,8 +34,8 @@ export async function getProspectByPublicAccess(
   prospectId: string,
   accessKey: string
 ): Promise<Record<string, unknown> | null> {
-  const id = prospectId.trim();
-  const key = accessKey.trim();
+  const id = prospectId;
+  const key = accessKey;
   if (!id || !key || !isProspectRowUuid(id)) return null;
 
   const cfg = supabaseAnonConfig();
@@ -72,8 +72,8 @@ export async function getProspectByPublicAccess(
  * Uses RPC public.get_prospect_by_share_token (SECURITY DEFINER) — see supabase/migrations.
  */
 export async function getProspectByShareToken(pathToken: string): Promise<Record<string, unknown> | null> {
-  /** Raw token from the URL path — must equal DB `share_token` (trim whitespace only). */
-  const token = pathToken.trim();
+  /** Exact `:token` from the URL path — must equal DB `share_token` with no client-side decoding or trimming. */
+  const token = pathToken;
   if (!token) return null;
 
   const cfg = supabaseAnonConfig();

@@ -1,8 +1,6 @@
 /**
- * `:token` from `/report/:token` for legacy share links.
- * Must match `layer5_prospects.share_token` **exactly** as stored (trim only).
- * Do not URI-decode or base64-decode — tokens may look base64-like but are opaque strings;
- * decoding can change `%..` sequences or alter the value vs the database.
+ * @deprecated Prefer the raw `useParams().token` string for `/report/:token` (must match DB exactly).
+ * Kept for any legacy callers that only need whitespace trim.
  */
 export function normalizeReportPathToken(raw: string): string {
   return raw.trim();

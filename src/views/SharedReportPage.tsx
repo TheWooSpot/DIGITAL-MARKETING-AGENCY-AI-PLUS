@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { DiagnosticResults } from "@/anydoor/DiagnosticResults";
-import { normalizeReportPathToken } from "@/anydoor/lib/diagnosticShare";
 import {
   getProspectByPublicAccess,
   getProspectByShareToken,
@@ -12,15 +11,16 @@ import type { DiagnosticResult } from "@/anydoor/DiagnosticForm";
 
 /**
  * Public shared report:
- * - Permanent: `/report/{prospect_uuid}?k={report_access_key}` (RPC get_prospect_by_public_access)
- * - Legacy: `/report/{share_token}` (RPC get_prospect_by_share_token)
+ * - `/report/{share_token}` — `share_token` column matches the path segment exactly (e.g. raw UUID).
+ * - Legacy: `/report/{row_uuid}?k={report_access_key}` — RPC get_prospect_by_public_access.
  */
 export default function SharedReportPage() {
   const { token: tokenParam } = useParams<{ token: string }>();
+  /** Use React Router param as-is (no trim / decode — must match Supabase `share_token`). */
+  const routeToken = tokenParam ?? "";
   const [searchParams] = useSearchParams();
-  const normalizedToken = tokenParam ? normalizeReportPathToken(tokenParam) : "";
-  const accessKey = searchParams.get("k")?.trim() ?? "";
-  const incompletePermanentLink = Boolean(normalizedToken && isProspectRowUuid(normalizedToken) && !accessKey);
+  const accessKey = searchParams.get("k") ?? "";
+  const usePublicAccessRpc = Boolean(routeToken && accessKey && isProspectRowUuid(routeToken));
 
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [submittedUrl, setSubmittedUrl] = useState("");
@@ -28,16 +28,15 @@ export default function SharedReportPage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!normalizedToken || incompletePermanentLink) return;
+    if (!routeToken) return;
 
     setResult(null);
     setSubmittedUrl("");
     (async () => {
       setError(null);
-      const row =
-        isProspectRowUuid(normalizedToken) && accessKey
-          ? await getProspectByPublicAccess(normalizedToken, accessKey)
-          : await getProspectByShareToken(normalizedToken);
+      const row = usePublicAccessRpc
+        ? await getProspectByPublicAccess(routeToken, accessKey)
+        : await getProspectByShareToken(routeToken);
       if (cancelled) return;
       if (!row) {
         setError("Report not found or link expired.");
@@ -55,25 +54,12 @@ export default function SharedReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [normalizedToken, accessKey, incompletePermanentLink]);
+  }, [routeToken, accessKey, usePublicAccessRpc]);
 
-  if (!normalizedToken) {
+  if (!routeToken) {
     return (
       <div className="min-h-screen px-4 py-16 text-center" style={{ backgroundColor: "#07080d", color: "#e8eef5" }}>
         <p className="text-white/70">Invalid link.</p>
-        <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
-          Run a new diagnostic →
-        </Link>
-      </div>
-    );
-  }
-
-  if (incompletePermanentLink) {
-    return (
-      <div className="min-h-screen px-4 py-16 text-center" style={{ backgroundColor: "#07080d", color: "#e8eef5" }}>
-        <p className="text-white/70">
-          This report link is incomplete. Use the full link from your diagnostic (including the security key).
-        </p>
         <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
           Run a new diagnostic →
         </Link>
@@ -113,7 +99,7 @@ export default function SharedReportPage() {
         </Link>
       </div>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
-        <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={normalizedToken} />
+        <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={routeToken} />
       </main>
     </div>
   );

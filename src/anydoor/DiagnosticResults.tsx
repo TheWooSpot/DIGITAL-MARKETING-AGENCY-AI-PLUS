@@ -88,16 +88,21 @@ function rowFinding(
   };
 }
 
-function normalizeRecommended(result: DiagnosticResult): Array<{ service_id: number; service_name?: string; reason?: string }> {
+function normalizeRecommended(
+  result: DiagnosticResult
+): Array<{ service_id: number; service_name?: string; reason?: string; tier_summary?: string }> {
   const raw = result.recommended_services ?? [];
   return raw.slice(0, 6).map((item) => {
     if (typeof item === "number") {
       return { service_id: item, reason: "" };
     }
+    const ts =
+      typeof item.tier_summary === "string" && item.tier_summary.trim() ? item.tier_summary.trim() : undefined;
     return {
       service_id: item.service_id,
       service_name: item.service_name,
       reason: item.reason ?? "",
+      tier_summary: ts,
     };
   });
 }
@@ -212,6 +217,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
     const fromApi = result.share_url?.trim();
     if (fromApi) return fromApi;
     if (typeof shareToken === "string" && shareToken.length > 0) {
+      /** Path segment must match DB share_token exactly — no encode/decode round-trip. */
       return `${getReportShareBaseUrl().replace(/\/$/, "")}/report/${shareToken}`;
     }
     return "";
@@ -250,10 +256,11 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const impactForService = useCallback(
     (id: number, name: string, columnTier: PackageTierKey) => {
       const hit = recommendedNorm.find((r) => r.service_id === id);
+      if (hit?.tier_summary && (recTier == null || recTier === columnTier)) return hit.tier_summary;
       if (hit?.reason?.trim()) return hit.reason;
       return getServiceSummaryForTier(id, columnTier, business_name, industry);
     },
-    [recommendedNorm, business_name, industry]
+    [recommendedNorm, business_name, industry, recTier]
   );
 
   const visibleTiers = packagesExpanded ? PACKAGE_TIERS : PACKAGE_TIERS.slice(0, 3);
@@ -459,6 +466,37 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
           </button>
         </div>
       </ScrollSection>
+
+      {/* Recommended services — tier_summary from API */}
+      {recommendedNorm.length > 0 && (
+        <ScrollSection>
+          <h2
+            className="mb-4 font-mono text-[11px] uppercase tracking-[0.35em] text-[#c9973a]"
+            style={{ fontFamily: "'DM Mono', ui-monospace, monospace" }}
+          >
+            Recommended services
+          </h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {recommendedNorm.map((r) => (
+              <div
+                key={r.service_id}
+                className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 print:break-inside-avoid"
+              >
+                <p className="font-semibold text-white print:text-black">{r.service_name?.trim() || serviceName(r.service_id)}</p>
+                {r.tier_summary ? (
+                  <p className="mt-3 text-sm leading-relaxed text-white/70 print:text-gray-800">{r.tier_summary}</p>
+                ) : r.reason?.trim() ? (
+                  <p className="mt-3 text-sm leading-relaxed text-white/70 print:text-gray-800">{r.reason}</p>
+                ) : (
+                  <p className="mt-3 text-sm leading-relaxed text-white/50 print:text-gray-700">
+                    {getServiceSummaryForTier(r.service_id, recTier ?? "Essentials", business_name, industry)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </ScrollSection>
+      )}
 
       {/* SECTION 4 — Packages */}
       <ScrollSection id="section-packages" className="scroll-mt-28">

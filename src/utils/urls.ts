@@ -31,8 +31,8 @@ export function generateReportLink(input: ReportLinkInput): string {
     return `${base}/report/${encodeURIComponent(id)}?${q.toString()}`;
   }
 
-  const tok = input.shareToken?.trim();
-  if (tok) return `${base}/report/${encodeURIComponent(tok)}`;
+  const tok = input.shareToken;
+  if (tok != null && tok !== "") return `${base}/report/${tok}`;
 
   return "";
 }

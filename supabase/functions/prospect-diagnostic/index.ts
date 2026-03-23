@@ -4,7 +4,7 @@
  * Analyzes a business by URL (using Claude's knowledge), scores it, maps gaps
  * to Socialutely services, and writes the result to layer5_prospects.
  *
- * POST body: { "url": "businessdomain.com", "email": "optional@example.com", "share_token": "optional" }
+ * POST body: { "url": "businessdomain.com", "email": "optional@example.com" }
  * Env: ANTHROPIC_API_KEY, SUPABASE_URL (auto), SUPABASE_SERVICE_ROLE_KEY (auto)
  */
 
@@ -22,13 +22,18 @@ const ALLOWED_SERVICE_IDS = [
 
 const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 
+interface RecommendedServiceEntry {
+  service_id: number;
+  tier_summary: string;
+}
+
 interface DiagnosticResult {
   business_name: string;
   industry: string;
   estimated_size: string;
   scores: { visibility: number; engagement: number; conversion: number; overall: number };
   detected_gaps: Array<{ service_id: number; gap_description: string; priority: string }>;
-  recommended_services: number[];
+  recommended_services: RecommendedServiceEntry[];
   recommended_tier: string;
   prospect_summary: string;
   estimated_monthly_value: number;
@@ -53,11 +58,11 @@ Score the business on four dimensions from 0-100:
 Map detected gaps to Socialutely service IDs. Only use these IDs: ${ALLOWED_SERVICE_IDS.join(", ")}.
 Each gap: service_id (from list), gap_description (short), priority ("high" | "medium" | "low").
 
-Recommend exactly 5 service IDs from the allowed list that would help the most.
+Recommend exactly 5 entries from the allowed service IDs. For each, include a concise tier_summary (1-2 sentences) explaining why that service fits this business at the recommended tier.
 Recommend one tier: "Essentials" | "Momentum" | "Signature" | "Vanguard" | "Sovereign".
 
 Output valid JSON only, no markdown, with these exact keys:
-business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+"), scores (object with visibility, engagement, conversion, overall), detected_gaps (array of { service_id, gap_description, priority }), recommended_services (array of exactly 5 numbers from allowed IDs), recommended_tier, prospect_summary (2-4 sentences), estimated_monthly_value (number, USD).`;
+business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+"), scores (object with visibility, engagement, conversion, overall), detected_gaps (array of { service_id, gap_description, priority }), recommended_services (array of exactly 5 objects { service_id, tier_summary } using allowed IDs only), recommended_tier, prospect_summary (2-4 sentences), estimated_monthly_value (number, USD).`;
 
   const userMessage = `Analyze the business at this URL/domain and return the diagnostic JSON: ${url}`;
 
@@ -83,18 +88,34 @@ business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+")
 
   const data = (await res.json()) as { content: Array<{ type: string; text?: string }> };
   const text = data.content?.[0]?.text ?? "";
-  const parsed = JSON.parse(text) as DiagnosticResult;
+  const parsed = JSON.parse(text) as DiagnosticResult & {
+    recommended_services?: unknown;
+  };
 
-  // Validate recommended_services are from allowed list and exactly 5
-  const valid = (parsed.recommended_services ?? []).filter((id) =>
-    ALLOWED_SERVICE_IDS.includes(Number(id))
-  );
-  parsed.recommended_services = valid.slice(0, 5);
-  while (parsed.recommended_services.length < 5 && ALLOWED_SERVICE_IDS.length > 0) {
-    const next = ALLOWED_SERVICE_IDS.find((id) => !parsed.recommended_services.includes(id));
-    if (next != null) parsed.recommended_services.push(next);
-    else break;
+  const rawRecs = parsed.recommended_services ?? [];
+  const normalizedRecs: RecommendedServiceEntry[] = [];
+  const seen = new Set<number>();
+  for (const item of rawRecs) {
+    let sid: number;
+    let tier_summary = "";
+    if (typeof item === "number") {
+      sid = item;
+    } else if (item && typeof item === "object" && "service_id" in item) {
+      const o = item as { service_id?: number; tier_summary?: string };
+      sid = Number(o.service_id);
+      tier_summary = typeof o.tier_summary === "string" ? o.tier_summary.trim() : "";
+    } else continue;
+    if (!ALLOWED_SERVICE_IDS.includes(sid) || seen.has(sid)) continue;
+    seen.add(sid);
+    normalizedRecs.push({ service_id: sid, tier_summary });
   }
+  while (normalizedRecs.length < 5 && ALLOWED_SERVICE_IDS.length > 0) {
+    const next = ALLOWED_SERVICE_IDS.find((id) => !seen.has(id));
+    if (next == null) break;
+    seen.add(next);
+    normalizedRecs.push({ service_id: next, tier_summary: "" });
+  }
+  parsed.recommended_services = normalizedRecs.slice(0, 5);
 
   const tier = parsed.recommended_tier ?? "Essentials";
   if (!["Essentials", "Momentum", "Signature", "Vanguard", "Sovereign"].includes(tier)) {
@@ -104,14 +125,7 @@ business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+")
   return parsed;
 }
 
-/** Opaque capability key for permanent public links (stored on row; paired with row id in URL). */
-function randomReportAccessKey(): string {
-  const buf = new Uint8Array(24);
-  crypto.getRandomValues(buf);
-  return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/** Insert and return created row (needs `id` for /report/{id}?k=… links). */
+/** Insert and return created row. */
 async function insertProspect(
   row: Record<string, unknown>,
   supabaseUrl: string,
@@ -163,9 +177,9 @@ Deno.serve(async (req) => {
     if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL");
     if (!SERVICE_KEY) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
-    let body: { url?: string; email?: string; share_token?: string };
+    let body: { url?: string; email?: string };
     try {
-      body = (await req.json()) as { url?: string; email?: string; share_token?: string };
+      body = (await req.json()) as { url?: string; email?: string };
     } catch {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
@@ -174,13 +188,14 @@ Deno.serve(async (req) => {
     if (!url) return jsonResponse({ error: "Missing required field: url" }, 400);
 
     const email = typeof body.email === "string" ? body.email.trim() || null : null;
-    const shareTokenRaw = typeof body.share_token === "string" ? body.share_token.trim() : "";
-    const share_token = shareTokenRaw.length > 0 ? shareTokenRaw.slice(0, 64) : null;
 
     /** Public site origin for share links (set in Supabase secrets as DIAGNOSTIC_SHARE_BASE_URL if needed). */
     const shareBase = (
       Deno.env.get("DIAGNOSTIC_SHARE_BASE_URL") ?? "https://socialutely-any-door-engine.vercel.app"
     ).replace(/\/$/, "");
+
+    /** Server-issued raw UUID for share_token — public URL is /report/{share_token} with no encoding step on the client. */
+    const share_token = crypto.randomUUID();
 
     const result = await callAnthropic(url, ANTHROPIC_API_KEY);
     const scores = result.scores ?? {
@@ -190,13 +205,12 @@ Deno.serve(async (req) => {
       overall: 0,
     };
 
-    const report_access_key = randomReportAccessKey();
+    const share_url = `${shareBase}/report/${share_token}`;
 
     const prospectRow: Record<string, unknown> = {
       url,
       email,
-      report_access_key,
-      ...(share_token ? { share_token } : {}),
+      share_token,
       business_name: result.business_name ?? "Unknown",
       industry: result.industry ?? "Unknown",
       overall_score: scores.overall ?? 0,
@@ -211,29 +225,19 @@ Deno.serve(async (req) => {
       source: "prospect-diagnostic",
       raw_result: {
         ...(result as unknown as Record<string, unknown>),
-        ...(share_token ? { share_token } : {}),
+        share_token,
+        share_url,
       },
     };
 
     const inserted = await insertProspect(prospectRow, SUPABASE_URL, SERVICE_KEY);
     const prospectId = inserted?.id != null ? String(inserted.id) : null;
 
-    let share_url: string | undefined;
-    if (prospectId && report_access_key) {
-      const q = new URLSearchParams({ k: report_access_key });
-      share_url = `${shareBase}/report/${encodeURIComponent(prospectId)}?${q.toString()}`;
-    } else if (share_token) {
-      share_url = `${shareBase}/report/${encodeURIComponent(share_token)}`;
-    }
-
-    prospectRow.raw_result = {
-      ...(result as unknown as Record<string, unknown>),
-      ...(share_token ? { share_token } : {}),
-      ...(share_url ? { share_url } : {}),
-      ...(prospectId ? { prospect_id: prospectId } : {}),
-    };
-
     if (inserted && prospectId) {
+      const enrichedRaw = {
+        ...(prospectRow.raw_result as Record<string, unknown>),
+        prospect_id: prospectId,
+      };
       const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/layer5_prospects?id=eq.${encodeURIComponent(prospectId)}`, {
         method: "PATCH",
         headers: {
@@ -242,7 +246,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
           Prefer: "return=minimal",
         },
-        body: JSON.stringify({ raw_result: prospectRow.raw_result }),
+        body: JSON.stringify({ raw_result: enrichedRaw }),
       });
       if (!patchRes.ok) {
         console.warn("prospect-diagnostic: failed to patch raw_result", await patchRes.text());
@@ -261,9 +265,9 @@ Deno.serve(async (req) => {
       recommended_tier: result.recommended_tier,
       prospect_summary: result.prospect_summary,
       estimated_monthly_value: result.estimated_monthly_value,
-      ...(share_token ? { share_token } : {}),
+      share_token,
       ...(prospectId ? { prospect_id: prospectId } : {}),
-      ...(share_url ? { share_url } : {}),
+      share_url,
       _meta: { duration_ms: duration, saved_to: "layer5_prospects" },
     });
   } catch (err) {
