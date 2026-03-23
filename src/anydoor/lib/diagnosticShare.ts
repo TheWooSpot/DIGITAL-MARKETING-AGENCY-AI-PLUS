@@ -1,21 +1,11 @@
 /**
- * Normalize the `:token` path segment for `/report/:token`.
- * Tokens are plain alphanumeric (from generateShareToken / API), not base64 payloads.
- * Handles pasted URLs with ?query or #fragment and percent-encoding.
+ * `:token` from `/report/:token` for legacy share links.
+ * Must match `layer5_prospects.share_token` **exactly** as stored (trim only).
+ * Do not URI-decode or base64-decode — tokens may look base64-like but are opaque strings;
+ * decoding can change `%..` sequences or alter the value vs the database.
  */
 export function normalizeReportPathToken(raw: string): string {
-  let s = raw.trim();
-  if (!s) return "";
-  const noHash = s.split("#")[0] ?? s;
-  const noQuery = noHash.split("?")[0] ?? noHash;
-  s = noQuery.trim();
-  if (!s) return "";
-  try {
-    s = decodeURIComponent(s);
-  } catch {
-    /* keep s as-is if not valid URI encoding */
-  }
-  return s.trim();
+  return raw.trim();
 }
 
 /** URL-safe share token for layer5_prospects.share_token (client-generated). */

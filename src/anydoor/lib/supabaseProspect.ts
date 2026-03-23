@@ -1,5 +1,4 @@
 import type { DiagnosticResult } from "../DiagnosticForm";
-import { normalizeReportPathToken } from "./diagnosticShare";
 
 const PROSPECT_ROW_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -73,7 +72,8 @@ export async function getProspectByPublicAccess(
  * Uses RPC public.get_prospect_by_share_token (SECURITY DEFINER) — see supabase/migrations.
  */
 export async function getProspectByShareToken(pathToken: string): Promise<Record<string, unknown> | null> {
-  const token = normalizeReportPathToken(pathToken);
+  /** Raw token from the URL path — must equal DB `share_token` (trim whitespace only). */
+  const token = pathToken.trim();
   if (!token) return null;
 
   const cfg = supabaseAnonConfig();
