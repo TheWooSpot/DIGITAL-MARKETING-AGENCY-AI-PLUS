@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Vapi from '@vapi-ai/web';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
-
-const RECEPTION_ASSISTANT_ID = 'e48ee900-bfb0-4ee6-a645-e89a08233365'; // Evaluation Specialist (Jordan) — same Vapi assistant as AnyDoor Tap to Talk
+import { EVALUATION_SPECIALIST_ASSISTANT_ID } from '@/anydoor/useDiagnosticVapiCall';
 
 const WELCOME_GREETINGS = [
   "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
@@ -109,7 +108,7 @@ export function VapiVoiceChat({ publicKey, onClose }: VapiVoiceChatProps) {
     setError(null);
     setTranscript([]);
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
-    vapiRef.current?.start(RECEPTION_ASSISTANT_ID, { firstMessage: greeting });
+    vapiRef.current?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, { firstMessage: greeting });
   };
 
   const handleEnd = () => {
@@ -126,7 +125,7 @@ export function VapiVoiceChat({ publicKey, onClose }: VapiVoiceChatProps) {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <p className="text-sm text-muted-foreground">
-          Talk with our Reception assistant. Tap Start to begin your voice conversation.
+          Talk with our Evaluation Specialist (Jordan). Tap Start to begin your voice conversation.
         </p>
 
         {error && (
