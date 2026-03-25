@@ -4,6 +4,7 @@ import { PACKAGE_TIERS, type PackageTierKey, serviceName } from "./diagnosticCat
 import { getReportShareBaseUrl } from "./lib/diagnosticShare";
 import { getServiceSummaryForTier } from "@/lib/serviceTierSummaries";
 import { Download, Mic } from "lucide-react";
+import { ReportVapiTapToTalk } from "./ReportVapiTapToTalk";
 
 const GOLD = "#c9973a";
 
@@ -346,6 +347,10 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
                 </button>
               </div>
             )}
+
+            {typeof reportShareToken === "string" && reportShareToken.length > 0 ? (
+              <ReportVapiTapToTalk result={result} />
+            ) : null}
           </div>
 
           <div className="flex flex-col items-center gap-3 lg:items-end">
