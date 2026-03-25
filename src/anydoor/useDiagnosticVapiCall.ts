@@ -3,7 +3,10 @@ import Vapi from "@vapi-ai/web";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
 
-/** Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria. */
+/**
+ * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria.
+ * This is the **Vapi** assistant UUID for `@vapi-ai/web`. Jordan’s ElevenLabs **ConvAI agent** is `agent_1001kmgc4g9jey8se6e0f6tb00xy` — Vapi cannot use that string as `voice.voiceId`; in the ElevenLabs agent editor, copy the **Voice ID** (TTS id) and set it on this assistant in the Vapi dashboard (Voice → ElevenLabs → that id).
+ */
 export const EVALUATION_SPECIALIST_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
 
 export function buildAssistantVariableValues(result: DiagnosticResult) {

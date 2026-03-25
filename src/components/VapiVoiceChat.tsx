@@ -3,7 +3,7 @@ import Vapi from '@vapi-ai/web';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
 
-const RECEPTION_ASSISTANT_ID = '4fa66663-1e58-416f-a137-5b0547300e05'; // Reception - Socialutely (works reliably)
+const RECEPTION_ASSISTANT_ID = 'e48ee900-bfb0-4ee6-a645-e89a08233365'; // Evaluation Specialist (Jordan) — same Vapi assistant as AnyDoor Tap to Talk
 
 const WELCOME_GREETINGS = [
   "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
