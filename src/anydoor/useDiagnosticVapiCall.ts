@@ -3,7 +3,8 @@ import Vapi from "@vapi-ai/web";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
 
-export const RECEPTION_ASSISTANT_ID = "4fa66663-1e58-416f-a137-5b0547300e05";
+/** Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria. */
+export const EVALUATION_SPECIALIST_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
 
 export function buildAssistantVariableValues(result: DiagnosticResult) {
   const top_gaps =
@@ -76,7 +77,8 @@ export type DiagnosticVapiCall = {
 };
 
 /**
- * Single Vapi client for diagnostic / shared-report flows (Reception assistant + variableValues).
+ * Single Vapi client for diagnostic / shared-report flows (Evaluation Specialist + variableValues).
+ * Uses `import.meta.env.VITE_VAPI_PUBLIC_KEY` — must be your current **Vapi public** key (Dashboard → API Keys); same as Hero.
  */
 export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiCall {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
@@ -99,7 +101,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
 
     vapi.on("error", (e: unknown) => {
       const msg = toUserFriendlyMessage(extractErrorMessage(e));
-      console.error("[Vapi diagnostic]", e);
+      console.error("[Vapi diagnostic report / Evaluation Specialist]", e);
       setError(msg);
       setIsCallActive(false);
     });
@@ -110,7 +112,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
         typeof errObj?.error === "string"
           ? toUserFriendlyMessage(errObj.error)
           : toUserFriendlyMessage(extractErrorMessage(e));
-      console.error("[Vapi diagnostic] call-start-failed", e);
+      console.error("[Vapi diagnostic report / Evaluation Specialist] call-start-failed", e);
       setError(msg);
       setIsCallActive(false);
     });
@@ -128,7 +130,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
     }
     setError(null);
     const variableValues = buildAssistantVariableValues(result);
-    vapiRef.current?.start(RECEPTION_ASSISTANT_ID, {
+    vapiRef.current?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, {
       maxDurationSeconds: 420,
       variableValues,
     });

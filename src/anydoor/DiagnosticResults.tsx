@@ -582,7 +582,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
               diagnosticVapi.hasPublicKey
                 ? diagnosticVapi.isCallActive
                   ? "End voice call"
-                  : "Start voice call with Socialutely Reception"
+                  : "Start voice call with Socialutely Evaluation Specialist (Jordan)"
                 : "Configure VITE_VAPI_PUBLIC_KEY"
             }
             className={`no-print mx-auto mt-8 flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border-2 border-[#c9973a] bg-[#c9973a]/10 text-[#c9973a] transition enabled:cursor-pointer enabled:hover:bg-[#c9973a]/20 disabled:cursor-not-allowed disabled:opacity-40 ${diagnosticVapi.isCallActive ? "ring-2 ring-[#c9973a]/60" : ""} ${!diagnosticVapi.isCallActive && diagnosticVapi.hasPublicKey ? "anydoor-tap-pulse" : ""}`}
