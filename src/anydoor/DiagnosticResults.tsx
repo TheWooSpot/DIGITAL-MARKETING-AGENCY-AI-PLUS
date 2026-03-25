@@ -5,6 +5,7 @@ import { getReportShareBaseUrl } from "./lib/diagnosticShare";
 import { getServiceSummaryForTier } from "@/lib/serviceTierSummaries";
 import { Download, Mic } from "lucide-react";
 import { ReportVapiTapToTalk } from "./ReportVapiTapToTalk";
+import { useDiagnosticVapiCall } from "./useDiagnosticVapiCall";
 
 const GOLD = "#c9973a";
 
@@ -189,6 +190,7 @@ interface DiagnosticResultsProps {
 }
 
 export function DiagnosticResults({ result, submittedUrl, reportShareToken }: DiagnosticResultsProps) {
+  const diagnosticVapi = useDiagnosticVapiCall(result);
   const [tab, setTab] = useState<"summary" | "full">("summary");
   const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
   const [showFiveCta, setShowFiveCta] = useState(false);
@@ -349,7 +351,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
             )}
 
             {typeof reportShareToken === "string" && reportShareToken.length > 0 ? (
-              <ReportVapiTapToTalk result={result} />
+              <ReportVapiTapToTalk vapi={diagnosticVapi} />
             ) : null}
           </div>
 
@@ -567,25 +569,37 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/55">
             Discuss the services, understand the impact, and get answers to your specific questions — in a real conversation.
           </p>
+          {diagnosticVapi.error ? (
+            <p className="no-print mx-auto mt-4 max-w-md text-xs text-red-400" role="alert">
+              {diagnosticVapi.error}
+            </p>
+          ) : null}
           <button
             type="button"
-            onClick={() =>
-              console.log("TAP TO TALK initiated", {
-                business: result.business_name,
-                tier: result.recommended_tier,
-                score: result.scores.overall,
-              })
+            disabled={!diagnosticVapi.hasPublicKey}
+            onClick={() => (diagnosticVapi.isCallActive ? diagnosticVapi.end() : diagnosticVapi.start())}
+            title={
+              diagnosticVapi.hasPublicKey
+                ? diagnosticVapi.isCallActive
+                  ? "End voice call"
+                  : "Start voice call with Socialutely Reception"
+                : "Configure VITE_VAPI_PUBLIC_KEY"
             }
-            className="anydoor-tap-pulse no-print mx-auto mt-8 flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border-2 border-[#c9973a] bg-[#c9973a]/10 text-[#c9973a]"
+            className={`no-print mx-auto mt-8 flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border-2 border-[#c9973a] bg-[#c9973a]/10 text-[#c9973a] transition enabled:cursor-pointer enabled:hover:bg-[#c9973a]/20 disabled:cursor-not-allowed disabled:opacity-40 ${diagnosticVapi.isCallActive ? "ring-2 ring-[#c9973a]/60" : ""} ${!diagnosticVapi.isCallActive && diagnosticVapi.hasPublicKey ? "anydoor-tap-pulse" : ""}`}
           >
             <Mic className="h-7 w-7 shrink-0" aria-hidden />
             <span
               className="text-[8px] font-bold uppercase leading-tight tracking-widest"
               style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
             >
-              TAP TO TALK
+              {diagnosticVapi.isCallActive ? "END CALL" : "TAP TO TALK"}
             </span>
           </button>
+          {!diagnosticVapi.hasPublicKey ? (
+            <p className="no-print mx-auto mt-3 max-w-sm text-[11px] text-white/45">
+              Voice requires <span className="font-mono text-[#c9973a]/80">VITE_VAPI_PUBLIC_KEY</span> in env (rebuild after adding).
+            </p>
+          ) : null}
           <p
             className="mt-8 text-[10px] text-white/35"
             style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
