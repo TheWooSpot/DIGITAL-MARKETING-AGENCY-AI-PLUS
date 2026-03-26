@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { getEvaluationSpecialistAssistantId } from '@/anydoor/useDiagnosticVapiCall';
 import { vapi } from '@/lib/vapiClient';
+import { appendVapi403Hint, extractVapiErrorMessage } from '@/lib/vapiErrors';
 
 const WELCOME_GREETINGS = [
   "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
@@ -13,21 +14,7 @@ const WELCOME_GREETINGS = [
 ];
 
 function extractErrorMessage(e: unknown): string {
-  if (!e) return 'Something went wrong';
-  if (typeof e === 'string') return e;
-  if (e instanceof Error) return e.message;
-  const obj = e as Record<string, unknown>;
-  if (obj.error && typeof obj.error === 'object' && obj.error !== null) {
-    const err = obj.error as Record<string, unknown>;
-    if (typeof err.message === 'string') return err.message;
-  }
-  if (typeof obj.error === 'string') return obj.error;
-  if (typeof obj.message === 'string') return obj.message;
-  if (obj.metadata && typeof obj.metadata === 'object') {
-    const meta = obj.metadata as Record<string, unknown>;
-    if (typeof meta.error === 'string') return meta.error;
-  }
-  return 'Something went wrong. Check the browser console (F12) for details.';
+  return extractVapiErrorMessage(e);
 }
 
 function toUserFriendlyMessage(msg: unknown): string {
@@ -42,7 +29,7 @@ function toUserFriendlyMessage(msg: unknown): string {
   if (lower.includes('assistant') && (lower.includes('not found') || lower.includes('invalid'))) {
     return 'Assistant not found. The assistant may have been removed or the ID changed.';
   }
-  return str;
+  return appendVapi403Hint(str);
 }
 
 interface VapiVoiceChatProps {
@@ -88,10 +75,7 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
     };
 
     const onCallStartFailed = (e: unknown) => {
-      const errObj = e as { error?: unknown; stage?: string };
-      const msg = typeof errObj?.error === 'string'
-        ? toUserFriendlyMessage(errObj.error)
-        : toUserFriendlyMessage(extractErrorMessage(e));
+      const msg = toUserFriendlyMessage(extractErrorMessage(e));
       console.error('[Vapi] Call start failed:', e);
       setError(msg);
       setIsCallActive(false);

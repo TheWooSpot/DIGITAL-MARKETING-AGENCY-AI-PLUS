@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
 import { vapi } from "@/lib/vapiClient";
+import { appendVapi403Hint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 
 /**
  * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria.
@@ -47,17 +48,7 @@ export function buildAssistantVariableValues(result: DiagnosticResult) {
 }
 
 function extractErrorMessage(e: unknown): string {
-  if (!e) return "Something went wrong";
-  if (typeof e === "string") return e;
-  if (e instanceof Error) return e.message;
-  const obj = e as Record<string, unknown>;
-  if (obj.error && typeof obj.error === "object" && obj.error !== null) {
-    const err = obj.error as Record<string, unknown>;
-    if (typeof err.message === "string") return err.message;
-  }
-  if (typeof obj.error === "string") return obj.error;
-  if (typeof obj.message === "string") return obj.message;
-  return "Something went wrong. Check the browser console (F12) for details.";
+  return extractVapiErrorMessage(e);
 }
 
 function toUserFriendlyMessage(msg: unknown): string {
@@ -72,7 +63,7 @@ function toUserFriendlyMessage(msg: unknown): string {
   if (lower.includes("assistant") && (lower.includes("not found") || lower.includes("invalid"))) {
     return "Assistant not found. The assistant may have been removed or the ID changed.";
   }
-  return str;
+  return appendVapi403Hint(str);
 }
 
 export type DiagnosticVapiCall = {
@@ -112,11 +103,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
     };
 
     const onCallStartFailed = (e: unknown) => {
-      const errObj = e as { error?: unknown };
-      const msg =
-        typeof errObj?.error === "string"
-          ? toUserFriendlyMessage(errObj.error)
-          : toUserFriendlyMessage(extractErrorMessage(e));
+      const msg = toUserFriendlyMessage(extractErrorMessage(e));
       console.error("[Vapi diagnostic report / Evaluation Specialist] call-start-failed", e);
       setError(msg);
       setIsCallActive(false);
