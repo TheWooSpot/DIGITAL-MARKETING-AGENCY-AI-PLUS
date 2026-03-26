@@ -54,3 +54,15 @@ export function appendVapi403Hint(message: string): string {
   if (!lower.includes("403") && !lower.includes("forbidden")) return message;
   return `${message} — Check: (1) Vapi Dashboard → API Keys → copy the **Public** key into Vercel as VITE_VAPI_PUBLIC_KEY (not the private key). (2) The assistant ID belongs to the **same** Vapi org as that key. (3) If your org uses **allowed domains / origins** for web calls, add your production host (e.g. socialutely-any-door-engine.vercel.app). Rebuild after changing env vars.`;
 }
+
+/**
+ * Public key + assistant must belong to the same Vapi org; otherwise Vapi returns e.g.
+ * "Key doesn't allow assistantId '…'."
+ */
+export function appendVapiAssistantKeyHint(message: string): string {
+  const lower = message.toLowerCase();
+  if (!lower.includes("doesn't allow assistantid") && !lower.includes("key doesn't allow")) {
+    return appendVapi403Hint(message);
+  }
+  return `${message} — Fix: Your VITE_VAPI_PUBLIC_KEY and the assistant UUID must be from the **same Vapi organization**. Either copy the **Public** key from the org that owns this assistant into Vercel, or change VITE_VAPI_ASSISTANT_ID (and redeploy) to an assistant that exists under the org for your current key.`;
+}

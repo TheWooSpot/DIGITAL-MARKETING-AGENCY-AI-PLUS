@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
 import { vapi } from "@/lib/vapiClient";
-import { appendVapi403Hint, extractVapiErrorMessage } from "@/lib/vapiErrors";
+import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 
 /**
  * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria.
@@ -63,7 +63,7 @@ function toUserFriendlyMessage(msg: unknown): string {
   if (lower.includes("assistant") && (lower.includes("not found") || lower.includes("invalid"))) {
     return "Assistant not found. The assistant may have been removed or the ID changed.";
   }
-  return appendVapi403Hint(str);
+  return appendVapiAssistantKeyHint(str);
 }
 
 export type DiagnosticVapiCall = {

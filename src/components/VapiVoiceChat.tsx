@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { getEvaluationSpecialistAssistantId } from '@/anydoor/useDiagnosticVapiCall';
 import { vapi } from '@/lib/vapiClient';
-import { appendVapi403Hint, extractVapiErrorMessage } from '@/lib/vapiErrors';
+import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from '@/lib/vapiErrors';
 
 const WELCOME_GREETINGS = [
   "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
@@ -29,7 +29,7 @@ function toUserFriendlyMessage(msg: unknown): string {
   if (lower.includes('assistant') && (lower.includes('not found') || lower.includes('invalid'))) {
     return 'Assistant not found. The assistant may have been removed or the ID changed.';
   }
-  return appendVapi403Hint(str);
+  return appendVapiAssistantKeyHint(str);
 }
 
 interface VapiVoiceChatProps {
