@@ -87,11 +87,11 @@ export const PACKAGE_TIERS: PackageTierDef[] = [
   {
     key: "Sovereign",
     displayName: "Sovereign",
-    range: "$2,500 – $4,500/mo",
+    range: "$15,000+/mo",
     bg: "bg-[#1a2a2a]/90",
     border: "border-teal-500/25",
     pill: "bg-teal-500/20 text-teal-300 border border-teal-500/40",
-    serviceIds: [205, 501, 502, 801],
+    serviceIds: [601, 304, 801, 901, 701],
   },
 ];
 

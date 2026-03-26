@@ -22,7 +22,12 @@ export interface DiagnosticCategoryReport {
 export interface DiagnosticResult {
   business_name: string;
   industry: string;
+  /** 4–8 word market-position phrase from Edge diagnostic (replaces generic size labels). */
+  business_descriptor?: string;
+  /** Legacy headcount band from older diagnostics only. */
   estimated_size?: string;
+  /** One punchy sentence (under 15 words) on why recommended_tier fits this business. */
+  tier_statement?: string;
   business_address?: string;
   business_phone?: string;
   pages_checked?: number;

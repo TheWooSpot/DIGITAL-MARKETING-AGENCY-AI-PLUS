@@ -121,7 +121,9 @@ export function prospectRowToDiagnosticResult(row: Record<string, unknown>): Dia
       return {
         business_name: r.business_name,
         industry: r.industry ?? "Unknown",
+        business_descriptor: r.business_descriptor,
         estimated_size: r.estimated_size,
+        tier_statement: r.tier_statement,
         business_address: r.business_address,
         business_phone: r.business_phone,
         pages_checked: r.pages_checked,

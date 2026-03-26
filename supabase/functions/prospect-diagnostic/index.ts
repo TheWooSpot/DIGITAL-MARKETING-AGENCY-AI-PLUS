@@ -8,9 +8,9 @@
  * Env: ANTHROPIC_API_KEY, SUPABASE_URL (auto), SUPABASE_SERVICE_ROLE_KEY (auto)
  *
  * Deploy version: confirm in Supabase Dashboard → Edge Functions → prospect-diagnostic
- * matches the project expectation (Phase 2 target: **v16**). Bump dashboard label on each deploy.
+ * matches the project expectation (Phase 2 target: **v17**). Bump dashboard label on each deploy.
  */
-export const PROSPECT_DIAGNOSTIC_DEPLOY_VERSION = 16;
+export const PROSPECT_DIAGNOSTIC_DEPLOY_VERSION = 17;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -39,13 +39,16 @@ interface RecommendedServiceEntry {
 interface DiagnosticResult {
   business_name: string;
   industry: string;
-  estimated_size: string;
+  /** 4–8 words; market position — never Small/Medium/Large/Enterprise/Franchise as generic size labels. */
+  business_descriptor: string;
   scores: { visibility: number; engagement: number; conversion: number; overall: number };
   detected_gaps: Array<{ service_id: number; gap_description: string; priority: string }>;
   recommended_services: RecommendedServiceEntry[];
   recommended_tier: string;
   prospect_summary: string;
   estimated_monthly_value: number;
+  /** Under 15 words; why recommended_tier fits; reference industry or a gap. */
+  tier_statement: string;
 }
 
 function jsonResponse(data: object, status = 200) {
@@ -70,8 +73,12 @@ Each gap: service_id (from list), gap_description (short), priority ("high" | "m
 Recommend exactly 5 entries from the allowed service IDs. For each, include a concise tier_summary (1-2 sentences) explaining why that service fits this business at the recommended tier.
 Recommend one tier: "Essentials" | "Momentum" | "Signature" | "Vanguard" | "Sovereign".
 
+business_descriptor: A 4-8 word phrase describing the business's market position. Examples: "Regional multi-location retail brand", "Early-stage e-commerce startup", "Established local service provider", "High-growth B2B software company". NEVER use the words: Small, Medium, Large, Enterprise, Franchise, or any generic size label.
+
+tier_statement: A single punchy sentence under 15 words written specifically for this business explaining why the recommended_tier fits. Must reference their industry or a specific detected gap. Examples: "Built for retail brands ready to turn foot traffic into loyal digital customers." / "For professional services firms where reputation is the only currency that matters."
+
 Output valid JSON only, no markdown, with these exact keys:
-business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+"), scores (object with visibility, engagement, conversion, overall), detected_gaps (array of { service_id, gap_description, priority }), recommended_services (array of exactly 5 objects { service_id, tier_summary } using allowed IDs only), recommended_tier, prospect_summary (2-4 sentences), estimated_monthly_value (number, USD).`;
+business_name, industry, business_descriptor, scores (object with visibility, engagement, conversion, overall), detected_gaps (array of { service_id, gap_description, priority }), recommended_services (array of exactly 5 objects { service_id, tier_summary } using allowed IDs only), recommended_tier, prospect_summary (2-4 sentences), estimated_monthly_value (number, USD), tier_statement.`;
 
   const userMessage = `Analyze the business at this URL/domain and return the diagnostic JSON: ${url}`;
 
@@ -84,7 +91,7 @@ business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+")
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 1024,
+      max_tokens: 1536,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     }),
@@ -130,6 +137,10 @@ business_name, industry, estimated_size (e.g. "1-10", "11-50", "51-200", "201+")
   if (!["Essentials", "Momentum", "Signature", "Vanguard", "Sovereign"].includes(tier)) {
     parsed.recommended_tier = "Essentials";
   }
+
+  parsed.business_descriptor =
+    typeof parsed.business_descriptor === "string" ? parsed.business_descriptor.trim() : "";
+  parsed.tier_statement = typeof parsed.tier_statement === "string" ? parsed.tier_statement.trim() : "";
 
   return parsed;
 }
@@ -267,13 +278,14 @@ Deno.serve(async (req) => {
     return jsonResponse({
       business_name: result.business_name,
       industry: result.industry,
-      estimated_size: result.estimated_size,
+      business_descriptor: result.business_descriptor,
       scores: result.scores,
       detected_gaps: result.detected_gaps,
       recommended_services: result.recommended_services,
       recommended_tier: result.recommended_tier,
       prospect_summary: result.prospect_summary,
       estimated_monthly_value: result.estimated_monthly_value,
+      tier_statement: result.tier_statement,
       share_token,
       ...(prospectId ? { prospect_id: prospectId } : {}),
       share_url,

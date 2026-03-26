@@ -101,17 +101,19 @@ const TIERS: TierDef[] = [
     id: "sovereign",
     badge: "S+",
     name: "Sovereign",
-    retainerRange: "$22k+ / mo",
-    scoreThreshold: "Overall score 85 – 100 · category leadership & AI-ready ops",
+    retainerRange: "$15,000+ / month",
+    scoreThreshold: "85+ or exceptional organizational complexity",
     clientProfile:
-      "Market leaders or aggressive challengers treating marketing as a product: AI workflows, proprietary data, and executive visibility. Expect bespoke pods and executive comms.",
+      "Dominant market players, national and global brands, and organizations with a mandate not just to compete but to own their category. These are businesses with 500+ employees, dedicated marketing departments, CMOs, and board-level accountability for brand equity and market share. They operate across multiple geographies, product lines, or audience segments simultaneously. Sovereign is not defined by score alone — it is defined by mandate: category ownership, not competitive advantage.",
     sampleServices: [
-      "Custom intelligence layer (monitoring, alerts, briefings)",
-      "AI-assisted content & conversation design with guardrails",
-      "Executive narrative + board-ready reporting cadence",
+      "Voice & Vibe™ Production Engine",
+      "PayPortal™ Dynamic Checkout",
+      "TrustGuard™ Governance Layer",
+      "AllianceOS™ Growth Partnerships Engine",
+      "InsightLoop™ Analytics Dashboard",
     ],
     characterSummary:
-      "Command-level partnership. We co-own narrative, risk, and innovation—embedding systems that outlast any single campaign.",
+      "Full-scale deployment. National or global reach. Enterprise investment. Complete stack ownership. Every service feeds every other. The intelligence layer informs governance. Commerce infrastructure feeds analytics. Partnership network amplifies the content engine. This is not a vendor relationship — it is structural infrastructure that sustains market leadership across leadership changes, economic cycles, and competitive disruptions.",
     intensity: 5,
   },
 ];
@@ -134,7 +136,7 @@ const SERVICE_CROSS_REF: ServiceCrossRef[] = [
       vanguard:
         "Portfolio-level SEO governance: templates, rollouts, and experiment logs across regions or product lines.",
       sovereign:
-        "Predictive search intelligence, executive search briefings, and AI-assisted research loops tied to revenue models.",
+        "National-scale search and narrative command: executive briefings, portfolio governance, and category-defending SERP assets tied to revenue models.",
     },
   },
   {
@@ -149,7 +151,7 @@ const SERVICE_CROSS_REF: ServiceCrossRef[] = [
       vanguard:
         "Multi-team voice ops: QA scoring, training loops, and CRM-logged conversation insights.",
       sovereign:
-        "AI voice & chat orchestration with policy layers, human escalation, and board-level CX narrative.",
+        "Enterprise voice and conversation orchestration with policy layers, human escalation, and board-level customer experience narrative.",
     },
   },
   {
@@ -164,7 +166,7 @@ const SERVICE_CROSS_REF: ServiceCrossRef[] = [
       vanguard:
         "Franchise / multi-stakeholder reputation governance with dashboards and legal-ready response trees.",
       sovereign:
-        "Enterprise risk posture: monitoring, simulations, and exec comms integrated with brand strategy.",
+        "Enterprise risk posture: monitoring, simulations, and executive communications integrated with brand strategy.",
     },
   },
   {
@@ -179,7 +181,7 @@ const SERVICE_CROSS_REF: ServiceCrossRef[] = [
       vanguard:
         "Unified data model recommendations, warehouse-light views, and stakeholder-specific views.",
       sovereign:
-        "Custom intelligence products: alerts, scenario modeling, and AI summarization for leadership.",
+        "Custom intelligence products: alerts, scenario modeling, and leadership-ready narrative reporting.",
     },
   },
 ];

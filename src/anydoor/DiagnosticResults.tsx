@@ -199,7 +199,8 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const [footerEmail, setFooterEmail] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
 
-  const { scores, business_name, industry, estimated_size } = result;
+  const { scores, business_name, industry, estimated_size, business_descriptor, tier_statement } = result;
+  const marketDescriptor = business_descriptor?.trim() ?? "";
   const v = scores?.visibility ?? 0;
   const e = scores?.engagement ?? 0;
   const c = scores?.conversion ?? 0;
@@ -307,9 +308,9 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
               <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs text-white/80 print:border-gray-300 print:text-black">
                 {industry}
               </span>
-              {estimated_size && (
+              {(marketDescriptor || estimated_size) && (
                 <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs text-white/80 print:border-gray-300 print:text-black">
-                  {estimated_size}
+                  {marketDescriptor || estimated_size}
                 </span>
               )}
             </div>
@@ -534,7 +535,13 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
             className={`hidden lg:grid lg:items-stretch lg:gap-4 ${packagesExpanded ? "lg:grid-cols-5" : "lg:grid-cols-3"}`}
           >
             {visibleTiers.map((tier) => (
-              <PackageColumn key={tier.key} tier={tier} recTier={recTier} impactForService={impactForService} />
+              <PackageColumn
+                key={tier.key}
+                tier={tier}
+                recTier={recTier}
+                impactForService={impactForService}
+                tierStatement={recTier === tier.key ? tier_statement?.trim() : undefined}
+              />
             ))}
           </div>
 
@@ -542,7 +549,12 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
           <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory lg:hidden scrollbar-thin">
             {visibleTiers.map((tier) => (
               <div key={tier.key} className="min-w-[min(100%,320px)] shrink-0 snap-center">
-                <PackageColumn tier={tier} recTier={recTier} impactForService={impactForService} />
+                <PackageColumn
+                  tier={tier}
+                  recTier={recTier}
+                  impactForService={impactForService}
+                  tierStatement={recTier === tier.key ? tier_statement?.trim() : undefined}
+                />
               </div>
             ))}
           </div>
@@ -646,10 +658,13 @@ function PackageColumn({
   tier,
   recTier,
   impactForService,
+  tierStatement,
 }: {
   tier: (typeof PACKAGE_TIERS)[number];
   recTier: PackageTierKey | null;
   impactForService: (id: number, name: string, columnTier: PackageTierKey) => string;
+  /** Shown under recommended tier name instead of price range when present. */
+  tierStatement?: string;
 }) {
   const isRec = recTier === tier.key;
   return (
@@ -665,7 +680,11 @@ function PackageColumn({
       >
         {tier.displayName}
       </h4>
-      <p className="mt-1 font-mono text-xs text-white/50">{tier.range}</p>
+      {isRec && tierStatement ? (
+        <p className="mt-1 text-sm italic leading-snug text-[#c9973a]/80 print:text-amber-900">{tierStatement}</p>
+      ) : (
+        <p className="mt-1 font-mono text-xs text-white/50">{tier.range}</p>
+      )}
       {isRec && (
         <span className="mt-3 inline-flex w-fit rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#c9973a]">
           ★ Recommended
