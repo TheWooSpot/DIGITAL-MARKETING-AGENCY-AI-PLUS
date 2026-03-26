@@ -212,7 +212,7 @@ const Hero = () => {
         </motion.div>
       </div>
 
-      {/* Voice Chat Sheet — Evaluation Specialist (Jordan); VapiVoiceChat uses EVALUATION_SPECIALIST_ASSISTANT_ID */}
+      {/* Voice Chat Sheet — Evaluation Specialist (Jordan); assistant from VITE_VAPI_ASSISTANT_ID or default */}
       <Sheet open={voiceChatOpen} onOpenChange={setVoiceChatOpen}>
         <SheetContent side="bottom" className="h-[70vh] sm:max-w-lg sm:mx-auto sm:rounded-t-2xl">
           <SheetHeader>

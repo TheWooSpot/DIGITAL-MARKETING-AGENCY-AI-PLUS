@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
-import { EVALUATION_SPECIALIST_ASSISTANT_ID } from '@/anydoor/useDiagnosticVapiCall';
+import { getEvaluationSpecialistAssistantId } from '@/anydoor/useDiagnosticVapiCall';
 import { vapi } from '@/lib/vapiClient';
 
 const WELCOME_GREETINGS = [
@@ -118,7 +118,7 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
     setError(null);
     setTranscript([]);
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
-    vapi?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, { firstMessage: greeting });
+    vapi?.start(getEvaluationSpecialistAssistantId(), { firstMessage: greeting });
   };
 
   const handleEnd = () => {

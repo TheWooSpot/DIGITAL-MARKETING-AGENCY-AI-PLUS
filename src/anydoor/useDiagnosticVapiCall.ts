@@ -5,9 +5,15 @@ import { vapi } from "@/lib/vapiClient";
 
 /**
  * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria.
- * This is the **Vapi** assistant UUID for `@vapi-ai/web`. Jordan’s ElevenLabs **ConvAI agent** is `agent_1001kmgc4g9jey8se6e0f6tb00xy` — Vapi cannot use that string as `voice.voiceId`; in the ElevenLabs agent editor, copy the **Voice ID** (TTS id) and set it on this assistant in the Vapi dashboard (Voice → ElevenLabs → that id).
+ * Override with `VITE_VAPI_ASSISTANT_ID` on Vercel. Jordan’s ElevenLabs **ConvAI agent** is `agent_1001kmgc4g9jey8se6e0f6tb00xy` — Vapi cannot use that string as `voice.voiceId`; in the ElevenLabs agent editor, copy the **Voice ID** (TTS id) and set it on this assistant in the Vapi dashboard (Voice → ElevenLabs → that id).
  */
-export const EVALUATION_SPECIALIST_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
+export const EVALUATION_SPECIALIST_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08230a99";
+
+/** Assistant UUID for `vapi.start()` — env wins so production can swap without a code change. */
+export function getEvaluationSpecialistAssistantId(): string {
+  const fromEnv = (import.meta.env.VITE_VAPI_ASSISTANT_ID as string | undefined)?.trim();
+  return fromEnv || EVALUATION_SPECIALIST_ASSISTANT_ID;
+}
 
 export function buildAssistantVariableValues(result: DiagnosticResult) {
   const top_gaps =
@@ -138,7 +144,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
     }
     setError(null);
     const variableValues = buildAssistantVariableValues(result);
-    vapi?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, {
+    vapi?.start(getEvaluationSpecialistAssistantId(), {
       maxDurationSeconds: 420,
       variableValues,
     });
