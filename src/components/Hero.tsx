@@ -14,7 +14,6 @@ import { Sparkles, Zap, Target, BarChart3 } from 'lucide-react';
 
 const Hero = () => {
   const [voiceChatOpen, setVoiceChatOpen] = useState(false);
-  const vapiKey = import.meta.env.VITE_VAPI_PUBLIC_KEY ?? '';
   const floatingWords = [
     { text: 'STRATEGY', x: '10%', y: '20%', delay: 0 },
     { text: 'GROWTH', x: '85%', y: '15%', delay: 0.2 },
@@ -223,10 +222,7 @@ const Hero = () => {
             </SheetDescription>
           </SheetHeader>
           <div className="mt-6 h-[calc(100%-4rem)]">
-            <VapiVoiceChat
-              publicKey={vapiKey}
-              onClose={() => setVoiceChatOpen(false)}
-            />
+            <VapiVoiceChat onClose={() => setVoiceChatOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

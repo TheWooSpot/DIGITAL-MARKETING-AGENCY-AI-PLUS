@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import Vapi from '@vapi-ai/web';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { EVALUATION_SPECIALIST_ASSISTANT_ID } from '@/anydoor/useDiagnosticVapiCall';
+import { vapi } from '@/lib/vapiClient';
 
 const WELCOME_GREETINGS = [
   "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
@@ -46,49 +46,48 @@ function toUserFriendlyMessage(msg: unknown): string {
 }
 
 interface VapiVoiceChatProps {
-  publicKey: string;
   onClose?: () => void;
 }
 
-export function VapiVoiceChat({ publicKey, onClose }: VapiVoiceChatProps) {
+export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcript, setTranscript] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const vapiRef = useRef<Vapi | null>(null);
 
   useEffect(() => {
-    if (!publicKey) {
+    const client = vapi;
+    if (!client) {
       setError('Vapi API key is missing. Add VITE_VAPI_PUBLIC_KEY to your .env file.');
       return;
     }
 
-    const vapi = new Vapi(publicKey);
-    vapiRef.current = vapi;
-
-    vapi.on('call-start', () => setIsCallActive(true));
-    vapi.on('call-end', () => {
+    const onCallStart = () => setIsCallActive(true);
+    const onCallEnd = () => {
       setIsCallActive(false);
       setTranscript((prev) => [...prev, '--- Call ended ---']);
-    });
+    };
 
-    vapi.on('message', (message: { type?: string; transcript?: string; transcriptType?: string; role?: string; message?: { content?: string } }) => {
-      // Only add final transcripts to avoid duplicates. Vapi sends incremental "partial" updates
-      // as the AI speaks; each partial gets appended, causing repeated/incremental lines.
-      // Skip partial - they're intermediate updates superseded by final.
+    const onMessage = (message: {
+      type?: string;
+      transcript?: string;
+      transcriptType?: string;
+      role?: string;
+      message?: { content?: string };
+    }) => {
       if (message.type === 'transcript' && message.transcript && message.transcriptType !== 'partial') {
         setTranscript((prev) => [...prev, message.transcript!]);
       }
-    });
+    };
 
-    vapi.on('error', (e: unknown) => {
+    const onError = (e: unknown) => {
       const msg = toUserFriendlyMessage(extractErrorMessage(e));
       console.error('[Vapi] Error:', e);
       setError(msg);
       setIsCallActive(false);
-    });
+    };
 
-    vapi.on('call-start-failed', (e: unknown) => {
+    const onCallStartFailed = (e: unknown) => {
       const errObj = e as { error?: unknown; stage?: string };
       const msg = typeof errObj?.error === 'string'
         ? toUserFriendlyMessage(errObj.error)
@@ -96,28 +95,39 @@ export function VapiVoiceChat({ publicKey, onClose }: VapiVoiceChatProps) {
       console.error('[Vapi] Call start failed:', e);
       setError(msg);
       setIsCallActive(false);
-    });
+    };
+
+    client.on('call-start', onCallStart);
+    client.on('call-end', onCallEnd);
+    client.on('message', onMessage);
+    client.on('error', onError);
+    client.on('call-start-failed', onCallStartFailed);
 
     return () => {
-      vapi.stop();
-      vapiRef.current = null;
+      if (!client) return;
+      client.removeListener('call-start', onCallStart);
+      client.removeListener('call-end', onCallEnd);
+      client.removeListener('message', onMessage);
+      client.removeListener('error', onError);
+      client.removeListener('call-start-failed', onCallStartFailed);
+      client.stop();
     };
-  }, [publicKey]);
+  }, []);
 
   const handleStart = () => {
     setError(null);
     setTranscript([]);
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
-    vapiRef.current?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, { firstMessage: greeting });
+    vapi?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, { firstMessage: greeting });
   };
 
   const handleEnd = () => {
-    vapiRef.current?.stop();
+    vapi?.stop();
   };
 
   const handleToggleMute = () => {
     const newMuted = !isMuted;
-    vapiRef.current?.setMuted(newMuted);
+    vapi?.setMuted(newMuted);
     setIsMuted(newMuted);
   };
 

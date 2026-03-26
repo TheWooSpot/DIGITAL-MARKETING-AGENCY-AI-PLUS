@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import Vapi from "@vapi-ai/web";
+import { useCallback, useEffect, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
+import { vapi } from "@/lib/vapiClient";
 
 /**
  * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria.
@@ -80,36 +80,32 @@ export type DiagnosticVapiCall = {
 };
 
 /**
- * Single Vapi client for diagnostic / shared-report flows (Evaluation Specialist + variableValues).
- * Uses `import.meta.env.VITE_VAPI_PUBLIC_KEY` — must be your current **Vapi public** key (Dashboard → API Keys); same as Hero.
+ * Shared `vapi` from `@/lib/vapiClient` — listener registration only; no second `new Vapi()`.
  */
 export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiCall {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const vapiRef = useRef<Vapi | null>(null);
 
   useEffect(() => {
-    if (!hasPublicKey) return;
+    const client = vapi;
+    if (!hasPublicKey || !client) return;
 
-    const vapi = new Vapi(publicKey);
-    vapiRef.current = vapi;
-
-    vapi.on("call-start", () => {
+    const onCallStart = () => {
       setIsCallActive(true);
       setError(null);
-    });
-    vapi.on("call-end", () => setIsCallActive(false));
+    };
+    const onCallEnd = () => setIsCallActive(false);
 
-    vapi.on("error", (e: unknown) => {
+    const onError = (e: unknown) => {
       const msg = toUserFriendlyMessage(extractErrorMessage(e));
       console.error("[Vapi diagnostic report / Evaluation Specialist]", e);
       setError(msg);
       setIsCallActive(false);
-    });
+    };
 
-    vapi.on("call-start-failed", (e: unknown) => {
+    const onCallStartFailed = (e: unknown) => {
       const errObj = e as { error?: unknown };
       const msg =
         typeof errObj?.error === "string"
@@ -118,13 +114,22 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       console.error("[Vapi diagnostic report / Evaluation Specialist] call-start-failed", e);
       setError(msg);
       setIsCallActive(false);
-    });
+    };
+
+    client.on("call-start", onCallStart);
+    client.on("call-end", onCallEnd);
+    client.on("error", onError);
+    client.on("call-start-failed", onCallStartFailed);
 
     return () => {
-      vapi.stop();
-      vapiRef.current = null;
+      if (!client) return;
+      client.removeListener("call-start", onCallStart);
+      client.removeListener("call-end", onCallEnd);
+      client.removeListener("error", onError);
+      client.removeListener("call-start-failed", onCallStartFailed);
+      client.stop();
     };
-  }, [hasPublicKey, publicKey]);
+  }, [hasPublicKey]);
 
   const start = useCallback(() => {
     if (!hasPublicKey) {
@@ -133,14 +138,14 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
     }
     setError(null);
     const variableValues = buildAssistantVariableValues(result);
-    vapiRef.current?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, {
+    vapi?.start(EVALUATION_SPECIALIST_ASSISTANT_ID, {
       maxDurationSeconds: 420,
       variableValues,
     });
   }, [hasPublicKey, result]);
 
   const end = useCallback(() => {
-    vapiRef.current?.stop();
+    vapi?.stop();
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
