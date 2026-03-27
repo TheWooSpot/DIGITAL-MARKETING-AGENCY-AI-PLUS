@@ -49,13 +49,13 @@ const SERVICE_RULES: Array<{
       { id: '402', name: 'FlowForge™ Automation Lab', priority: 'high', rationale: 'Connect tools; reduce manual work' },
       { id: '501', name: 'SkillSprint™ Academy', priority: 'high', rationale: 'Train team on AI workflows' },
       { id: '701', name: 'InsightLoop™ Analytics Dashboard', priority: 'medium', rationale: 'Measure what\'s working; iterate' },
-      { id: '205', name: 'AI Adaptation™', priority: 'high', rationale: 'Unblock scaling with tailored AI adaptation guidance' },
+      { id: '503', name: 'Adaptation™ AI Readiness Rung 2', priority: 'high', rationale: 'Advance AI readiness with structured adaptation for Rung 2 operators' },
     ],
   },
   {
     condition: (s) => s >= 65,
     services: [
-      { id: '205', name: 'AI Adaptation™', priority: 'high', rationale: 'Strategic guidance on advanced AI adaptation' },
+      { id: '503', name: 'Adaptation™ AI Readiness Rung 2', priority: 'high', rationale: 'Strategic activation for advanced AI readiness and scaling' },
       { id: '801', name: 'TrustGuard™ Governance Layer', priority: 'high', rationale: 'Critical when AI is customer-facing' },
       { id: '901', name: 'AllianceOS™ Growth Partnerships Engine', priority: 'medium', rationale: 'High capability; leverage partnerships' },
     ],

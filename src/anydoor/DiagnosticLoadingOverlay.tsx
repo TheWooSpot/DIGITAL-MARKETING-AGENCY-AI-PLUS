@@ -11,7 +11,7 @@ const STAGES = [
   { label: "Preparing your report...", key: "s5" as const },
 ];
 
-const FLASH_IDS = [101, 105, 201, 202, 203, 301, 302, 401, 701, 802, 104, 205];
+const FLASH_IDS = [101, 105, 201, 202, 203, 301, 302, 401, 701, 802, 104, 503];
 
 type Settled = { ok: boolean; data: unknown };
 

@@ -1,4 +1,4 @@
-/** Service catalog for Socialutely platform home (Vite). Matches v12 IDs + 10 categories. */
+/** Service catalog for Socialutely platform home (Vite). 29 services · 10 canonical categories. */
 
 export interface PlatformService {
   id: number;
@@ -34,7 +34,6 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
       { id: 201, name: "VoiceBridge™ AI ChatLabs" },
       { id: 202, name: "InboxIgnite™ Smart Email Engine" },
       { id: 203, name: "TextPulse™ SMS Automation" },
-      { id: 205, name: "AI Adaptation™" },
     ],
   },
   {
@@ -65,7 +64,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
     services: [
       { id: 501, name: "SkillSprint™ Academy" },
       { id: 502, name: "Onboardly™ Client Activation System" },
-      { id: 205, name: "AI Adaptation™" },
+      { id: 503, name: "Adaptation™ AI Readiness Rung 2" },
     ],
   },
   {
@@ -106,6 +105,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
       { id: 1001, name: "Socialutely Circle™" },
       { id: 1002, name: "Momentum Vault™" },
       { id: 1003, name: "Concierge Access™" },
+      { id: 1004, name: "AI Maturity Diagnostic & Blueprint™" },
     ],
   },
 ];

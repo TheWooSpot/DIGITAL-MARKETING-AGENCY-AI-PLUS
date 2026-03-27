@@ -1,4 +1,4 @@
-/** v12 service names + tier package definitions for AnyDoor diagnostic results */
+/** Canonical service names + tier package definitions for AnyDoor diagnostic results (29 services). */
 
 export const SERVICE_MAP: Record<number, string> = {
   101: "SearchLift™ SBO Engine",
@@ -10,7 +10,7 @@ export const SERVICE_MAP: Record<number, string> = {
   201: "VoiceBridge™ AI ChatLabs",
   202: "InboxIgnite™ Smart Email Engine",
   203: "TextPulse™ SMS Automation",
-  205: "AI Adaptation™",
+  503: "Adaptation™ AI Readiness Rung 2",
   301: "BookStream™ Smart Scheduling Hub",
   302: "CloseCraft™ Funnel Builder",
   303: "DealDrive™ Proposal Automation",

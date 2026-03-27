@@ -129,32 +129,59 @@ const growthServices: ServiceDetail[] = [
     tier: 1,
     cta: 'Dominate Local Search →',
   },
+  {
+    id: 'autorerank',
+    name: 'AutoRank™ Search Box Optimizer',
+    tagline: 'Win the moment buyers type your category into search boxes and AI surfaces.',
+    description:
+      'AutoRank™ strengthens how your brand surfaces in search box suggestions, autocomplete, and adjacent discovery — alongside SBO and local engines.',
+    howItWorks: [
+      'Search box and suggestion surface optimization',
+      'Entity and schema reinforcement for AI retrieval',
+      'Category and head-term visibility analysis',
+      'Signal alignment for suggestion ranking',
+      'Measurement integrated with broader search programs',
+    ],
+    businessImpact: [
+      'Stronger first-touch discovery before the click',
+      'Better alignment with AI-driven search experiences',
+      'Compounding value with SearchLift™ and NearRank™',
+      'Clearer ownership of category-intent moments',
+    ],
+    infrastructure:
+      'Powered by uSBO-aligned architecture and Custom Socialutely.',
+    tier: 2,
+    cta: 'Optimize Search Boxes →',
+  },
 ];
 
 const engagementServices: ServiceDetail[] = [
   {
-    id: 'convoflow',
-    name: 'ConvoFlow™ AI Chat Suite',
-    tagline: 'Intelligent conversational automation across web, SMS, and social.',
+    id: 'voicebridge-ai-chatlabs',
+    name: 'VoiceBridge™ AI ChatLabs',
+    tagline: 'Voice reception + chat + SMS — one lab for every conversation.',
     description:
-      'ConvoFlow™ qualifies leads, answers questions, and routes opportunities across web, SMS, and social messaging channels — without human bottlenecks.',
+      'AI voice agents handle inbound calls 24/7 — intent detection, routing, appointment booking, lead qualification. Also deploys AI chat across web and SMS.',
     howItWorks: [
+      'AI receptionist — 24/7 inbound call coverage',
+      'Missed call recovery',
+      'Appointment booking automation',
+      'Consistent caller experience',
       'AI chat deployment across web and SMS',
       'Intent detection and routing logic',
-      'Qualification and lead scoring',
+      'Lead qualification and scoring',
       'Real-time handoff to human agents',
       'Conversation analytics and optimization',
     ],
     businessImpact: [
-      '24/7 automated engagement',
-      'Higher lead qualification rates',
-      'Reduced response latency',
-      'Scalable conversation capacity',
+      'No missed calls or dead-end chats',
+      'Higher qualification and booking rates',
+      'Unified voice + digital engagement',
+      'Analytics to tighten every funnel step',
     ],
-    infrastructure:
-      'Powered by AI conversation platforms, natural language processing, and multi-channel orchestration systems.',
+    infrastructure: 'uAIgent360 + Vapi + ElevenLabs + Custom Socialutely.',
     tier: 2,
-    cta: 'Deploy AI Chat →',
+    cta: 'Deploy VoiceBridge™ →',
   },
   {
     id: 'inboxignite',
@@ -203,30 +230,6 @@ const engagementServices: ServiceDetail[] = [
       'Powered by SMS gateway providers, automation platforms, and TCPA-compliant consent systems.',
     tier: 2,
     cta: 'Activate SMS →',
-  },
-  {
-    id: 'voicebridge',
-    name: 'VoiceBridge™ AI Receptionist',
-    tagline: '24/7 intelligent voice response and lead routing.',
-    description:
-      'VoiceBridge™ answers, qualifies, books, and escalates calls without missing opportunities or overloading staff.',
-    howItWorks: [
-      'AI voice agent deployment',
-      'Call routing and qualification',
-      'Calendar and scheduling integration',
-      'Fallback and escalation logic',
-      'Call analytics and optimization',
-    ],
-    businessImpact: [
-      '24/7 call coverage',
-      'Reduced missed opportunity',
-      'Faster appointment booking',
-      'Consistent caller experience',
-    ],
-    infrastructure:
-      'Powered by AI voice platforms, telephony integrations, and real-time speech processing.',
-    tier: 3,
-    cta: 'Deploy Voice AI →',
   },
 ];
 
@@ -453,6 +456,30 @@ const knowledgeActivationServices: ServiceDetail[] = [
     tier: 2,
     cta: 'Activate Clients →',
   },
+  {
+    id: 'adaptation-ai-readiness-rung2',
+    name: 'Adaptation™ AI Readiness Rung 2',
+    tagline: 'The primary activation SKU for AI Readiness Rung 2 (Category 05).',
+    description:
+      'Structured adaptation for teams moving from awareness into operational AI — aligned to the AI Readiness journey, delivered as a core Knowledge & Activation service.',
+    howItWorks: [
+      'Readiness assessment checkpoints against Rung 2 criteria',
+      'Workflow and tool alignment for safe AI adoption',
+      'Playbooks that bridge policy to daily execution',
+      'Integration touchpoints with VoiceBridge™ and automation layers',
+      'Success metrics tied to AI IQ progression',
+    ],
+    businessImpact: [
+      'Faster, safer rollouts of AI-assisted operations',
+      'Less drift between strategy and frontline use',
+      'Clear path from Momentum Vault™ tier to deeper programs',
+      'Direct tie-in to Concierge and governance when scores climb',
+    ],
+    infrastructure:
+      'Custom Socialutely + uAIgent360 orchestration where applicable.',
+    tier: 2,
+    cta: 'Start Adaptation →',
+  },
 ];
 
 const brandSignalServices: ServiceDetail[] = [
@@ -647,6 +674,8 @@ const membershipLayer: MembershipItem[] = [
 
 interface ServiceCategory {
   id: number;
+  /** Canonical catalog number label (01–09), shown on cards — not a service ID. */
+  catalogNumber: string;
   title: string;
   purpose: string;
   subheader?: string;
@@ -666,7 +695,8 @@ const ServiceCategories = () => {
   const categories: ServiceCategory[] = [
     {
       id: 1,
-      title: 'Growth & Visibility',
+      catalogNumber: '01',
+      title: '01 — Growth & Visibility',
       purpose: 'Help businesses get discovered, attract attention, and generate demand',
       subheader: 'Get discovered. Get remembered.',
       icon: <TrendingUp className="w-8 h-8" />,
@@ -676,7 +706,8 @@ const ServiceCategories = () => {
     },
     {
       id: 2,
-      title: 'Engagement & Communication',
+      catalogNumber: '02',
+      title: '02 — Engagement & Communication',
       purpose: 'Manage and optimize how prospects and customers communicate with the business',
       subheader: 'Spark interaction. Sustain conversation.',
       icon: <MessageCircle className="w-8 h-8" />,
@@ -686,7 +717,8 @@ const ServiceCategories = () => {
     },
     {
       id: 3,
-      title: 'Appointments & Conversions',
+      catalogNumber: '03',
+      title: '03 — Appointments & Conversions',
       purpose: 'Turn conversations and interest into booked appointments, signed agreements, and paid revenue',
       subheader: 'Turn attention into action.',
       icon: <DollarSign className="w-8 h-8" />,
@@ -696,7 +728,8 @@ const ServiceCategories = () => {
     },
     {
       id: 4,
-      title: 'Systems & Operations',
+      catalogNumber: '04',
+      title: '04 — Systems & Operations',
       purpose: 'Build infrastructure that runs without friction',
       subheader: 'Run efficiently. Scale intelligently.',
       icon: <Settings className="w-8 h-8" />,
@@ -706,7 +739,8 @@ const ServiceCategories = () => {
     },
     {
       id: 5,
-      title: 'Knowledge & Activation',
+      catalogNumber: '05',
+      title: '05 — Knowledge & Activation',
       purpose: 'Educate. Equip. Empower.',
       subheader: 'Turn expertise into scalable assets.',
       icon: <GraduationCap className="w-8 h-8" />,
@@ -716,7 +750,8 @@ const ServiceCategories = () => {
     },
     {
       id: 6,
-      title: 'Brand & Signal',
+      catalogNumber: '06',
+      title: '06 — Brand & Signal',
       purpose: 'Define how your brand is heard, felt, and remembered',
       subheader: 'Engineer recognition across sound and presence.',
       icon: <Sparkles className="w-8 h-8" />,
@@ -726,7 +761,8 @@ const ServiceCategories = () => {
     },
     {
       id: 7,
-      title: 'Performance & Insights',
+      catalogNumber: '07',
+      title: '07 — Performance & Insights',
       purpose: 'Measure what matters. Improve what works.',
       subheader: 'Turn data into direction.',
       icon: <BarChart3 className="w-8 h-8" />,
@@ -736,7 +772,8 @@ const ServiceCategories = () => {
     },
     {
       id: 8,
-      title: 'Governance & Guardrails',
+      catalogNumber: '08',
+      title: '08 — Governance & Guardrails',
       purpose: 'Protect trust. Maintain control.',
       subheader: 'Operate responsibly. Scale securely.',
       icon: <Shield className="w-8 h-8" />,
@@ -746,7 +783,8 @@ const ServiceCategories = () => {
     },
     {
       id: 9,
-      title: 'Partnerships & Expansion',
+      catalogNumber: '09',
+      title: '09 — Partnerships & Expansion',
       purpose: 'Scale through leverage.',
       subheader: 'Multiply reach without multiplying overhead.',
       icon: <Handshake className="w-8 h-8" />,
@@ -841,8 +879,8 @@ const ServiceCategories = () => {
 
                 {/* Category Number */}
                 <div className="absolute top-6 right-6">
-                  <div className="w-10 h-10 rounded-full bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm flex items-center justify-center font-bold text-gray-700 dark:text-gray-200">
-                    {category.id}
+                  <div className="w-10 h-10 rounded-full bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm flex items-center justify-center font-bold text-gray-700 dark:text-gray-200 text-sm">
+                    {category.catalogNumber}
                   </div>
                 </div>
 
@@ -933,7 +971,46 @@ const ServiceCategories = () => {
           ))}
         </div>
 
-        {/* Membership & Access Layer — Ecosystem strip (distinct treatment) */}
+        {/* AI Readiness Labs — journey layer (not a service catalog category) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-16"
+        >
+          <h3 className="text-center text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+            AI Readiness Labs
+          </h3>
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-3">
+            A journey layer alongside the catalog — not category 11. Service{' '}
+            <span className="font-semibold text-purple-600 dark:text-purple-400">503 · Adaptation™ AI Readiness Rung 2</span>{' '}
+            lives under <span className="font-medium">05 — Knowledge & Activation</span>.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { rung: 'Rung 1 — Awareness', iq: 'AI IQ Score: 0–40', tier: 'Tier: Socialutely Circle™' },
+              { rung: 'Rung 2 — Adaptation', iq: 'AI IQ Score: 41–60', tier: 'Tier: Momentum Vault™' },
+              { rung: 'Rung 3 — Optimization', iq: 'AI IQ Score: 61–80', tier: 'Tier: Concierge Access™' },
+              { rung: 'Rung 4 — Stewardship', iq: 'AI IQ Score: 81–100', tier: 'Tier: Governance Blueprint™' },
+            ].map((row, i) => (
+              <motion.div
+                key={row.rung}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="rounded-2xl p-5 border-2 border-white/50 dark:border-gray-600/50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm shadow-md"
+              >
+                <p className="font-bold text-gray-800 dark:text-gray-100">{row.rung}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{row.iq}</p>
+                <p className="text-sm text-purple-600 dark:text-purple-400 mt-2 font-medium">{row.tier}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Membership & Access — ecosystem strip (category 10; distinct treatment) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -950,8 +1027,8 @@ const ServiceCategories = () => {
                 <Crown className="w-6 h-6 text-amber-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-amber-50">Membership & Access Layer</h3>
-                <p className="text-sm text-amber-200/80">Ecosystem offerings beyond core SKUs</p>
+                <h3 className="text-lg font-bold text-amber-50">10 — Membership & Access</h3>
+                <p className="text-sm text-amber-200/80">10 — Membership & Access · ecosystem offerings beyond core SKUs</p>
               </div>
             </div>
             <motion.span

@@ -4,10 +4,10 @@ Service ID,Category,Service Name,Tier
 103,Growth & Visibility,Authority Amplifier™ PR System,Signature
 104,Growth & Visibility,Signal Surge™ Paid Traffic Lab,Momentum
 105,Growth & Visibility,NearRank™ Local Discovery Engine,Essentials
-201,Engagement & Communication,ConvoFlow™ AI Chat Suite,Momentum
+106,Growth & Visibility,AutoRank™ Search Box Optimizer,Momentum
+201,Engagement & Communication,VoiceBridge™ AI ChatLabs,Momentum
 202,Engagement & Communication,InboxIgnite™ Smart Email Engine,Essentials
 203,Engagement & Communication,TextPulse™ SMS Automation,Momentum
-204,Engagement & Communication,VoiceBridge™ AI Receptionist,Signature
 301,Appointments & Conversions,BookStream™ Smart Scheduling Hub,Essentials
 302,Appointments & Conversions,CloseCraft™ Funnel Builder,Momentum
 303,Appointments & Conversions,DealDrive™ Proposal Automation,Momentum
@@ -17,6 +17,7 @@ Service ID,Category,Service Name,Tier
 403,Systems & Operations,CommandDesk™ Client Portal System,Signature
 501,Knowledge & Activation,SkillSprint™ Academy,Signature
 502,Knowledge & Activation,Onboardly™ Client Activation System,Momentum
+503,Knowledge & Activation,Adaptation™ AI Readiness Rung 2,Momentum
 601,Brand & Signal,Voice & Vibe™ Production Engine,Signature
 602,Brand & Signal,StoryFrame™ Brand Narrative Suite,Signature
 701,Performance & Insights,InsightLoop™ Analytics Dashboard,Signature

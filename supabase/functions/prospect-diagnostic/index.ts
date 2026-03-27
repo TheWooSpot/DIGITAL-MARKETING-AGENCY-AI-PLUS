@@ -8,9 +8,9 @@
  * Env: ANTHROPIC_API_KEY, SUPABASE_URL (auto), SUPABASE_SERVICE_ROLE_KEY (auto)
  *
  * Deploy version: confirm in Supabase Dashboard → Edge Functions → prospect-diagnostic
- * matches the project expectation (Phase 2 target: **v17**). Bump dashboard label on each deploy.
+ * matches the project expectation (Phase 2 target: **v18**). Bump dashboard label on each deploy.
  */
-export const PROSPECT_DIAGNOSTIC_DEPLOY_VERSION = 17;
+export const PROSPECT_DIAGNOSTIC_DEPLOY_VERSION = 18;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -23,9 +23,9 @@ const FN_VERSION_HEADERS = {
   "x-socialutely-diagnostic-version": String(PROSPECT_DIAGNOSTIC_DEPLOY_VERSION),
 } as const;
 
-/** All catalog service IDs — aligned with docs/Service-Tiers.csv (28 services). */
+/** All catalog service IDs — 29 services, 10 canonical categories (receptionist merged into 201; Adaptation is 503). */
 const ALLOWED_SERVICE_IDS = [
-  101, 102, 103, 104, 105, 201, 202, 203, 204, 301, 302, 303, 304, 401, 402, 403, 501, 502, 601, 602,
+  101, 102, 103, 104, 105, 106, 201, 202, 203, 301, 302, 303, 304, 401, 402, 403, 501, 502, 503, 601, 602,
   701, 801, 802, 901, 1001, 1002, 1003, 1004,
 ];
 

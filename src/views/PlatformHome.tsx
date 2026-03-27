@@ -414,7 +414,7 @@ const PlatformHome = () => {
               <ul className="mt-10 space-y-4 text-sm text-white/55">
                 {[
                   "Structured scoring across visibility, engagement, and conversion.",
-                  "Gap detection mapped to your live service catalog (v12).",
+                  "Gap detection mapped to your live service catalog (29 services).",
                   "Five tier pathways — Essentials through Sovereign.",
                   "Results designed to drop into pipeline follow-up.",
                 ].map((t) => (
@@ -454,7 +454,7 @@ const PlatformHome = () => {
             Socialutely <span style={{ color: GOLD }}>|</span> AI Marketing Platform
           </div>
           <div>
-            ANYDOOR ENGINE · {PLATFORM_SERVICE_COUNT} SERVICES · 10 CATEGORIES · v12
+            ANYDOOR ENGINE · {PLATFORM_SERVICE_COUNT} SERVICES · 10 CATEGORIES
           </div>
         </div>
       </footer>
