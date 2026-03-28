@@ -21,6 +21,10 @@ dist-ssr
 # Claude Code exports (may contain private planning)
 docs/exports
 
+# Local notes that often contain API keys (never commit)
+docs/claude desktop config.txt
+docs/claude to vapi build.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
