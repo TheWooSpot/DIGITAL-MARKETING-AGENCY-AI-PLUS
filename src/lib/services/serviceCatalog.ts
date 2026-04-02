@@ -8,6 +8,16 @@ export interface ServiceCatalogEntry {
   category: string;
   name: string;
   tier: string;
+  slug?: string;
+  price_monthly?: number;
+  price_setup?: number;
+  description?: string;
+  growth_impact?: number;
+  complexity?: number;
+  automation_weight?: number;
+  trust_weight?: number;
+  industry_bias?: number;
+  checkout_variant?: "A" | "B";
 }
 
 export const SERVICE_CATALOG: readonly ServiceCatalogEntry[] = [
@@ -25,7 +35,22 @@ export const SERVICE_CATALOG: readonly ServiceCatalogEntry[] = [
   { id: 301, category: "Appointments & Conversions", name: "BookStream™ Smart Scheduling Hub", tier: "Unknown" },
   { id: 302, category: "Appointments & Conversions", name: "CloseCraft™ Funnel Builder", tier: "Unknown" },
   { id: 303, category: "Appointments & Conversions", name: "DealDrive™ Proposal Automation", tier: "Unknown" },
-  { id: 304, category: "Appointments & Conversions", name: "PayPortal™ Dynamic Checkout", tier: "Unknown" },
+  {
+    id: 304,
+    category: "Appointments & Conversions",
+    name: "PayNamic™ Dynamic Checkout",
+    tier: "Momentum",
+    slug: "paynamic",
+    price_monthly: 397,
+    price_setup: 297,
+    description:
+      "Dynamic checkout, conditional pricing logic, bundle-building & payment orchestration engine",
+    growth_impact: 3,
+    complexity: 2,
+    automation_weight: 4,
+    trust_weight: 2,
+    industry_bias: 1.0,
+  },
 
   { id: 401, category: "Systems & Operations", name: "HubAI™ CRM Architecture", tier: "Unknown" },
   { id: 402, category: "Systems & Operations", name: "FlowForge™ Automation Lab", tier: "Unknown" },

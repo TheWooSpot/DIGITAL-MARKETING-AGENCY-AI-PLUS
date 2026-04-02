@@ -855,7 +855,7 @@ Row 6	NearRank™ Local Discovery Engine	NEW, no Service ID assigned yet
 301	BookStream™ Smart Scheduling Hub	✓ Confirmed — not uTraVEL. C5 resolved.
 302	CloseCraft™ Funnel Builder	✓ Confirmed — FunnelForge was wrong
 303	DealDrive™ Proposal Automation	NEW — not in prior lists
-304	PayPortal™ Dynamic Checkout	✓ Confirmed
+304	PayNamic™ Dynamic Checkout	✓ Confirmed
 401	HUBAI™ CRM Architecture	CoreSync™ is NOT the name here — it's HUBAI™
 402	FlowForge™ Automation Lab	✓ Confirmed
 403	CommandDesk™ Client Portal System	✓ Confirmed — separate from HUBAI
@@ -992,7 +992,7 @@ Single-column list of categories and their services, with a short summary per se
 12. **DealDrive™ Proposal Automation**  
     Accelerate decision-making with structured, automated proposals.
 
-13. **PayPortal™ Dynamic Checkout**  
+13. **PayNamic™ Dynamic Checkout**  
     Seamless payment processing with intelligent pricing logic.
 
 ---
@@ -1138,7 +1138,7 @@ The Cursor list has these services not yet in L1:
 105 NearRank™ Local Discovery Engine (no ID in sheet yet)
 202 InboxIgnite™ Smart Email Engine
 303 DealDrive™ Proposal Automation
-304 PayPortal™ Dynamic Checkout
+304 PayNamic™ Dynamic Checkout
 602 StoryFrame™ Brand Narrative Suite
 4 membership entries (1001-1004)
 
@@ -1165,7 +1165,7 @@ Fix 2 — Full catalog reconciliation: L1 now contains all 27 services from the 
 10	BookStream™ Smart Scheduling Hub	301	Appointments & Conversions	✅
 11	CloseCraft™ Funnel Builder	302	Appointments & Conversions	✅
 12	DealDrive™ Proposal Automation	303	Appointments & Conversions	✅ new
-13	PayPortal™ Dynamic Checkout	304	Appointments & Conversions	✅ new
+13	PayNamic™ Dynamic Checkout	304	Appointments & Conversions	✅ new
 14	HubAI™ CRM Architecture	401	Systems & Operations	✅
 15	FlowForge™ Automation Lab	402	Systems & Operations	✅
 16	CommandDesk™ Client Portal System	403	Systems & Operations	✅
@@ -1316,7 +1316,7 @@ uAIgent360 - AI Virtual Agent → superseded by canonical entries
 uGEORank - AI Search Ranking → superseded by NearRank™
 uVAAP - Voice Applications → superseded by VoiceBridge™
 uEverywhere - Business Listings → superseded by uEVERYWHERE™
-All March 6 duplicate canonical entries (BookStream, CloseCraft, PayPortal, DealDrive, FlowForge, StoryFrame, InsightLoop, TrustGuard, AllianceOS, Voice & Vibe, ConvoFlow, Signal Surge, Authority Amplifier)
+All March 6 duplicate canonical entries (BookStream, CloseCraft, PayNamic, DealDrive, FlowForge, StoryFrame, InsightLoop, TrustGuard, AllianceOS, Voice & Vibe, ConvoFlow, Signal Surge, Authority Amplifier)
 I'll mark them all Deprecated — not delete them — so there's a paper trail. Then set Sort Order on the 28 clean records.
 
 Proceeding:
@@ -1335,7 +1335,7 @@ Completed:
 
 Sort Order number field added to L1 schema — it's live
 All Umbrella-named stale records deprecated: uAIgent360, uGEORank, uVAAP, uEverywhere
-Most March 6 duplicate canonical records deprecated: Authority Amplifier (dupe), Signal Surge (dupe), BookStream (dupe), CloseCraft (dupe), PayPortal (dupe), DealDrive (dupe), FlowForge (dupe), StoryFrame (dupe), TrustGuard (dupe), InsightLoop (dupe), Voice & Vibe (dupe), AllianceOS (dupe)
+Most March 6 duplicate canonical records deprecated: Authority Amplifier (dupe), Signal Surge (dupe), BookStream (dupe), CloseCraft (dupe), PayNamic (dupe), DealDrive (dupe), FlowForge (dupe), StoryFrame (dupe), TrustGuard (dupe), InsightLoop (dupe), Voice & Vibe (dupe), AllianceOS (dupe)
 Still needed next session:
 
 Deprecate remaining March 6 duplicates (ConvoFlow, SearchLift, a few others still showing Active)
@@ -1999,7 +1999,7 @@ Omnichannel Stack (Voice/SMS/Chat/Email) — 5%
 Vapi, Twilio, ElevenLabs — 0% build progress. Architecture designed, accounts identified, no configuration done. InboxIgnite™/TextPulse™/VoiceBridge™/ConvoFlow™ are defined services with no live infrastructure behind them.
 
 Stripe & Payments — 20%
-Stripe configured. PayPortal™ architecture defined. Embedded checkout approach confirmed. Account status unresolved — this is a hard blocker. MallShark and Arzen Collective proposals are live but cannot convert until resolved.
+Stripe configured. PayNamic™ architecture defined. Embedded checkout approach confirmed. Account status unresolved — this is a hard blocker. MallShark and Arzen Collective proposals are live but cannot convert until resolved.
 
 Notion → Supabase Sync Pipeline — 0%
 Not built. This is the connective tissue that makes Cursor see live Notion data. Everything updated in Notion today (28 services, boundaries, categories) lives only in Notion. Supabase was updated manually this session but will drift again without the sync.
@@ -2027,7 +2027,7 @@ GROWTH & VISIBILITY 101 · SearchLift™ SBO Engine 102 · DirectAlign™ Media 
 
 ENGAGEMENT & COMMUNICATION 201 · ConvoFlow™ AI Chat Suite 202 · InboxIgnite™ Smart Email Engine 203 · TextPulse™ SMS Automation 204 · VoiceBridge™ AI Receptionist
 
-APPOINTMENTS & CONVERSIONS 301 · BookStream™ Smart Scheduling Hub 302 · CloseCraft™ Funnel Builder 303 · DealDrive™ Proposal Automation 304 · PayPortal™ Dynamic Checkout
+APPOINTMENTS & CONVERSIONS 301 · BookStream™ Smart Scheduling Hub 302 · CloseCraft™ Funnel Builder 303 · DealDrive™ Proposal Automation 304 · PayNamic™ Dynamic Checkout
 
 SYSTEMS & OPERATIONS 401 · HubAI™ CRM Architecture 402 · FlowForge™ Automation Lab 403 · CommandDesk™ Client Portal System
 
@@ -2054,7 +2054,7 @@ GROWTH & VISIBILITY 101 · SearchLift™ SBO Engine — Momentum 102 · DirectAl
 
 ENGAGEMENT & COMMUNICATION 201 · ConvoFlow™ AI Chat Suite — Momentum 202 · InboxIgnite™ Smart Email Engine — Essentials 203 · TextPulse™ SMS Automation — Momentum 204 · VoiceBridge™ AI Receptionist — Signature
 
-APPOINTMENTS & CONVERSIONS 301 · BookStream™ Smart Scheduling Hub — Essentials 302 · CloseCraft™ Funnel Builder — Momentum 303 · DealDrive™ Proposal Automation — Momentum 304 · PayPortal™ Dynamic Checkout — Momentum
+APPOINTMENTS & CONVERSIONS 301 · BookStream™ Smart Scheduling Hub — Essentials 302 · CloseCraft™ Funnel Builder — Momentum 303 · DealDrive™ Proposal Automation — Momentum 304 · PayNamic™ Dynamic Checkout — Momentum
 
 SYSTEMS & OPERATIONS 401 · HubAI™ CRM Architecture — Momentum 402 · FlowForge™ Automation Lab — Momentum 403 · CommandDesk™ Client Portal System — Signature
 
@@ -2209,7 +2209,7 @@ Good. I now have the complete list of stale records. Before permanently deleting
 
 Umbrella-named stale records (23): uAIgent360, uBOS, uBlast, uSEM, uRank, uSPO, uSBO, uMNM, uFB 2.0, uTravel, uLSA, uEverywhere, uWebsites, uWebsite 2.0, uSuperbots, uSponsorHero, uVAAP, uGEORank, uReviews, uEqual, Saatchi 2.0, Umbrella Platform - Core System, uAuto/uAutomation
 
-Canonical duplicates marked Deprecated (old March 6 versions): Signal Surge, Authority Amplifier, BookStream, CloseCraft, PayPortal, DealDrive, FlowForge, StoryFrame, TrustGuard, InsightLoop, AllianceOS, Voice & Vibe, ConvoFlow, SearchLift, TextPulse, InboxIgnite (March 6 dupe)
+Canonical duplicates marked Deprecated (old March 6 versions): Signal Surge, Authority Amplifier, BookStream, CloseCraft, PayNamic, DealDrive, FlowForge, StoryFrame, TrustGuard, InsightLoop, AllianceOS, Voice & Vibe, ConvoFlow, SearchLift, TextPulse, InboxIgnite (March 6 dupe)
 
 All 28 canonical Active records are safe and untouched. Proceeding to trash all stale records now:
 
@@ -2813,7 +2813,7 @@ uMNM	Knowledge	Not an L1 category	Growth & Visibility (powers 105 NearRank™)
 uRANK 2.0	Knowledge	Not an L1 category	Governance & Guardrails (powers 802 ReputationStack™)
 uReviews	Knowledge	Not an L1 category	Governance & Guardrails (powers 802 ReputationStack™)
 uSPO	Knowledge	Not an L1 category	Growth & Visibility (powers 101 SearchLift™)
-Stripe	Payment	Not an L1 category	Appointments & Conversions (powers 304 PayPortal™)
+Stripe	Payment	Not an L1 category	Appointments & Conversions (powers 304 PayNamic™)
 Paid Media (uFB, uLSA)	Paid Media	Not an L1 category	Growth & Visibility (both power Signal Surge™ 104)
 ElevenLabs, Twilio, Vapi, Resend/SendGrid	Communication	✅ Close but should be	Engagement & Communication (full L1 name)
 uAIgent360, uBLAST, uSuperBots, uText	Communication	✅ Close but should be	Engagement & Communication
@@ -3350,7 +3350,7 @@ The wholesale column — three honest notes:
 
 Ad-spend services (102, 104) — wholesale shown for management fee only. Ad spend is always a direct passthrough to client at cost, no markup possible or appropriate
 Internal delivery services (602, 801, 1003) — no external wholesale cost. Margin is almost entirely labor, which you control
-Onboardly™ (502) and PayPortal™ (304) — flagged clearly: 502 is typically bundled into CRM, 304 is Stripe fees only until account is unblocked
+Onboardly™ (502) and PayNamic™ (304) — flagged clearly: 502 is typically bundled into CRM, 304 is Stripe fees only until account is unblocked
 Services delivery model pricing v2
 Table · CSV 
 next steps

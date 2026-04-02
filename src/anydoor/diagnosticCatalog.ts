@@ -14,7 +14,7 @@ export const SERVICE_MAP: Record<number, string> = {
   301: "BookStream™ Smart Scheduling Hub",
   302: "CloseCraft™ Funnel Builder",
   303: "DealDrive™ Proposal Automation",
-  304: "PayPortal™ Dynamic Checkout",
+  304: "PayNamic™",
   401: "HubAI™ CRM Architecture",
   402: "FlowForge™ Automation Lab",
   403: "CommandDesk™ Client Portal System",

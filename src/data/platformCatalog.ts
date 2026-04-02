@@ -44,7 +44,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
       { id: 301, name: "BookStream™ Smart Scheduling Hub" },
       { id: 302, name: "CloseCraft™ Funnel Builder" },
       { id: 303, name: "DealDrive™ Proposal Automation" },
-      { id: 304, name: "PayPortal™ Dynamic Checkout" },
+      { id: 304, name: "PayNamic™ Dynamic Checkout" },
     ],
   },
   {

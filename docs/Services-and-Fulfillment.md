@@ -34,7 +34,7 @@ List of Socialutely services and the fulfillment / infrastructure that delivers 
 | BookStream™ Smart Scheduling Hub | Scheduling platforms, calendar APIs, and notification systems |
 | CloseCraft™ Funnel Builder | Landing page builders, analytics platforms, and conversion optimization tools |
 | DealDrive™ Proposal Automation | Proposal software, e-signature platforms, and CRM integrations |
-| PayPortal™ Dynamic Checkout | Payment processors, checkout platforms, and PCI-compliant systems |
+| PayNamic™ Dynamic Checkout | Payment processors, checkout platforms, and PCI-compliant systems |
 
 ---
 

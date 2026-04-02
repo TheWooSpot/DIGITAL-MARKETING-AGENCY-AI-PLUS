@@ -50,7 +50,7 @@ Single-column list of categories and their services, with a short summary per se
 12. **DealDrive™ Proposal Automation**  
     Accelerate decision-making with structured, automated proposals.
 
-13. **PayPortal™ Dynamic Checkout**  
+13. **PayNamic™ Dynamic Checkout**  
     Seamless payment processing with intelligent pricing logic.
 
 ---

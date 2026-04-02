@@ -12,6 +12,7 @@ import DiagnosticUnlock from "./views/DiagnosticUnlock";
 import DoorsUrlDiagnostic from "./views/DoorsUrlDiagnostic";
 import SharedReportPage from "./views/SharedReportPage";
 import TeamTiersPage from "./views/TeamTiersPage";
+import YourPackage from "./pages/YourPackage";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/diagnostic/results" element={<DiagnosticResults />} />
             <Route path="/diagnostic/unlock" element={<DiagnosticUnlock />} />
             <Route path="/team/tiers" element={<TeamTiersPage />} />
+            <Route path="/your-package" element={<YourPackage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

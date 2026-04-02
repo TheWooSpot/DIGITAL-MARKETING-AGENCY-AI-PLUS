@@ -107,7 +107,7 @@ const TIERS: TierDef[] = [
       "Dominant market players, national and global brands, and organizations with a mandate not just to compete but to own their category. These are businesses with 500+ employees, dedicated marketing departments, CMOs, and board-level accountability for brand equity and market share. They operate across multiple geographies, product lines, or audience segments simultaneously. Sovereign is not defined by score alone — it is defined by mandate: category ownership, not competitive advantage.",
     sampleServices: [
       "Voice & Vibe™ Production Engine",
-      "PayPortal™ Dynamic Checkout",
+      "PayNamic™ Dynamic Checkout",
       "TrustGuard™ Governance Layer",
       "AllianceOS™ Growth Partnerships Engine",
       "InsightLoop™ Analytics Dashboard",

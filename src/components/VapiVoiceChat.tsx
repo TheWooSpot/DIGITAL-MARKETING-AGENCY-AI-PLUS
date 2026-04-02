@@ -101,8 +101,13 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
   const handleStart = () => {
     setError(null);
     setTranscript([]);
+    const assistantId = getEvaluationSpecialistAssistantId();
+    if (!assistantId) {
+      setError('Add VITE_VAPI_ASSISTANT_ID to your .env file and restart the dev server.');
+      return;
+    }
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
-    vapi?.start(getEvaluationSpecialistAssistantId(), { firstMessage: greeting });
+    vapi?.start(assistantId, { firstMessage: greeting });
   };
 
   const handleEnd = () => {

@@ -307,21 +307,22 @@ const appointmentsServices: ServiceDetail[] = [
     cta: 'Automate Proposals →',
   },
   {
-    id: 'payportal',
-    name: 'PayPortal™ Dynamic Checkout',
-    tagline: 'Seamless payment processing with intelligent pricing logic.',
+    id: 'paynamic',
+    name: 'PayNamic™ Dynamic Checkout',
+    slug: 'paynamic',
+    tagline: 'Dynamic checkout, pricing logic, and payment orchestration.',
     description:
-      'PayPortal™ enables subscription, one-time, and performance-based payment structures with frictionless checkout.',
+      'Dynamic checkout, conditional pricing logic, bundle-building & payment orchestration engine',
     howItWorks: [
       'Payment gateway integration',
-      'Dynamic pricing and tiers',
+      'Conditional pricing and bundle assembly',
       'Checkout flow optimization',
       'Subscription and one-time options',
       'Fraud and compliance safeguards',
     ],
     businessImpact: [
       'Higher payment completion',
-      'Flexible pricing options',
+      'Flexible, context-aware pricing',
       'Reduced checkout abandonment',
       'Secure, compliant transactions',
     ],

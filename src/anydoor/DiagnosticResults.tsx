@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { PACKAGE_TIERS, type PackageTierKey, serviceName } from "./diagnosticCatalog";
 import { getReportShareBaseUrl } from "./lib/diagnosticShare";
@@ -6,6 +7,7 @@ import { getServiceSummaryForTier } from "@/lib/serviceTierSummaries";
 import { Download, Mic } from "lucide-react";
 import { ReportVapiTapToTalk } from "./ReportVapiTapToTalk";
 import { useDiagnosticVapiCall } from "./useDiagnosticVapiCall";
+import { useCheckoutConfig } from "@/hooks/useCheckoutConfig";
 
 const GOLD = "#c9973a";
 
@@ -190,6 +192,10 @@ interface DiagnosticResultsProps {
 }
 
 export function DiagnosticResults({ result, submittedUrl, reportShareToken }: DiagnosticResultsProps) {
+  const {
+    variant: checkoutVariant = "A",
+    loading: checkoutConfigLoading = false,
+  } = useCheckoutConfig();
   const diagnosticVapi = useDiagnosticVapiCall(result);
   const [tab, setTab] = useState<"summary" | "full">("summary");
   const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
@@ -212,6 +218,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   }, [v, e, c]);
 
   const recommendedNorm = useMemo(() => normalizeRecommended(result), [result]);
+  /** Tier highlight comes from the diagnostic outcome (`recommended_tier`), not a static package dropdown. */
   const recTier = normalizeTier(result.recommended_tier);
 
   const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
@@ -273,6 +280,14 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
   const scrollToPackages = () => {
     document.getElementById("section-packages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const goYourPackage = () => {
+    const tier = encodeURIComponent((result.recommended_tier ?? "").trim());
+    const services = recommendedNorm.map((r) => r.service_id).join(",");
+    const name = encodeURIComponent(business_name ?? "");
+    const scoreStr = String(Math.round(overall));
+    navigate(`/your-package?tier=${tier}&services=${services}&name=${name}&score=${scoreStr}`);
   };
 
   return (
@@ -503,6 +518,13 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
               </div>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={goYourPackage}
+            className="no-print mt-6 w-full rounded border border-[#c9973a] bg-[#c9973a] py-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#07080d] hover:bg-[#c9973a]/90"
+          >
+            See Your Custom Package →
+          </button>
         </ScrollSection>
       )}
 
@@ -511,7 +533,9 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
         <div>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-[#c9973a]">Tier pathways</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-[#c9973a]">
+                Tier pathways (diagnostic outcomes, not fixed menus)
+              </p>
               <h2
                 className="mt-2 text-3xl font-light italic text-[#c9973a] sm:text-4xl"
                 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
@@ -557,6 +581,51 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
                 />
               </div>
             ))}
+          </div>
+        </div>
+      </ScrollSection>
+
+      {/* Checkout CTA slot — variant from Supabase checkout_config or env override; never hardcode Stripe IDs/URLs here */}
+      <ScrollSection className="no-print">
+        <div
+          data-slot="checkout-cta"
+          className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
+          <h3
+            className="mt-3 text-xl font-light text-white sm:text-2xl"
+            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+          >
+            Continue when you&apos;re ready
+          </h3>
+          <p className="mt-2 text-sm text-white/55">
+            Active experiment:{" "}
+            <span className="font-mono text-[#c9973a]/90">
+              {checkoutConfigLoading ? "…" : checkoutVariant}
+            </span>
+            {checkoutVariant === "A"
+              ? " — dynamic session flow (configure in a later pass)."
+              : " — static payment link flow (configure via env / backend)."}
+            {" "}Stripe products and payment links must only be supplied through environment variables or a config layer.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            {checkoutVariant === "A" ? (
+              <button
+                type="button"
+                disabled
+                className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+              >
+                Dynamic session checkout (placeholder)
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+              >
+                Payment link checkout (placeholder)
+              </button>
+            )}
           </div>
         </div>
       </ScrollSection>

@@ -5,15 +5,14 @@ import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 
 /**
- * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`). Not Reception/Aria.
- * Override with `VITE_VAPI_ASSISTANT_ID` on Vercel. Jordan’s ElevenLabs **ConvAI agent** is `agent_1001kmgc4g9jey8se6e0f6tb00xy` — Vapi cannot use that string as `voice.voiceId`; in the ElevenLabs agent editor, copy the **Voice ID** (TTS id) and set it on this assistant in the Vapi dashboard (Voice → ElevenLabs → that id).
+ * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`).
+ * Set `VITE_VAPI_ASSISTANT_ID` in `.env` / Vercel. For ElevenLabs ConvAI agent ids use
+ * `VITE_ELEVENLABS_JORDAN_AGENT_ID` / `VITE_ELEVENLABS_JESSICA_AGENT_ID` only (Vapi TTS uses ElevenLabs **voice** ids from the dashboard, not agent ids).
  */
-export const EVALUATION_SPECIALIST_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08230a99";
 
-/** Assistant UUID for `vapi.start()` — env wins so production can swap without a code change. */
+/** Assistant UUID for `vapi.start()` — must be set via `VITE_VAPI_ASSISTANT_ID` (never hardcode in source). */
 export function getEvaluationSpecialistAssistantId(): string {
-  const fromEnv = (import.meta.env.VITE_VAPI_ASSISTANT_ID as string | undefined)?.trim();
-  return fromEnv || EVALUATION_SPECIALIST_ASSISTANT_ID;
+  return (import.meta.env.VITE_VAPI_ASSISTANT_ID as string | undefined)?.trim() ?? "";
 }
 
 export function buildAssistantVariableValues(result: DiagnosticResult) {
@@ -129,9 +128,14 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       setError("Voice is not configured. Add VITE_VAPI_PUBLIC_KEY and redeploy.");
       return;
     }
+    const assistantId = getEvaluationSpecialistAssistantId();
+    if (!assistantId) {
+      setError("Voice assistant is not configured. Set VITE_VAPI_ASSISTANT_ID in .env / Vercel and rebuild.");
+      return;
+    }
     setError(null);
     const variableValues = buildAssistantVariableValues(result);
-    vapi?.start(getEvaluationSpecialistAssistantId(), {
+    vapi?.start(assistantId, {
       maxDurationSeconds: 420,
       variableValues,
     });

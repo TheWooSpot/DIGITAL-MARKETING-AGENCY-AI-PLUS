@@ -39,7 +39,7 @@ The Service Catalog is the core client-facing presentation of the AI+ marketing 
 - **BookStream™** Smart Scheduling Hub
 - **CloseCraft™** Funnel Builder
 - **DealDrive™** Proposal Automation
-- **PayPortal™** Dynamic Checkout
+- **PayNamic™** Dynamic Checkout
 
 ### 4. Systems & Operations
 - **HubAI™** CRM Architecture
