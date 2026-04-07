@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import {
   PACKAGE_BUILDER_SERVICE_IDS,
   getPackageBuilderService,
@@ -81,31 +82,15 @@ export default function YourPackage() {
   const hasBundleSavings = selectedList.length >= 3;
 
   return (
-    <div
-      className="min-h-screen pb-48 text-white"
-      style={{ backgroundColor: "#07080d", fontFamily: "'Archivo', system-ui, sans-serif" }}
-    >
-      <header className="border-b border-white/[0.08] px-4 py-6 sm:px-8">
-        <div className="mx-auto max-w-5xl">
-          <Link
-            to="/doors/url-diagnostic"
-            className="no-underline font-mono text-[10px] uppercase tracking-[0.25em] text-[#c9973a]/80 hover:text-[#c9973a]"
-          >
-            ← Back to diagnostic
-          </Link>
-          <h1
-            className="mt-6 font-light leading-tight text-white"
-            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(32px,5vw,44px)" }}
-          >
-            {businessName}&apos;s recommended package
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">
-            Your diagnostic score of {score} places you in the {tierParam} tier — here&apos;s what we&apos;d build for you.
-          </p>
-        </div>
-      </header>
+    <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+      <AnyDoorHero
+        eyebrow="ANYDOOR ENGINE · PACKAGE BUILDER"
+        titleAccent={`${businessName}'s recommended`}
+        titleRest="package"
+        subtitle={`Your diagnostic score of ${score} places you in the ${tierParam} tier — here's what we'd build for you.`}
+      />
 
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
+      <div className="pb-48 text-white">
         <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
           Configure your stack
         </p>
@@ -238,7 +223,7 @@ export default function YourPackage() {
             </div>
           </>
         )}
-      </main>
+      </div>
 
       <aside
         className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/[0.1] px-4 py-4 sm:px-8"
@@ -271,6 +256,6 @@ export default function YourPackage() {
           </div>
         </div>
       </aside>
-    </div>
+    </AnyDoorPageShell>
   );
 }

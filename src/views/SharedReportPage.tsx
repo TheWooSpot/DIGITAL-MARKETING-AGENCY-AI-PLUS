@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { DiagnosticResults } from "@/anydoor/DiagnosticResults";
 import {
   getProspectByPublicAccess,
@@ -59,39 +60,51 @@ export default function SharedReportPage() {
 
   if (!routeToken) {
     return (
-      <div className="min-h-screen px-4 py-16 text-center" style={{ color: "#e8eef5" }}>
-        <p className="text-white/70">Invalid link.</p>
-        <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
-          Run a new diagnostic →
-        </Link>
-      </div>
+      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+        <div className="mx-auto max-w-md py-16 text-center">
+          <p className="text-white/60">Invalid link.</p>
+          <Link to="/doors/url-diagnostic" className="anydoor-exp-navlink mt-8 inline-block">
+            Run a new diagnostic →
+          </Link>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
   if (error && !result) {
     return (
-      <div className="min-h-screen px-4 py-16 text-center" style={{ color: "#e8eef5" }}>
-        <p className="text-white/70">{error}</p>
-        <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
-          Run a new diagnostic →
-        </Link>
-      </div>
+      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+        <div className="mx-auto max-w-md py-16 text-center">
+          <div className="anydoor-surface-card">
+            <p className="text-white/70">{error}</p>
+          </div>
+          <Link to="/doors/url-diagnostic" className="anydoor-exp-navlink mt-8 inline-block">
+            Run a new diagnostic →
+          </Link>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
   if (!result) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ color: "#e8eef5" }}>
-        <p className="text-sm text-white/50">Loading report…</p>
-      </div>
+      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+        <div className="flex min-h-[40vh] items-center justify-center py-16">
+          <div className="flex flex-col items-center gap-4">
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+              style={{ borderTopColor: "#c9973a", borderRightColor: "#c9973a" }}
+            />
+            <p className="text-sm text-white/50">Loading report…</p>
+          </div>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
-        <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={routeToken} />
-      </main>
-    </div>
+    <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+      <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={routeToken} />
+    </AnyDoorPageShell>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Mic, PhoneOff } from "lucide-react";
+import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
@@ -8,12 +9,10 @@ import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiE
 /** Evaluation Specialist (Jordan) — Door 9 AI IQ™ Talk to Jordan strip. */
 const AI_IQ_VAPI_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
 
-const BG = "#070d1a";
-const CARD = "#0e1829";
-const GOLD = "#c9a227";
-const BORDER = "rgba(201,162,39,0.25)";
-const WHITE = "#f0f2f8";
-const DIM = "rgba(240,242,248,0.55)";
+const GOLD = "#c9973a";
+const BORDER = "rgba(201,151,58,0.22)";
+const WHITE = "#e8eef5";
+const DIM = "rgba(232,238,245,0.55)";
 const GREEN = "#2ecc8a";
 const AMBER = "#f0a030";
 const RED = "#e05050";
@@ -240,7 +239,7 @@ function ScoreDial({ score }: { score: number }) {
           cy="60"
           r={r}
           fill="none"
-          stroke="rgba(201,162,39,0.12)"
+          stroke="rgba(201,151,58,0.12)"
           strokeWidth="8"
         />
         <circle
@@ -259,8 +258,8 @@ function ScoreDial({ score }: { score: number }) {
       </svg>
       <div className="relative z-10 text-center">
         <p
-          className="text-5xl font-extrabold tabular-nums leading-none"
-          style={{ fontFamily: "'Syne', system-ui, sans-serif", color: WHITE }}
+          className="text-5xl font-light tabular-nums leading-none"
+          style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: WHITE }}
         >
           {display}
         </p>
@@ -378,45 +377,47 @@ export default function AiIqReport() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
-        <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
-          style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
-        />
-        <p style={{ fontFamily: "'Inter', system-ui, sans-serif", color: DIM }}>Loading your report...</p>
-      </div>
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+        <div className="flex min-h-[45vh] flex-col items-center justify-center gap-4 py-16">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+            style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+          />
+          <p className="text-white/50">Loading your report...</p>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
   if (fetchError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-        <p className="text-lg font-semibold" style={{ color: WHITE }}>
-          Something went wrong
-        </p>
-        <p className="mt-2 max-w-md text-sm" style={{ color: DIM }}>
-          {fetchError}
-        </p>
-        <Link to="/ai-iq" className="mt-8 text-sm underline" style={{ color: GOLD }}>
-          Take the AI IQ™ assessment →
-        </Link>
-      </div>
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+        <div className="mx-auto max-w-md text-center">
+          <div className="anydoor-surface-card">
+            <p className="text-lg font-medium text-white">Something went wrong</p>
+            <p className="mt-2 text-sm text-white/50">{fetchError}</p>
+          </div>
+          <Link to="/ai-iq" className="anydoor-exp-navlink mt-8 inline-block">
+            Take the AI IQ™ assessment →
+          </Link>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
   if (notFound || !row) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-        <p className="text-lg font-semibold" style={{ color: WHITE }}>
-          Report not found
-        </p>
-        <p className="mt-2 max-w-md text-sm" style={{ color: DIM }}>
-          This link may have expired or the ID is invalid.
-        </p>
-        <Link to="/ai-iq" className="mt-8 text-sm underline" style={{ color: GOLD }}>
-          Take the AI IQ™ assessment →
-        </Link>
-      </div>
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+        <div className="mx-auto max-w-md text-center">
+          <div className="anydoor-surface-card">
+            <p className="text-lg font-medium text-white">Report not found</p>
+            <p className="mt-2 text-sm text-white/50">This link may have expired or the ID is invalid.</p>
+          </div>
+          <Link to="/ai-iq" className="anydoor-exp-navlink mt-8 inline-block">
+            Take the AI IQ™ assessment →
+          </Link>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
@@ -424,45 +425,17 @@ export default function AiIqReport() {
   const biz = row.business_name?.trim() || row.full_name?.trim() || "your organization";
 
   return (
-    <div className="min-h-screen pb-16" style={{ color: WHITE }}>
-      {/* 1. Header bar */}
-      <header
-        className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
-        style={{ borderBottomWidth: 1, borderBottomColor: GOLD }}
-      >
-        <span
-          className="text-sm font-semibold tracking-[0.2em]"
-          style={{ fontFamily: "'DM Mono', ui-monospace, monospace", color: GOLD }}
-        >
-          SOCIALUTELY
-        </span>
-        <span className="text-xs sm:text-sm" style={{ fontFamily: "'DM Mono', monospace", color: DIM }}>
-          AI IQ™ Assessment · Rung 1 Complete
-        </span>
-      </header>
+    <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+      <AnyDoorHero
+        eyebrow="SOCIALUTELY · AI IQ™ REPORT"
+        titleAccent="Your AI IQ™ Report"
+        titleRest={biz}
+        subtitle={`Completed ${completedDate} · 15 questions across 5 domains · Rung 1 complete`}
+      />
 
-      <main className="mx-auto max-w-3xl px-4 pt-10 sm:px-6">
-        {/* 2. Greeting */}
-        <h1
-          className="text-[22px] font-bold leading-snug"
-          style={{ fontFamily: "'Syne', system-ui, sans-serif", color: WHITE }}
-        >
-          Your AI IQ™ Report,{" "}
-          <span style={{ color: GOLD }}>{biz}</span>
-        </h1>
-        <p className="mt-2 text-sm" style={{ fontFamily: "'Inter', sans-serif", color: DIM }}>
-          Completed {completedDate} · 15 questions across 5 domains
-        </p>
-
+      <div className="mx-auto max-w-3xl pb-16 text-[#e8eef5]">
         {/* 3. Score Hero Card */}
-        <div
-          className="mt-10 flex flex-col gap-8 rounded-xl border p-6 sm:flex-row sm:items-center sm:p-8"
-          style={{
-            backgroundColor: CARD,
-            borderColor: BORDER,
-            boxShadow: `inset 0 0 0 1px ${BORDER}`,
-          }}
-        >
+        <div className="anydoor-surface-card mt-2 flex flex-col gap-8 border sm:flex-row sm:items-center" style={{ borderColor: BORDER }}>
           <ScoreDial score={iq} />
           <div className="min-w-0 flex-1 space-y-4">
             <div
@@ -477,27 +450,22 @@ export default function AiIqReport() {
               {band}
             </div>
             <p
-              className="text-xl font-bold leading-snug sm:text-2xl"
-              style={{ fontFamily: "'Syne', sans-serif", color: WHITE }}
+              className="text-xl font-light leading-snug sm:text-2xl"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: WHITE }}
             >
               {headline}
             </p>
-            <p className="text-sm leading-relaxed" style={{ fontFamily: "'Inter', sans-serif", color: DIM }}>
-              {narrative[0]}
-            </p>
-            <p className="text-sm leading-relaxed" style={{ fontFamily: "'Inter', sans-serif", color: DIM }}>
-              {narrative[1]}
-            </p>
+            <p className="text-sm leading-relaxed text-white/55">{narrative[0]}</p>
+            <p className="text-sm leading-relaxed text-white/55">{narrative[1]}</p>
           </div>
         </div>
 
         {/* 4. RUNG 1 badge strip */}
         <div
-          className="mt-8 py-3 text-center text-xs font-bold uppercase tracking-[0.25em]"
+          className="mt-8 rounded-lg py-3 text-center text-xs font-bold uppercase tracking-[0.25em] text-[#07080d]"
           style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "var(--font-dm-mono), ui-monospace, monospace",
             backgroundColor: GOLD,
-            color: BG,
           }}
         >
           ✓ Rung 1: Awareness — Complete
@@ -505,26 +473,15 @@ export default function AiIqReport() {
 
         {/* 5. Domain breakdown */}
         <section className="mt-12">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-[0.3em]"
-            style={{ fontFamily: "'DM Mono', monospace", color: GOLD }}
-          >
-            Score by Domain · 5 Areas Assessed
-          </p>
+          <p className="anydoor-exp-eyebrow text-left">Score by Domain · 5 Areas Assessed</p>
           <div className="mt-6 grid gap-4">
             {domains.map((d) => {
               const chip = scoreChipColor(d.score);
               const pct = (d.score / 20) * 100;
               return (
-                <div
-                  key={d.key}
-                  className="rounded-lg border p-4"
-                  style={{ backgroundColor: CARD, borderColor: BORDER }}
-                >
+                <div key={d.key} className="anydoor-surface-card border p-4" style={{ borderColor: BORDER }}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium" style={{ fontFamily: "'Inter', sans-serif", color: WHITE }}>
-                      {d.key}
-                    </span>
+                    <span className="font-medium text-[#e8eef5]">{d.key}</span>
                     <span
                       className="rounded px-2 py-0.5 text-xs font-semibold tabular-nums"
                       style={{
@@ -539,9 +496,7 @@ export default function AiIqReport() {
                   <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(240,242,248,0.08)" }}>
                     <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: chip }} />
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed" style={{ fontFamily: "'Inter', sans-serif", color: DIM }}>
-                    {domainImplication(d.score)}
-                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-white/55">{domainImplication(d.score)}</p>
                 </div>
               );
             })}
@@ -550,63 +505,48 @@ export default function AiIqReport() {
 
         {/* 6. Recommended Rung Card */}
         <section className="mt-14">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-[0.3em]"
-            style={{ fontFamily: "'DM Mono', monospace", color: GOLD }}
-          >
-            Your Recommended Next Rung · AI Readiness Labs™
-          </p>
+          <p className="anydoor-exp-eyebrow text-left">Your Recommended Next Rung · AI Readiness Labs™</p>
           <div
-            className="mt-6 rounded-xl border-2 p-6 sm:p-8"
+            className="anydoor-surface-card mt-6 border-2 p-6 sm:p-8"
             style={{
-              backgroundColor: CARD,
               borderColor: GOLD,
-              boxShadow: `0 0 40px rgba(201,162,39,0.12), inset 0 0 0 1px ${BORDER}`,
+              boxShadow: "0 0 40px rgba(201,151,58,0.12)",
             }}
           >
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
               <div
                 className="shrink-0 rounded-lg border px-4 py-3 text-center sm:text-left"
-                style={{ borderColor: GOLD, color: GOLD, fontFamily: "'DM Mono', monospace" }}
+                style={{ borderColor: GOLD, color: GOLD, fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
               >
                 <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">Rung</div>
-                <div className="text-3xl font-extrabold tabular-nums" style={{ fontFamily: "'Syne', sans-serif" }}>
+                <div className="text-3xl font-light tabular-nums" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
                   {rung}
                 </div>
               </div>
               <div className="min-w-0 flex-1 space-y-4">
-                <h2 className="text-2xl font-bold" style={{ fontFamily: "'Syne', sans-serif", color: WHITE }}>
+                <h2 className="text-2xl font-light text-white" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
                   {rungLabel}
                 </h2>
-                <p className="text-sm" style={{ fontFamily: "'Inter', sans-serif", color: DIM }}>
+                <p className="text-sm text-white/55">
                   {row.recommended_rung_type === "one_time"
                     ? "One-time delivery — learn at your own pace."
                     : row.recommended_rung_type === "quarterly_contract"
                       ? "Quarterly strategic partnership — done-with-you execution."
                       : "Tiered live workshops — choose depth and cadence."}
                 </p>
-                <p className="text-sm leading-relaxed" style={{ fontFamily: "'Inter', sans-serif", color: "rgba(240,242,248,0.82)" }}>
-                  {rungBody(rung)}
-                </p>
-                <p className="text-3xl font-bold tabular-nums" style={{ fontFamily: "'Syne', sans-serif", color: GOLD }}>
+                <p className="text-sm leading-relaxed text-[#e8eef5]/90">{rungBody(rung)}</p>
+                <p className="text-3xl font-light tabular-nums text-[#c9973a]" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
                   {priceLine}
                 </p>
                 <a
                   href={CTA_AI_READINESS_LABS}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block rounded-lg px-6 py-3 text-center text-sm font-bold uppercase tracking-wide transition hover:opacity-95"
-                  style={{
-                    fontFamily: "'Inter', sans-serif",
-                    backgroundColor: GOLD,
-                    color: BG,
-                  }}
+                  className="anydoor-btn-gold inline-block w-full text-center sm:w-auto sm:min-w-[240px]"
                 >
                   {rungCtaLabel(rung)}
                 </a>
-                <p className="text-xs" style={{ fontFamily: "'Inter', sans-serif", color: DIM }}>
-                  {rungSubLabel(rung)}
-                </p>
+                <p className="text-xs text-white/45">{rungSubLabel(rung)}</p>
               </div>
             </div>
           </div>
@@ -614,46 +554,31 @@ export default function AiIqReport() {
 
         {/* 7. HubAI */}
         <section className="mt-10">
-          <div
-            className="rounded-xl border p-6"
-            style={{ backgroundColor: CARD, borderColor: "rgba(201,162,39,0.12)" }}
-          >
-            <h3 className="text-lg font-semibold" style={{ fontFamily: "'Syne', sans-serif", color: WHITE }}>
+          <div className="anydoor-surface-card border" style={{ borderColor: "rgba(201,151,58,0.15)" }}>
+            <h3 className="text-lg font-light text-white" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
               Start applying what you learned — today.
             </h3>
-            <p className="mt-2 text-sm" style={{ color: DIM, fontFamily: "'Inter', sans-serif" }}>
-              HubAI™ platform access · $97/month
-            </p>
+            <p className="mt-2 text-sm text-white/55">HubAI™ platform access · $97/month</p>
             <a
               href={CTA_HUBAI}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-block rounded-lg border-2 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/5"
-              style={{
-                borderColor: GOLD,
-                color: GOLD,
-                fontFamily: "'Inter', sans-serif",
-              }}
+              className="anydoor-btn-outline mt-4 inline-block"
             >
               Get HubAI Access →
             </a>
-            <p className="mt-3 text-xs" style={{ color: DIM, fontFamily: "'Inter', sans-serif" }}>
-              White-labeled CRM + automation + workflow tools
-            </p>
+            <p className="mt-3 text-xs text-white/45">White-labeled CRM + automation + workflow tools</p>
           </div>
         </section>
 
         {/* 8. Talk to Jordan */}
-        <section
-          className="mt-10 rounded-xl border px-6 py-8 text-center sm:px-8"
-          style={{ backgroundColor: CARD, borderColor: BORDER }}
-        >
-          <p className="text-base font-medium" style={{ fontFamily: "'Inter', sans-serif", color: WHITE }}>
+        <section className="anydoor-surface-card mt-10 border px-6 py-8 text-center sm:px-8" style={{ borderColor: BORDER }}>
+          <p className="text-base font-light text-white" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
             Prefer to talk through your results?
           </p>
           {!vapiHook.hasPublicKey ? (
-            <p className="mt-4 text-xs" style={{ color: DIM }}>
-              Voice unavailable: add <span className="font-mono" style={{ color: GOLD }}>VITE_VAPI_PUBLIC_KEY</span> and rebuild.
+            <p className="mt-4 text-xs text-white/45">
+              Voice unavailable: add <span className="font-mono text-[#c9973a]">VITE_VAPI_PUBLIC_KEY</span> and rebuild.
             </p>
           ) : (
             <>
@@ -667,12 +592,7 @@ export default function AiIqReport() {
                   <button
                     type="button"
                     onClick={vapiHook.start}
-                    className="inline-flex items-center gap-2 rounded-lg border px-5 py-3 text-sm font-semibold transition hover:opacity-90"
-                    style={{
-                      borderColor: GOLD,
-                      backgroundColor: "rgba(201,162,39,0.12)",
-                      color: GOLD,
-                    }}
+                    className="anydoor-btn-outline inline-flex items-center gap-2 border-[#c9973a]/50 bg-[#c9973a]/10 text-[#c9973a] hover:border-[#c9973a]"
                   >
                     <Mic className="h-4 w-4" aria-hidden />
                     Tap to Talk — Jordan
@@ -688,7 +608,7 @@ export default function AiIqReport() {
                   </button>
                 )}
               </div>
-              <p className="mt-3 text-[11px]" style={{ color: DIM }}>
+              <p className="mt-3 text-[11px] text-white/45">
                 Microphone required · same Evaluation Specialist as your diagnostic reports.
               </p>
             </>
@@ -696,26 +616,25 @@ export default function AiIqReport() {
         </section>
 
         {/* 9. Footer */}
-        <footer className="mt-14 flex flex-col items-center justify-between gap-4 border-t pt-8 sm:flex-row" style={{ borderColor: BORDER }}>
-          <p className="text-center text-xs sm:text-left" style={{ color: DIM, fontFamily: "'DM Mono', monospace" }}>
+        <footer className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row">
+          <p className="text-center text-xs text-white/45 sm:text-left" style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}>
             Socialutely | AI Marketing Platform · AI IQ™ v1 · Door 9
           </p>
           <button
             type="button"
             onClick={shareReport}
-            className="text-xs font-semibold underline decoration-gold/50 hover:opacity-90"
-            style={{ color: GOLD, fontFamily: "'Inter', sans-serif" }}
+            className="text-xs font-semibold text-[#c9973a] underline decoration-[#c9973a]/50 hover:opacity-90"
           >
             Share this report
           </button>
         </footer>
 
-        <p className="mt-8 text-center text-[10px]" style={{ color: "rgba(240,242,248,0.35)" }}>
-          <Link to="/" style={{ color: DIM }}>
-            ← Home
+        <p className="mt-8 text-center text-[10px] text-white/30">
+          <Link to="/" className="anydoor-exp-navlink !no-underline hover:!underline">
+            ← Platform home
           </Link>
         </p>
-      </main>
-    </div>
+      </div>
+    </AnyDoorPageShell>
   );
 }

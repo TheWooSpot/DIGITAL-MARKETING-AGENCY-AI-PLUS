@@ -7,7 +7,6 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SessionProvider } from "@/context/SessionContext";
 import Index from "./views/Index";
 import NotFound from "./views/NotFound";
-import Diagnostic from "./views/Diagnostic";
 import DiagnosticResults from "./views/DiagnosticResults";
 import DiagnosticUnlock from "./views/DiagnosticUnlock";
 import DoorsUrlDiagnostic from "./views/DoorsUrlDiagnostic";
@@ -21,6 +20,7 @@ import Rung3OptimizationPage from "./pages/aiReadiness/Rung3OptimizationPage";
 import Door5CalculatorPage from "./pages/Door5CalculatorPage";
 import QuotePage from "./pages/QuotePage";
 import PrivacyPage from "./pages/PrivacyPage";
+import ContactPage from "./pages/ContactPage";
 
 const queryClient = new QueryClient();
 
@@ -34,9 +34,10 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              {/* URL diagnostic (Mirror / Door b1). Legacy /views/Diagnostic.tsx was AI IQ questions — wrong route; use /ai-iq. */}
               <Route path="/doors/url-diagnostic" element={<DoorsUrlDiagnostic />} />
+              <Route path="/diagnostic" element={<DoorsUrlDiagnostic />} />
               <Route path="/report/:token" element={<SharedReportPage />} />
-              <Route path="/diagnostic" element={<Diagnostic />} />
               <Route path="/diagnostic/results" element={<DiagnosticResults />} />
               <Route path="/diagnostic/unlock" element={<DiagnosticUnlock />} />
               <Route path="/team/tiers" element={<TeamTiersPage />} />
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/ai-readiness/rung-3" element={<Rung3OptimizationPage />} />
               <Route path="/calculator" element={<Door5CalculatorPage />} />
               <Route path="/quote" element={<QuotePage />} />
+              <Route path="/contact" element={<ContactPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
-import { Button } from "@/components/ui/button";
+import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -17,12 +17,9 @@ import {
   recommendedServiceIds,
 } from "@/lib/calculator/door5Math";
 
-const BG = "#070d1a";
-const CARD = "#0e1829";
-const GOLD = "#c9a227";
-const BORDER = "rgba(201,162,39,0.25)";
-const WHITE = "#f0f2f8";
-const DIM = "rgba(240,242,248,0.55)";
+const GOLD = "#c9973a";
+const WHITE = "#e8eef5";
+const DIM = "rgba(232,238,245,0.55)";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -160,86 +157,62 @@ export default function Door5CalculatorPage() {
   }
 
   return (
-    <div
-      className="relative z-10 min-h-screen pb-24 selection:bg-[#c9a227]/30 selection:text-white"
-      style={{
-        color: WHITE,
-        fontFamily: "'Archivo', system-ui, sans-serif",
-      }}
-    >
-      <header
-        className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
-        style={{ borderBottomWidth: 1, borderBottomColor: GOLD }}
-      >
-        <Link to="/" className="text-sm font-semibold" style={{ color: GOLD }}>
-          ← Home
-        </Link>
-        <span className="text-xs font-mono uppercase tracking-[0.2em]" style={{ color: DIM }}>
-          AnyDoor Engine · Door 5
-        </span>
-      </header>
+    <AnyDoorPageShell>
+      <AnyDoorHero
+        eyebrow="AnyDoor Engine · Door 5"
+        titleAccent="The Calculator"
+        titleRest="Projected return"
+        subtitle="Projected return based on a few inputs — not what services cost. Pricing stays behind Door 6 until you're ready."
+      />
 
-      <div className="relative z-10 mx-auto max-w-2xl px-4 pt-10 sm:px-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-          The Calculator
-        </p>
-        <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl" style={{ fontFamily: "'Syne', system-ui, sans-serif" }}>
-          The Calculator
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: DIM }}>
-          Projected return based on a few inputs — not what services cost. Pricing stays behind Door 6 until you&apos;re ready.
-        </p>
-
+      <div className="relative z-10 mx-auto max-w-2xl px-0 pb-24 selection:bg-[#c9973a]/30 selection:text-white">
         {phase === "gate" && (
-          <section
-            className="mt-10 rounded-xl border p-6 sm:p-8"
-            style={{ backgroundColor: CARD, borderColor: BORDER }}
-          >
-            <h2 className="text-lg font-semibold" style={{ fontFamily: "'Syne', sans-serif" }}>
+          <section className="anydoor-surface-card mx-auto mt-10 max-w-md">
+            <h2 className="text-lg font-light text-white" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
               Before we model uplift
             </h2>
             <div className="mt-6 space-y-4">
               <div>
-                <Label htmlFor="d5-name" className="text-white">
+                <label htmlFor="d5-name" className="anydoor-field-label--primary">
                   Name
-                </Label>
-                <Input
+                </label>
+                <input
                   id="d5-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1.5 border-white/10 bg-black/25 text-white"
+                  className="anydoor-field-input"
                   autoComplete="name"
                 />
               </div>
               <div>
-                <Label htmlFor="d5-email" className="text-white">
+                <label htmlFor="d5-email" className="anydoor-field-label--primary">
                   Business email
-                </Label>
-                <Input
+                </label>
+                <input
                   id="d5-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1.5 border-white/10 bg-black/25 text-white"
+                  className="anydoor-field-input"
                   autoComplete="email"
                 />
               </div>
               <div>
-                <Label htmlFor="d5-url" className="text-white">
-                  Business URL <span style={{ color: DIM }}>(optional)</span>
-                </Label>
-                <Input
+                <label htmlFor="d5-url" className="anydoor-field-label--muted">
+                  Business URL <span className="text-white/35">(optional)</span>
+                </label>
+                <input
                   id="d5-url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  className="mt-1.5 border-white/10 bg-black/25 text-white"
+                  className="anydoor-field-input"
                   placeholder="https://"
                 />
               </div>
               {gateError && <p className="text-sm text-red-400">{gateError}</p>}
-              <Button type="button" className="font-semibold" style={{ backgroundColor: GOLD, color: BG }} onClick={continueFromGate}>
+              <button type="button" className="anydoor-btn-gold" onClick={continueFromGate}>
                 Continue
-              </Button>
+              </button>
             </div>
           </section>
         )}
@@ -299,10 +272,10 @@ export default function Door5CalculatorPage() {
                     key={key}
                     className={cn(
                       "flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition",
-                      businessSize === key ? "border-[#c9a227] bg-[#c9a227]/10" : "border-white/10 bg-black/20"
+                      businessSize === key ? "border-[#c9973a] bg-[#c9973a]/10" : "border-white/10 bg-black/20"
                     )}
                   >
-                    <RadioGroupItem value={key} id={`size-${key}`} className="border-[#c9a227] text-[#c9a227]" />
+                    <RadioGroupItem value={key} id={`size-${key}`} className="border-[#c9973a] text-[#c9973a]" />
                     <span className="text-white">{BUSINESS_SIZE_LABEL[key]}</span>
                   </label>
                 ))}
@@ -310,12 +283,12 @@ export default function Door5CalculatorPage() {
             </div>
 
             <div className="flex flex-wrap gap-3 pt-4">
-              <Button type="button" variant="outline" className="border-white/20 bg-transparent text-white" onClick={() => setPhase("gate")}>
+              <button type="button" className="anydoor-btn-outline" onClick={() => setPhase("gate")}>
                 Back
-              </Button>
-              <Button type="button" className="font-semibold" style={{ backgroundColor: GOLD, color: BG }} onClick={runResults}>
+              </button>
+              <button type="button" className="anydoor-btn-gold !w-auto px-8" onClick={runResults}>
                 See projection →
-              </Button>
+              </button>
             </div>
           </section>
         )}
@@ -327,15 +300,15 @@ export default function Door5CalculatorPage() {
             </p>
 
             <div
-              className="rounded-2xl border-2 p-8 text-center sm:p-10"
-              style={{ borderColor: GOLD, backgroundColor: CARD, boxShadow: "0 0 48px rgba(201,162,39,0.12)" }}
+              className="anydoor-surface-card border-2 p-8 text-center sm:p-10"
+              style={{ borderColor: GOLD, boxShadow: "0 0 48px rgba(201,151,58,0.12)" }}
             >
               <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
                 Projected 90-day uplift
               </p>
               <p
-                className="mt-4 text-4xl font-extrabold tabular-nums leading-none sm:text-5xl"
-                style={{ fontFamily: "'Syne', system-ui, sans-serif", color: WHITE }}
+                className="mt-4 text-4xl font-light tabular-nums leading-none sm:text-5xl md:text-6xl"
+                style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: WHITE }}
               >
                 {fmtMoney(breakdown.total90Day)}
               </p>
@@ -344,7 +317,7 @@ export default function Door5CalculatorPage() {
               </p>
             </div>
 
-            <div className="rounded-xl border p-6" style={{ borderColor: BORDER, backgroundColor: CARD }}>
+            <div className="anydoor-surface-card p-6">
               <h3 className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
                 Contributing factors (monthly model × 3 for 90 days)
               </h3>
@@ -379,11 +352,7 @@ export default function Door5CalculatorPage() {
               </p>
               <ul className="mt-4 space-y-3">
                 {contributorServices.map((s) => (
-                  <li
-                    key={s.id}
-                    className="rounded-lg border px-4 py-3 text-sm"
-                    style={{ borderColor: BORDER, backgroundColor: "rgba(14,24,41,0.6)" }}
-                  >
+                  <li key={s.id} className="anydoor-option-tile text-sm">
                     <span className="font-semibold text-white">{s.name}</span>
                     <span style={{ color: DIM }}> — {s.benefit}</span>
                   </li>
@@ -395,18 +364,17 @@ export default function Door5CalculatorPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button
+              <button
                 type="button"
                 disabled={saving}
-                className="font-semibold"
-                style={{ backgroundColor: GOLD, color: BG }}
+                className="anydoor-btn-gold !w-auto px-8 disabled:opacity-60"
                 onClick={() => void goToQuote()}
               >
                 {saving ? "Saving…" : "See what this investment looks like →"}
-              </Button>
-              <Button type="button" variant="outline" className="border-white/20 bg-transparent text-white" asChild>
-                <Link to="/diagnostic">Get your full diagnostic first →</Link>
-              </Button>
+              </button>
+              <Link className="anydoor-btn-outline inline-block text-center" to="/diagnostic">
+                Get your full diagnostic first →
+              </Link>
             </div>
             {saveError && <p className="text-sm text-amber-400">Couldn&apos;t save your session: {saveError}</p>}
 
@@ -416,7 +384,7 @@ export default function Door5CalculatorPage() {
           </section>
         )}
       </div>
-    </div>
+    </AnyDoorPageShell>
   );
 }
 
@@ -438,7 +406,7 @@ function SliderField({
   onChange: (n: number) => void;
 }) {
   return (
-    <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: BORDER, backgroundColor: CARD }}>
+    <div className="anydoor-surface-card p-4 sm:p-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <Label className="text-base text-white">{label}</Label>
         <Input

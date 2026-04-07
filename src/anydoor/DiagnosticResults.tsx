@@ -192,6 +192,7 @@ interface DiagnosticResultsProps {
 }
 
 export function DiagnosticResults({ result, submittedUrl, reportShareToken }: DiagnosticResultsProps) {
+  const navigate = useNavigate();
   const {
     variant: checkoutVariant = "A",
     loading: checkoutConfigLoading = false,
@@ -220,6 +221,8 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const recommendedNorm = useMemo(() => normalizeRecommended(result), [result]);
   /** Tier highlight comes from the diagnostic outcome (`recommended_tier`), not a static package dropdown. */
   const recTier = normalizeTier(result.recommended_tier);
+  const isSovereign = recTier === "Sovereign";
+  const sovereignTierCopy = "Custom engagement — pricing scoped to your organization";
 
   const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
   const shareToken = reportShareToken ?? result.share_token;
@@ -565,6 +568,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
                 recTier={recTier}
                 impactForService={impactForService}
                 tierStatement={recTier === tier.key ? tier_statement?.trim() : undefined}
+                sovereignTierCopy={sovereignTierCopy}
               />
             ))}
           </div>
@@ -578,6 +582,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
                   recTier={recTier}
                   impactForService={impactForService}
                   tierStatement={recTier === tier.key ? tier_statement?.trim() : undefined}
+                  sovereignTierCopy={sovereignTierCopy}
                 />
               </div>
             ))}
@@ -587,47 +592,78 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
       {/* Checkout CTA slot — variant from Supabase checkout_config or env override; never hardcode Stripe IDs/URLs here */}
       <ScrollSection className="no-print">
-        <div
-          data-slot="checkout-cta"
-          className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
-        >
-          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
-          <h3
-            className="mt-3 text-xl font-light text-white sm:text-2xl"
-            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+        {isSovereign ? (
+          <div
+            data-slot="checkout-cta"
+            className="sovereign-cta"
           >
-            Continue when you&apos;re ready
-          </h3>
-          <p className="mt-2 text-sm text-white/55">
-            Active experiment:{" "}
-            <span className="font-mono text-[#c9973a]/90">
-              {checkoutConfigLoading ? "…" : checkoutVariant}
-            </span>
-            {checkoutVariant === "A"
-              ? " — dynamic session flow (configure in a later pass)."
-              : " — static payment link flow (configure via env / backend)."}
-            {" "}Stripe products and payment links must only be supplied through environment variables or a config layer.
-          </p>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            {checkoutVariant === "A" ? (
-              <button
-                type="button"
-                disabled
-                className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-              >
-                Dynamic session checkout (placeholder)
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-              >
-                Payment link checkout (placeholder)
-              </button>
-            )}
+            <p
+              className="sovereign-label"
+            >
+              Sovereign
+            </p>
+            <p
+              className="sovereign-descriptor"
+            >
+              Custom engagement
+            </p>
+            <p className="sovereign-description">
+              Your organization&apos;s scale and complexity warrants a dedicated discovery conversation — not a
+              checkout form. Let&apos;s talk about what a strategic engagement looks like for you.
+            </p>
+            <a
+              href="/contact"
+              className="sovereign-button"
+            >
+              Schedule a discovery call →
+            </a>
+            <p className="sovereign-note">
+              No commitment required. We&apos;ll scope your engagement together.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div
+            data-slot="checkout-cta"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
+            <h3
+              className="mt-3 text-xl font-light text-white sm:text-2xl"
+              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+            >
+              Continue when you&apos;re ready
+            </h3>
+            <p className="mt-2 text-sm text-white/55">
+              Active experiment:{" "}
+              <span className="font-mono text-[#c9973a]/90">
+                {checkoutConfigLoading ? "…" : checkoutVariant}
+              </span>
+              {checkoutVariant === "A"
+                ? " — dynamic session flow (configure in a later pass)."
+                : " — static payment link flow (configure via env / backend)."}
+              {" "}Stripe products and payment links must only be supplied through environment variables or a config layer.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              {checkoutVariant === "A" ? (
+                <button
+                  type="button"
+                  disabled
+                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+                >
+                  Dynamic session checkout (placeholder)
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+                >
+                  Payment link checkout (placeholder)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </ScrollSection>
 
       {/* SECTION 5 — Tap to talk (fade in 0.5s after packages enter view) */}
@@ -728,14 +764,17 @@ function PackageColumn({
   recTier,
   impactForService,
   tierStatement,
+  sovereignTierCopy,
 }: {
   tier: (typeof PACKAGE_TIERS)[number];
   recTier: PackageTierKey | null;
   impactForService: (id: number, name: string, columnTier: PackageTierKey) => string;
   /** Shown under recommended tier name instead of price range when present. */
   tierStatement?: string;
+  sovereignTierCopy: string;
 }) {
   const isRec = recTier === tier.key;
+  const showSovereignCopy = tier.key === "Sovereign";
   return (
     <div
       className={`flex h-full min-h-[480px] flex-col rounded-xl border ${tier.border} ${tier.bg} p-5 print:break-inside-avoid`}
@@ -749,7 +788,9 @@ function PackageColumn({
       >
         {tier.displayName}
       </h4>
-      {isRec && tierStatement ? (
+      {showSovereignCopy ? (
+        <p className="mt-1 text-sm leading-snug text-white/60">{sovereignTierCopy}</p>
+      ) : isRec && tierStatement ? (
         <p className="mt-1 text-sm italic leading-snug text-[#c9973a]/80 print:text-amber-900">{tierStatement}</p>
       ) : (
         <p className="mt-1 font-mono text-xs text-white/50">{tier.range}</p>

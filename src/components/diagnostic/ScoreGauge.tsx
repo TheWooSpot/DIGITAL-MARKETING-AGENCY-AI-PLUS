@@ -28,7 +28,7 @@ export function ScoreGauge({ score, label = 'AI IQ™ Score', size = 200 }: Scor
             fill="none"
             stroke="currentColor"
             strokeWidth="8"
-            className="text-[#2a3f5f]"
+            className="text-white/[0.08]"
           />
           {/* Score arc */}
           <motion.circle
@@ -36,7 +36,7 @@ export function ScoreGauge({ score, label = 'AI IQ™ Score', size = 200 }: Scor
             cy="50"
             r="45"
             fill="none"
-            stroke="#00d9ff"
+            stroke="#c9973a"
             strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -47,7 +47,8 @@ export function ScoreGauge({ score, label = 'AI IQ™ Score', size = 200 }: Scor
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.span
-            className="text-4xl font-bold text-[#e8eef5] tabular-nums"
+            className="text-4xl font-light tabular-nums text-[#e8eef5]"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5, duration: 0.5 }}
@@ -56,7 +57,7 @@ export function ScoreGauge({ score, label = 'AI IQ™ Score', size = 200 }: Scor
           </motion.span>
         </div>
       </div>
-      <span className="text-sm text-[#a0aac0]">{label}</span>
+      <span className="text-sm text-white/45">{label}</span>
     </div>
   );
 }

@@ -1,4 +1,9 @@
-import React, { useState } from 'react';
+/**
+ * Legacy standalone AI IQ questionnaire (uses @/lib/diagnostic/questions).
+ * Not mounted in App — `/diagnostic` is the URL diagnostic (DoorsUrlDiagnostic).
+ * Use `/ai-iq` (AiIqAssessmentPage) for the current AI IQ™ flow.
+ */
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -15,36 +20,55 @@ const Diagnostic = () => {
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const pendingAdvanceRef = useRef(false);
+  const advanceTimeoutRef = useRef<number | null>(null);
 
   const question = AI_IQ_QUESTIONS[currentIndex];
   const progress = ((currentIndex + 1) / AI_IQ_QUESTIONS.length) * 100;
 
   const handleSelect = (questionId: string, score: number) => {
-    setResponses((prev) => ({ ...prev, [questionId]: score }));
-  };
-
-  const handleNext = () => {
-    if (currentIndex < AI_IQ_QUESTIONS.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else {
-      handleSubmit();
-    }
+    setResponses((prev) => {
+      if (prev[questionId] === score) return prev;
+      pendingAdvanceRef.current = true;
+      return { ...prev, [questionId]: score };
+    });
   };
 
   const handleBack = () => {
+    pendingAdvanceRef.current = false;
+    if (advanceTimeoutRef.current !== null) {
+      window.clearTimeout(advanceTimeoutRef.current);
+      advanceTimeoutRef.current = null;
+    }
     setCurrentIndex((i) => Math.max(0, i - 1));
   };
 
-  const handleSubmit = () => {
-    setIsSubmitting(true);
-    const responseArray: DiagnosticResponse[] = Object.entries(responses).map(
-      ([question_id, response_value]) => ({ question_id, response_value })
-    );
-    const result = calculateAIIQScore(responseArray);
-    navigate('/diagnostic/results', { state: { result } });
-  };
-
-  const canProceed = question && responses[question.id] !== undefined;
+  useEffect(() => {
+    if (!question || !pendingAdvanceRef.current) return;
+    if (responses[question.id] === undefined) return;
+    pendingAdvanceRef.current = false;
+    if (advanceTimeoutRef.current !== null) window.clearTimeout(advanceTimeoutRef.current);
+    const snapshot = responses;
+    advanceTimeoutRef.current = window.setTimeout(() => {
+      advanceTimeoutRef.current = null;
+      if (currentIndex < AI_IQ_QUESTIONS.length - 1) {
+        setCurrentIndex((i) => i + 1);
+      } else {
+        setIsSubmitting(true);
+        const responseArray: DiagnosticResponse[] = Object.entries(snapshot).map(
+          ([question_id, response_value]) => ({ question_id, response_value })
+        );
+        const result = calculateAIIQScore(responseArray);
+        navigate("/diagnostic/results", { state: { result } });
+      }
+    }, 160);
+    return () => {
+      if (advanceTimeoutRef.current !== null) {
+        window.clearTimeout(advanceTimeoutRef.current);
+        advanceTimeoutRef.current = null;
+      }
+    };
+  }, [responses, question, currentIndex, navigate]);
 
   return (
     <div className="min-h-screen text-[#e8eef5]">
@@ -124,22 +148,16 @@ const Diagnostic = () => {
         </AnimatePresence>
 
         {/* Navigation */}
-        <div className="flex justify-between mt-8">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="outline"
             onClick={handleBack}
-            disabled={currentIndex === 0}
+            disabled={currentIndex === 0 || isSubmitting}
             className="border-[#2a3f5f] text-[#e8eef5] hover:bg-[#1a1f2e]"
           >
             Back
           </Button>
-          <Button
-            onClick={handleNext}
-            disabled={!canProceed || isSubmitting}
-            className="bg-[#00d9ff] text-[#0a0e1a] hover:bg-[#00d9ff]/90"
-          >
-            {currentIndex < AI_IQ_QUESTIONS.length - 1 ? 'Next' : 'See Results'}
-          </Button>
+          <p className="text-center text-sm text-[#a0aac0] sm:text-right">Select an answer to continue.</p>
         </div>
       </div>
     </div>

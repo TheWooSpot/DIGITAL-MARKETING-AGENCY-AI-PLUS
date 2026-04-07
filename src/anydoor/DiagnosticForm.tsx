@@ -163,7 +163,7 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
     <form onSubmit={handleSubmit} className="relative mx-auto w-full max-w-md space-y-4">
       <DiagnosticLoadingOverlay active={loading} stageIndex={loadingStage} progress={loadingProgress} />
       <div>
-        <label htmlFor="url" className="mb-1 block text-sm font-medium text-[#c9973a]">
+        <label htmlFor="url" className="anydoor-field-label--primary">
           Website URL
         </label>
         <input
@@ -173,12 +173,12 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           disabled={loading}
-          className="w-full rounded-lg border border-white/[0.08] bg-[#07080d] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:border-[#c9973a]/50 focus:outline-none focus:ring-2 focus:ring-[#c9973a]/30 disabled:opacity-60"
+          className="anydoor-field-input"
         />
       </div>
       <div>
-        <label htmlFor="email" className="mb-1 block text-sm font-medium text-white/50">
-          Email <span className="text-[#6b7280]">(optional)</span>
+        <label htmlFor="email" className="anydoor-field-label--muted">
+          Email <span className="text-white/35">(optional)</span>
         </label>
         <input
           id="email"
@@ -187,14 +187,10 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading}
-          className="w-full rounded-lg border border-white/[0.08] bg-[#07080d] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:border-[#c9973a]/50 focus:outline-none focus:ring-2 focus:ring-[#c9973a]/30 disabled:opacity-60"
+          className="anydoor-field-input"
         />
       </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-[#c9973a] px-6 py-3 font-semibold text-[#07080d] transition-colors hover:bg-[#c9973a]/90 focus:outline-none focus:ring-2 focus:ring-[#c9973a] focus:ring-offset-2 focus:ring-offset-[#07080d] disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <button type="submit" disabled={loading} className="anydoor-btn-gold">
         {loading ? "Analyzing…" : "Get free diagnostic"}
       </button>
     </form>

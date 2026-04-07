@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { getBusinessEmailError } from "@/lib/aiIq/door4Email";
 import { topGapDomains } from "@/lib/aiIq/door4GapServices";
 import {
@@ -17,12 +15,11 @@ import {
   rungFromTotalScore,
 } from "@/lib/aiIq/door4Scoring";
 
-const BG = "#070d1a";
-const CARD = "#0e1829";
-const GOLD = "#c9a227";
-const BORDER = "rgba(201,162,39,0.25)";
-const WHITE = "#f0f2f8";
-const DIM = "rgba(240,242,248,0.55)";
+/** Door B1-aligned chrome (#c9973a, Cormorant heroes, anydoor-* fields) */
+const BG = "#07080d";
+const GOLD = "#c9973a";
+const WHITE = "#e8eef5";
+const DIM = "rgba(232,238,245,0.55)";
 
 type QuestionRow = {
   question_id: string;
@@ -102,6 +99,9 @@ export default function AiIqAssessmentPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Map<string, number>>(new Map());
   const [selectedOptionByQuestion, setSelectedOptionByQuestion] = useState<Map<string, string>>(new Map());
+  /** Set when user taps an option; used to auto-advance without an extra "Next" click. */
+  const pendingQuizAdvanceRef = useRef(false);
+  const quizAdvanceTimeoutRef = useRef<number | null>(null);
 
   const [resultTotal, setResultTotal] = useState(0);
   const [resultDomains, setResultDomains] = useState<Record<DomainKey, number> | null>(null);
@@ -180,6 +180,8 @@ export default function AiIqAssessmentPage() {
 
   const selectOption = useCallback((qid: string, optionLabel: string, score: number) => {
     setSelectedOptionByQuestion((prev) => {
+      if (prev.get(qid) === optionLabel) return prev;
+      pendingQuizAdvanceRef.current = true;
       const next = new Map(prev);
       next.set(qid, optionLabel);
       return next;
@@ -275,23 +277,38 @@ export default function AiIqAssessmentPage() {
     setSubmitting(false);
   }, [answers, email, mergeSession, name, questions, selectedOptionByQuestion, url]);
 
-  const goNext = useCallback(() => {
-    if (!current) return;
-    if (!answers.has(current.question_id)) return;
-    if (step >= totalSteps - 1) {
-      void finishQuiz();
-      return;
-    }
-    setStep((s) => s + 1);
-  }, [answers, current, finishQuiz, step, totalSteps]);
-
   const goBack = useCallback(() => {
+    pendingQuizAdvanceRef.current = false;
     if (step <= 0) {
       setPhase("gate");
       return;
     }
     setStep((s) => s - 1);
   }, [step]);
+
+  /** After a choice is registered for the current step, move on (or finish) without a separate Next click. */
+  useEffect(() => {
+    if (phase !== "quiz" || !current || !pendingQuizAdvanceRef.current) return;
+    if (!answers.has(current.question_id)) return;
+    pendingQuizAdvanceRef.current = false;
+    if (quizAdvanceTimeoutRef.current !== null) {
+      window.clearTimeout(quizAdvanceTimeoutRef.current);
+    }
+    quizAdvanceTimeoutRef.current = window.setTimeout(() => {
+      quizAdvanceTimeoutRef.current = null;
+      if (step >= totalSteps - 1) {
+        void finishQuiz();
+      } else {
+        setStep((s) => s + 1);
+      }
+    }, 160);
+    return () => {
+      if (quizAdvanceTimeoutRef.current !== null) {
+        window.clearTimeout(quizAdvanceTimeoutRef.current);
+        quizAdvanceTimeoutRef.current = null;
+      }
+    };
+  }, [answers, phase, current, step, totalSteps, finishQuiz]);
 
   const gapBlocks = useMemo(() => (resultDomains ? topGapDomains(resultDomains) : []), [resultDomains]);
 
@@ -307,109 +324,95 @@ export default function AiIqAssessmentPage() {
 
   if (phase === "loading") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
-        <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
-          style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
-        />
-        <p style={{ color: DIM }}>Loading assessment…</p>
-      </div>
+      <AnyDoorPageShell>
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+            style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+          />
+          <p style={{ color: DIM }}>Loading assessment…</p>
+        </div>
+      </AnyDoorPageShell>
     );
   }
 
   return (
-    <div className="min-h-screen pb-16" style={{ color: WHITE }}>
-      <header
-        className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
-        style={{ borderBottomWidth: 1, borderBottomColor: GOLD }}
-      >
-        <Link to="/" className="text-sm font-semibold tracking-tight" style={{ color: GOLD }}>
-          ← Home
-        </Link>
-        <span className="text-xs font-mono uppercase tracking-[0.2em]" style={{ color: DIM }}>
-          AI IQ™ · Door 4
-        </span>
-      </header>
-
+    <AnyDoorPageShell>
       {phase === "gate" && (
-        <main className="mx-auto max-w-lg px-4 pt-12">
-          <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-            Socialutely · AI Readiness Labs™
-          </p>
-          <h1 className="mt-3 text-3xl font-bold" style={{ fontFamily: "'Syne', system-ui, sans-serif" }}>
-            AI IQ™ Assessment
-          </h1>
-          <p className="mt-2 text-sm" style={{ color: DIM }}>
-            A few details, then one question at a time. Takes about 8–12 minutes.
-          </p>
+        <>
+          <AnyDoorHero
+            eyebrow="Socialutely · AI Readiness Labs™"
+            titleAccent="AI IQ™"
+            titleRest="Assessment"
+            subtitle="A few details, then one question at a time. Takes about 8–12 minutes."
+          />
           {loadError && (
-            <p className="mt-4 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            <p className="mx-auto mb-6 max-w-md rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-200">
               {loadError}
             </p>
           )}
-          <div className="mt-8 space-y-5 rounded-xl border p-6" style={{ backgroundColor: CARD, borderColor: BORDER }}>
+          <section className="mx-auto w-full max-w-md space-y-4">
             <div>
-              <Label htmlFor="aiq-name" className="text-white">
+              <label htmlFor="aiq-name" className="anydoor-field-label--primary">
                 Name
-              </Label>
-              <Input
+              </label>
+              <input
                 id="aiq-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1.5 border-white/10 bg-black/20 text-white"
+                className="anydoor-field-input"
                 placeholder="Your name"
                 autoComplete="name"
               />
             </div>
             <div>
-              <Label htmlFor="aiq-email" className="text-white">
+              <label htmlFor="aiq-email" className="anydoor-field-label--primary">
                 Business email
-              </Label>
-              <Input
+              </label>
+              <input
                 id="aiq-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 border-white/10 bg-black/20 text-white"
+                className="anydoor-field-input"
                 placeholder="you@company.com"
                 autoComplete="email"
               />
             </div>
             <div>
-              <Label htmlFor="aiq-url" className="text-white">
-                Business URL <span style={{ color: DIM }}>(optional)</span>
-              </Label>
-              <Input
+              <label htmlFor="aiq-url" className="anydoor-field-label--muted">
+                Business URL <span className="text-white/35">(optional)</span>
+              </label>
+              <input
                 id="aiq-url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="mt-1.5 border-white/10 bg-black/20 text-white"
+                className="anydoor-field-input"
                 placeholder="https://"
                 autoComplete="url"
               />
             </div>
-            {gateError && <p className="text-sm text-red-400">{gateError}</p>}
-            <Button
+            {gateError && <p className="text-center text-sm text-red-400">{gateError}</p>}
+            <button
               type="button"
-              className="w-full font-semibold"
-              style={{ backgroundColor: GOLD, color: BG }}
+              className="anydoor-btn-gold"
               onClick={startQuiz}
               disabled={questions.length === 0}
             >
               Begin assessment
-            </Button>
-          </div>
-        </main>
+            </button>
+          </section>
+        </>
       )}
 
       {phase === "quiz" && current && (
-        <main className="mx-auto max-w-2xl px-4 pt-8">
-          <div className="mb-6">
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-8">
             <div className="mb-2 flex justify-between text-xs font-mono" style={{ color: DIM }}>
               <span>Progress</span>
               <span>{Math.min(100, Math.round(((step + 1) / totalSteps) * 100))}%</span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(240,242,248,0.08)" }}>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.08]">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -420,17 +423,18 @@ export default function AiIqAssessmentPage() {
             </div>
           </div>
 
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-            {current.domain}
-          </p>
-          <h2 className="mt-2 text-xl font-semibold leading-snug sm:text-2xl" style={{ fontFamily: "'Syne', sans-serif" }}>
-            {current.question}
-          </h2>
-          <p className="mt-1 text-xs" style={{ color: DIM }}>
-            {current.question_id}
-          </p>
+          <div className="mb-8 text-center">
+            <p className="anydoor-exp-eyebrow">{current.domain}</p>
+            <h2
+              className="mt-6 font-light leading-snug text-white sm:text-3xl"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              {current.question}
+            </h2>
+            <p className="mt-2 font-mono text-[10px] text-white/35">{current.question_id}</p>
+          </div>
 
-          <div className="mt-8 grid gap-3">
+          <div className="grid gap-3">
             {current.options.map((opt) => {
               const selected = selectedOptionByQuestion.get(current.question_id) === opt.option;
               return (
@@ -438,12 +442,7 @@ export default function AiIqAssessmentPage() {
                   key={opt.option}
                   type="button"
                   onClick={() => selectOption(current.question_id, opt.option, opt.score)}
-                  className="rounded-lg border p-4 text-left text-sm transition hover:border-[#c9a227]/50"
-                  style={{
-                    backgroundColor: selected ? "rgba(201,162,39,0.12)" : CARD,
-                    borderColor: selected ? GOLD : BORDER,
-                    color: WHITE,
-                  }}
+                  className={`anydoor-option-tile ${selected ? "anydoor-option-tile--selected" : ""}`}
                 >
                   {opt.option}
                 </button>
@@ -451,35 +450,27 @@ export default function AiIqAssessmentPage() {
             })}
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Button type="button" variant="outline" className="border-white/20 bg-transparent text-white" onClick={goBack}>
+          <div className="mt-10 flex flex-wrap justify-center gap-3 sm:justify-start">
+            <button type="button" className="anydoor-btn-outline" onClick={goBack}>
               Back
-            </Button>
-            <Button
-              type="button"
-              disabled={!answers.has(current.question_id)}
-              className="font-semibold"
-              style={{ backgroundColor: GOLD, color: BG }}
-              onClick={goNext}
-            >
-              {step >= totalSteps - 1 ? "See results" : "Next"}
-            </Button>
+            </button>
+            <p className="w-full text-center text-xs text-white/40 sm:w-auto sm:text-left">Tap an answer to continue.</p>
           </div>
-        </main>
+        </div>
       )}
 
       {phase === "results" && resultDomains && (
-        <main className="mx-auto max-w-3xl px-4 pt-10 sm:px-6">
-          <div
-            className="rounded-xl border p-6 sm:p-8"
-            style={{ backgroundColor: CARD, borderColor: BORDER }}
-          >
+        <div className="mx-auto max-w-3xl">
+          <div className="anydoor-surface-card">
             <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
               Your score
             </p>
             <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-end">
               <div>
-                <span className="text-5xl font-extrabold tabular-nums" style={{ fontFamily: "'Syne', sans-serif" }}>
+                <span
+                  className="text-5xl font-light tabular-nums text-white"
+                  style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+                >
                   {resultTotal}
                 </span>
                 <span className="text-lg text-white/50"> / 100</span>
@@ -495,10 +486,7 @@ export default function AiIqAssessmentPage() {
             </div>
           </div>
 
-          <div
-            className="mt-6 py-3 text-center text-xs font-bold uppercase tracking-[0.25em]"
-            style={{ fontFamily: "'DM Mono', monospace", backgroundColor: GOLD, color: BG }}
-          >
+          <div className="mt-6 bg-[#c9973a] py-3 text-center font-[family-name:var(--font-dm-mono)] text-xs font-bold uppercase tracking-[0.25em] text-[#07080d]">
             ✓ Rung 1: Awareness — complete
           </div>
 
@@ -513,7 +501,7 @@ export default function AiIqAssessmentPage() {
                 const pct = max > 0 ? (score / max) * 100 : 0;
                 const chip = domainBarColor(score, max);
                 return (
-                  <div key={key} className="rounded-lg border p-4" style={{ backgroundColor: CARD, borderColor: BORDER }}>
+                  <div key={key} className="anydoor-surface-card p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span style={{ color: WHITE }}>{DOMAIN_LABEL[key]}</span>
                       <span
@@ -537,10 +525,12 @@ export default function AiIqAssessmentPage() {
               Recommended next rung
             </p>
             <div
-              className="mt-4 rounded-xl border-2 p-6"
-              style={{ borderColor: GOLD, backgroundColor: CARD, boxShadow: `0 0 40px rgba(201,162,39,0.12)` }}
+              className="mt-4 rounded-xl border-2 border-[#c9973a]/50 bg-[#07080d]/90 p-6 shadow-[0_0_40px_rgba(201,151,58,0.12)]"
             >
-              <p className="text-3xl font-extrabold tabular-nums" style={{ fontFamily: "'Syne', sans-serif", color: GOLD }}>
+              <p
+                className="text-3xl font-light tabular-nums text-[#c9973a]"
+                style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+              >
                 Rung {resultRung}
               </p>
               <p className="mt-2 text-lg font-semibold">
@@ -567,7 +557,7 @@ export default function AiIqAssessmentPage() {
               </p>
               <div className="mt-4 grid gap-3">
                 {gapBlocks.map((block) => (
-                  <div key={block.domain} className="rounded-lg border p-4" style={{ borderColor: BORDER, backgroundColor: CARD }}>
+                  <div key={block.domain} className="anydoor-surface-card p-4">
                     <p className="text-sm font-semibold text-white">{block.domain}</p>
                     <p className="mt-1 text-sm" style={{ color: DIM }}>
                       {block.services.map((s) => s.label).join(" · ")}
@@ -582,8 +572,7 @@ export default function AiIqAssessmentPage() {
             {cta.href.startsWith("/") ? (
               <Link
                 to={cta.href}
-                className="inline-block rounded-lg px-6 py-3 text-center text-sm font-bold uppercase tracking-wide"
-                style={{ backgroundColor: GOLD, color: BG }}
+                className="inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
               >
                 {cta.label}
               </Link>
@@ -592,8 +581,7 @@ export default function AiIqAssessmentPage() {
                 href={cta.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block rounded-lg px-6 py-3 text-center text-sm font-bold uppercase tracking-wide"
-                style={{ backgroundColor: GOLD, color: BG }}
+                className="inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
               >
                 {cta.label}
               </a>
@@ -607,8 +595,8 @@ export default function AiIqAssessmentPage() {
               Context captured for your report: {orgContext.option}
             </p>
           )}
-        </main>
+        </div>
       )}
-    </div>
+    </AnyDoorPageShell>
   );
 }

@@ -397,6 +397,89 @@ All colors MUST be HSL.
   --anydoor-red: #ef4444;
 }
 
+/* Shared “Door B1” URL diagnostic look — forms, cards, CTAs (AI IQ, calculator, labs, etc.) */
+@layer components {
+  .anydoor-exp-body {
+    font-family: var(--font-archivo);
+    color: var(--anydoor-text);
+  }
+
+  .anydoor-exp-navlink {
+    @apply text-sm text-white/45 underline decoration-[#c9973a]/50 transition-colors hover:text-[#c9973a];
+  }
+
+  .anydoor-exp-eyebrow {
+    @apply font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a];
+  }
+
+  .anydoor-exp-title {
+    font-family: var(--font-cormorant);
+    @apply mt-3 text-3xl font-light leading-tight text-white sm:text-4xl md:text-5xl;
+  }
+
+  .anydoor-exp-subtitle {
+    @apply mx-auto mt-4 max-w-2xl text-lg text-white/50;
+  }
+
+  .anydoor-field-label--primary {
+    @apply mb-1 block text-sm font-medium text-[#c9973a];
+  }
+
+  .anydoor-field-label--muted {
+    @apply mb-1 block text-sm font-medium text-white/50;
+  }
+
+  .anydoor-field-input {
+    @apply w-full rounded-lg border border-white/[0.08] bg-[#07080d] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:border-[#c9973a]/50 focus:outline-none focus:ring-2 focus:ring-[#c9973a]/30 disabled:opacity-60;
+  }
+
+  .anydoor-btn-gold {
+    @apply w-full rounded-lg bg-[#c9973a] px-6 py-3 font-semibold text-[#07080d] transition-colors hover:bg-[#c9973a]/90 focus:outline-none focus:ring-2 focus:ring-[#c9973a] focus:ring-offset-2 focus:ring-offset-[#07080d] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .anydoor-btn-outline {
+    @apply rounded-lg border border-white/15 bg-transparent px-5 py-2.5 text-sm font-medium text-white/85 transition-colors hover:border-[#c9973a]/45 hover:text-white;
+  }
+
+  .anydoor-surface-card {
+    @apply rounded-xl border border-white/[0.08] bg-[#07080d]/90 p-6 sm:p-8;
+  }
+
+  .anydoor-option-tile {
+    @apply rounded-lg border border-white/[0.08] bg-[#07080d]/80 p-4 text-left text-sm text-[#e8eef5] transition-colors hover:border-[#c9973a]/35;
+  }
+
+  .anydoor-option-tile--selected {
+    @apply border-[#c9973a]/55 bg-[#c9973a]/10;
+  }
+
+  .sovereign-cta {
+    @apply rounded-xl border border-[#c9973a]/50 bg-[#07080d]/90 px-6 py-8 sm:px-8;
+  }
+
+  .sovereign-label {
+    font-family: var(--font-dm-mono), ui-monospace, monospace;
+    @apply text-[10px] font-semibold uppercase tracking-[0.35em] text-[#c9973a];
+  }
+
+  .sovereign-descriptor {
+    font-family: var(--font-cormorant), Georgia, serif;
+    @apply mt-3 text-2xl font-medium text-white sm:text-3xl;
+  }
+
+  .sovereign-description {
+    @apply mt-3 text-[13px] leading-[1.6] text-white/55 sm:text-sm;
+  }
+
+  .sovereign-button {
+    @apply mt-6 inline-block w-full rounded border border-[#c9973a] bg-[#c9973a] px-6 py-3 text-center text-xs font-semibold uppercase tracking-widest text-[#07080d] hover:bg-[#c9973a]/90;
+  }
+
+  .sovereign-note {
+    @apply mt-3 text-center text-[11px] text-white/40;
+  }
+}
+
 @keyframes anydoor-pulse-gold {
   0%,
   100% {

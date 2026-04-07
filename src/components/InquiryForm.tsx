@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from "react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +15,8 @@ interface InquiryFormProps {
 
 const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName }) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<string[]>(new Array(10).fill(''));
+  const [answers, setAnswers] = useState<string[]>(new Array(10).fill(""));
+  const skipBlurAdvanceRef = useRef(false);
 
   const questions = [
     "What is your company name and industry?",
@@ -36,15 +37,23 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
     setAnswers(newAnswers);
   };
 
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    }
-  };
-
   const handlePrevious = () => {
+    skipBlurAdvanceRef.current = true;
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
+    }
+    queueMicrotask(() => {
+      skipBlurAdvanceRef.current = false;
+    });
+  };
+
+  /** Moving to the next question when the field is filled — no extra "Next" click. */
+  const handleAnswerBlur = () => {
+    if (skipBlurAdvanceRef.current) return;
+    const v = answers[currentQuestion]?.trim();
+    if (!v) return;
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion((q) => q + 1);
     }
   };
 
@@ -93,6 +102,7 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
             <Textarea
               value={answers[currentQuestion]}
               onChange={(e) => handleAnswerChange(e.target.value)}
+              onBlur={handleAnswerBlur}
               placeholder="Please provide detailed information..."
               className="min-h-32 rounded-lg border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -117,13 +127,9 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose, serviceName 
                 Submit Inquiry
               </Button>
             ) : (
-              <Button
-                onClick={handleNext}
-                disabled={!answers[currentQuestion].trim()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6"
-              >
-                Next
-              </Button>
+              <p className="max-w-xs text-right text-xs text-gray-500 dark:text-gray-400">
+                Click outside the box or press Tab when done — we&apos;ll go to the next question.
+              </p>
             )}
           </div>
         </CardContent>

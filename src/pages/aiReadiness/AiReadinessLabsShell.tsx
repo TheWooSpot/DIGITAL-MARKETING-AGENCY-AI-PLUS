@@ -1,40 +1,27 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 
-export const ARL_BG = "#070d1a";
-export const ARL_CARD = "#0e1829";
-export const ARL_GOLD = "#c9a227";
-export const ARL_BORDER = "rgba(201,162,39,0.25)";
-export const ARL_WHITE = "#f0f2f8";
-export const ARL_DIM = "rgba(240,242,248,0.55)";
+/** @deprecated Use CSS vars + Tailwind; kept for gradual migration */
+export const ARL_BG = "#07080d";
+export const ARL_CARD = "#07080d";
+export const ARL_GOLD = "#c9973a";
+export const ARL_BORDER = "rgba(255,255,255,0.08)";
+export const ARL_WHITE = "#e8eef5";
+export const ARL_DIM = "rgba(232,238,245,0.55)";
 
+/** Same shell as URL diagnostic (Door B1): centered “Platform home”, grid from `body`. */
 export function AiReadinessLabsShell({
   children,
-  eyebrow,
+  eyebrow: _eyebrow,
 }: {
   children: ReactNode;
+  /** Reserved for page-level eyebrows inside children */
   eyebrow: string;
 }) {
+  void _eyebrow;
   return (
-    <div
-      className="relative z-10 min-h-screen pb-20 selection:bg-[#c9a227]/30 selection:text-white"
-      style={{
-        color: ARL_WHITE,
-        fontFamily: "'Archivo', system-ui, sans-serif",
-      }}
-    >
-      <header
-        className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
-        style={{ borderBottomWidth: 1, borderBottomColor: ARL_GOLD }}
-      >
-        <Link to="/" className="text-sm font-semibold tracking-tight" style={{ color: ARL_GOLD }}>
-          ← Home
-        </Link>
-        <span className="text-xs font-mono uppercase tracking-[0.2em]" style={{ color: ARL_DIM }}>
-          {eyebrow}
-        </span>
-      </header>
-      <div className="relative z-10 mx-auto max-w-3xl px-4 pt-10 sm:px-6">{children}</div>
-    </div>
+    <AnyDoorPageShell>
+      <div className="mx-auto max-w-3xl pb-12 selection:bg-[#c9973a]/25 selection:text-white">{children}</div>
+    </AnyDoorPageShell>
   );
 }

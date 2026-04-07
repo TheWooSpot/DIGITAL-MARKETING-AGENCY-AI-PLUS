@@ -1,18 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { submitAiReadinessWaitlist } from "@/lib/aiReadiness/waitlistSubmit";
-import {
-  AiReadinessLabsShell,
-  ARL_BG,
-  ARL_BORDER,
-  ARL_CARD,
-  ARL_DIM,
-  ARL_GOLD,
-  ARL_WHITE,
-} from "./AiReadinessLabsShell";
+import { AiReadinessLabsShell, ARL_DIM, ARL_GOLD, ARL_WHITE } from "./AiReadinessLabsShell";
 
 const MODULES = [
   {
@@ -78,11 +67,13 @@ export default function Rung2AdaptationPage() {
 
   return (
     <AiReadinessLabsShell eyebrow="AI Readiness Labs™ · Rung 2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: ARL_GOLD }}>
-        AI Readiness Labs™
-      </p>
-      <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl" style={{ fontFamily: "'Syne', system-ui, sans-serif" }}>
-        Rung 2 — Adaptation
+      <p className="anydoor-exp-eyebrow">AI Readiness Labs™</p>
+      <h1
+        className="mt-3 text-3xl font-light leading-tight text-white sm:text-4xl md:text-5xl"
+        style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+      >
+        <span className="italic text-[#c9973a]">Rung 2</span>
+        <span className="block text-white">Adaptation</span>
       </h1>
       <p className="mt-2 text-lg font-medium" style={{ color: ARL_WHITE }}>
         AI is running.
@@ -91,10 +82,7 @@ export default function Rung2AdaptationPage() {
         The self-paced program that turns AI experimentation into operations you can count on.
       </p>
 
-      <section
-        className="mt-10 rounded-xl border p-6 sm:p-8"
-        style={{ backgroundColor: ARL_CARD, borderColor: ARL_BORDER }}
-      >
+      <section className="anydoor-surface-card mt-10">
         <h2 className="text-sm font-semibold uppercase tracking-[0.2em]" style={{ color: ARL_GOLD }}>
           Program details
         </h2>
@@ -121,11 +109,7 @@ export default function Rung2AdaptationPage() {
         </h2>
         <ol className="mt-4 space-y-4">
           {MODULES.map((m, i) => (
-            <li
-              key={m.title}
-              className="rounded-lg border p-4"
-              style={{ borderColor: ARL_BORDER, backgroundColor: ARL_CARD }}
-            >
+            <li key={m.title} className="anydoor-surface-card p-4">
               <span className="font-mono text-xs tabular-nums" style={{ color: ARL_GOLD }}>
                 {i + 1}.
               </span>{" "}
@@ -138,10 +122,7 @@ export default function Rung2AdaptationPage() {
         </ol>
       </section>
 
-      <section
-        className="mt-10 rounded-xl border p-6"
-        style={{ backgroundColor: ARL_CARD, borderColor: ARL_BORDER }}
-      >
+      <section className="anydoor-surface-card mt-10">
         <h2 className="text-sm font-semibold uppercase tracking-[0.2em]" style={{ color: ARL_GOLD }}>
           Exit deliverables
         </h2>
@@ -169,11 +150,8 @@ export default function Rung2AdaptationPage() {
         </p>
       </section>
 
-      <section
-        className="mt-14 rounded-xl border-2 p-6 sm:p-8"
-        style={{ borderColor: ARL_GOLD, backgroundColor: ARL_CARD, boxShadow: "0 0 40px rgba(201,162,39,0.08)" }}
-      >
-        <h2 className="text-xl font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>
+      <section className="mt-14 rounded-xl border-2 border-[#c9973a]/40 bg-[#07080d]/90 p-6 shadow-[0_0_40px_rgba(201,151,58,0.08)] sm:p-8">
+        <h2 className="text-xl font-light text-white" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
           Join the Rung 2 waitlist
         </h2>
         <p className="mt-2 text-sm" style={{ color: ARL_DIM }}>
@@ -187,53 +165,48 @@ export default function Rung2AdaptationPage() {
         ) : (
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div>
-              <Label htmlFor="r2-first" className="text-white">
+              <label htmlFor="r2-first" className="anydoor-field-label--primary">
                 First name
-              </Label>
-              <Input
+              </label>
+              <input
                 id="r2-first"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="mt-1.5 border-white/10 bg-black/20 text-white"
+                className="anydoor-field-input"
                 autoComplete="given-name"
               />
             </div>
             <div>
-              <Label htmlFor="r2-email" className="text-white">
+              <label htmlFor="r2-email" className="anydoor-field-label--primary">
                 Email
-              </Label>
-              <Input
+              </label>
+              <input
                 id="r2-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1.5 border-white/10 bg-black/20 text-white"
+                className="anydoor-field-input"
                 autoComplete="email"
               />
             </div>
             <div>
-              <Label htmlFor="r2-url" className="text-white">
-                Business URL <span style={{ color: ARL_DIM }}>(optional)</span>
-              </Label>
-              <Input
+              <label htmlFor="r2-url" className="anydoor-field-label--muted">
+                Business URL <span className="text-white/35">(optional)</span>
+              </label>
+              <input
                 id="r2-url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="mt-1.5 border-white/10 bg-black/20 text-white"
+                className="anydoor-field-input"
                 placeholder="https://"
               />
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full font-semibold sm:w-auto"
-              style={{ backgroundColor: ARL_GOLD, color: ARL_BG }}
-            >
+            <button type="submit" disabled={busy} className="anydoor-btn-gold sm:w-auto sm:min-w-[200px]">
               {busy ? "Submitting…" : "Join waitlist"}
-            </Button>
+            </button>
           </form>
         )}
       </section>

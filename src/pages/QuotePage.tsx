@@ -1,10 +1,9 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { BUSINESS_SIZE_LABEL, type BusinessSize } from "@/lib/calculator/door5Math";
 
-const BG = "#070d1a";
-const GOLD = "#c9a227";
-const DIM = "rgba(240,242,248,0.55)";
-const WHITE = "#f0f2f8";
+const DIM = "rgba(232,238,245,0.55)";
+const WHITE = "#e8eef5";
 
 /**
  * Door 6 — Quote (placeholder).
@@ -23,42 +22,31 @@ export default function QuotePage() {
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen px-4 pb-20 pt-12" style={{ backgroundColor: BG, color: WHITE }}>
-      <div className="mx-auto max-w-lg">
-        <Link to="/calculator" className="text-sm font-medium" style={{ color: GOLD }}>
-          ← Back to calculator
-        </Link>
-        <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-          Door 6 · Quote
-        </p>
-        <h1 className="mt-3 text-3xl font-bold" style={{ fontFamily: "'Syne', system-ui, sans-serif" }}>
-          Your personalized quote
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: DIM }}>
-          Line-item pricing unlocks here after we confirm your business email. This step is wired for selections from the
-          calculator.
-        </p>
+    <AnyDoorPageShell backHref="/calculator" backLabel="← Back to calculator">
+      <AnyDoorHero
+        eyebrow="Door 6 · Quote"
+        titleAccent="Your personalized"
+        titleRest="quote"
+        subtitle="Line-item pricing unlocks here after we confirm your business email. This step is wired for selections from the calculator."
+      />
 
-        <div className="mt-8 rounded-xl border border-white/10 bg-[#0e1829] p-6">
-          <p className="text-xs uppercase tracking-widest" style={{ color: DIM }}>
-            Pre-selected from Door 5
-          </p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li>
-              <span style={{ color: DIM }}>Business size: </span>
-              {size ? BUSINESS_SIZE_LABEL[size] : "—"}
-            </li>
-            <li>
-              <span style={{ color: DIM }}>Service focus ids: </span>
-              {ids.length > 0 ? ids.join(", ") : "—"}
-            </li>
-          </ul>
-        </div>
-
-        <p className="mt-8 text-xs" style={{ color: DIM }}>
-          Full quote flow (email gate + pricing) can connect here next.
-        </p>
+      <div className="anydoor-surface-card mx-auto mt-10 max-w-lg">
+        <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Pre-selected from Door 5</p>
+        <ul className="mt-4 space-y-2 text-sm" style={{ color: DIM }}>
+          <li>
+            <span style={{ color: DIM }}>Business size: </span>
+            <span style={{ color: WHITE }}>{size ? BUSINESS_SIZE_LABEL[size] : "—"}</span>
+          </li>
+          <li>
+            <span style={{ color: DIM }}>Service focus ids: </span>
+            <span style={{ color: WHITE }}>{ids.length > 0 ? ids.join(", ") : "—"}</span>
+          </li>
+        </ul>
       </div>
-    </div>
+
+      <p className="mx-auto mt-8 max-w-lg text-xs" style={{ color: DIM }}>
+        Full quote flow (email gate + pricing) can connect here next.
+      </p>
+    </AnyDoorPageShell>
   );
 }

@@ -42,3 +42,4 @@ docs/claude to vapi build.txt
 
 # TypeScript incremental build metadata
 *.tsbuildinfo
+.env*.local

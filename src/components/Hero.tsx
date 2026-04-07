@@ -180,7 +180,7 @@ const Hero = () => {
               asChild
               className="border-3 border-teal-400 dark:border-teal-600 text-teal-700 dark:text-teal-300 hover:bg-teal-500 hover:text-white hover:border-teal-500 px-10 py-6 text-lg rounded-full shadow-lg transition-all duration-300 font-bold backdrop-blur-sm bg-white/50 dark:bg-gray-800/50"
             >
-              <Link to="/diagnostic">Take AI IQ™ Assessment</Link>
+              <Link to="/ai-iq">Take AI IQ™ Assessment</Link>
             </Button>
           </motion.div>
         </motion.div>

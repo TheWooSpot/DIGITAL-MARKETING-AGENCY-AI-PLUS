@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
+import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { DiagnosticForm, type DiagnosticResult } from "./DiagnosticForm";
 import { DiagnosticResults } from "./DiagnosticResults";
 
@@ -26,30 +27,15 @@ export default function AnyDoorDoorB1Page() {
   }, [result]);
 
   return (
-    <div id="anydoor-door-b1" className="min-h-screen">
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
-        <nav className="no-print mb-8 text-center">
-          <Link
-            to="/"
-            className="text-sm text-white/45 underline decoration-[#c9973a]/50 hover:text-[#c9973a]"
-          >
-            ← Platform home
-          </Link>
-        </nav>
-
-        <header className={`mb-10 text-center sm:mb-14${result ? " no-print" : ""}`}>
-          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">AnyDoor Engine · Door b1</p>
-          <h1
-            className="mt-3 text-3xl font-light leading-tight text-white sm:text-4xl md:text-5xl"
-            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
-          >
-            <span className="italic text-[#c9973a]">URL diagnostic</span>
-            <span className="block text-white">Socialutely | AI Marketing Platform</span>
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-white/50">
-            Enter your website URL for a free digital marketing diagnostic — powered by AnyDoor Engine v12.
-          </p>
-        </header>
+    <div id="anydoor-door-b1">
+      <AnyDoorPageShell>
+        <AnyDoorHero
+          className={`mb-10 text-center sm:mb-14${result ? " no-print" : ""}`}
+          eyebrow="AnyDoor Engine · Door b1"
+          titleAccent="URL diagnostic"
+          titleRest="Socialutely | AI Marketing Platform"
+          subtitle="Enter your website URL for a free digital marketing diagnostic — powered by AnyDoor Engine v12."
+        />
 
         <section id="get-started" className="mx-auto w-full max-w-md">
           <DiagnosticForm
@@ -91,7 +77,7 @@ export default function AnyDoorDoorB1Page() {
             </div>
           </>
         )}
-      </main>
+      </AnyDoorPageShell>
     </div>
   );
 }
