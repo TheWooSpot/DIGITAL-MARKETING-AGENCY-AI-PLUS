@@ -163,12 +163,10 @@ export default function Door5CalculatorPage() {
     <div
       className="relative z-10 min-h-screen pb-24 selection:bg-[#c9a227]/30 selection:text-white"
       style={{
-        backgroundColor: BG,
         color: WHITE,
         fontFamily: "'Archivo', system-ui, sans-serif",
       }}
     >
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grain opacity-70" aria-hidden />
       <header
         className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
         style={{ borderBottomWidth: 1, borderBottomColor: GOLD }}
@@ -186,7 +184,7 @@ export default function Door5CalculatorPage() {
           The Calculator
         </p>
         <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl" style={{ fontFamily: "'Syne', system-ui, sans-serif" }}>
-          What could this be worth?
+          The Calculator
         </h1>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: DIM }}>
           Projected return based on a few inputs — not what services cost. Pricing stays behind Door 6 until you&apos;re ready.

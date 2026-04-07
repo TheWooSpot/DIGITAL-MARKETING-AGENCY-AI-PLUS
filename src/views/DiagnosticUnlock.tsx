@@ -9,7 +9,7 @@ const DiagnosticUnlock = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] text-[#e8eef5]">
+    <div className="min-h-screen text-[#e8eef5]">
       <ThemeToggle />
       <div className="container max-w-xl mx-auto px-4 py-12">
         <motion.div

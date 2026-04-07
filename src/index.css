@@ -87,15 +87,53 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  /* App-wide shell: one dark base + warm grid + grain (AnyDoor Engine v2) */
+  html {
+    background-color: #07080d;
+    @apply transition-colors;
+    overflow-x: hidden;
+  }
+
   body {
-    @apply bg-background text-foreground transition-colors;
+    @apply transition-colors;
+    position: relative;
+    min-height: 100%;
+    background-color: #07080d;
+    color: #e8eef5;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     overflow-x: hidden;
   }
 
-  html {
-    @apply transition-colors;
-    overflow-x: hidden;
+  /* Warm ink grid — same language as legacy .platform-hero-grid, fixed so all routes inherit */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(242, 237, 228, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(242, 237, 228, 0.02) 1px, transparent 1px);
+    background-size: 80px 80px;
+    background-position: center top;
+  }
+
+  /* Subtle film grain — fixed overlay, does not block clicks */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
   }
 
   /* overflow-x: hidden on html/body breaks position:sticky site-wide; clip fixes it on platform home */

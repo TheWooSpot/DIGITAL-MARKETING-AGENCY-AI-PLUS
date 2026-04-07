@@ -26,11 +26,7 @@ export default function AnyDoorDoorB1Page() {
   }, [result]);
 
   return (
-    <div
-      id="anydoor-door-b1"
-      className="min-h-screen"
-      style={{ backgroundColor: "#07080d", cursor: "crosshair" }}
-    >
+    <div id="anydoor-door-b1" className="min-h-screen">
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
         <nav className="no-print mb-8 text-center">
           <Link

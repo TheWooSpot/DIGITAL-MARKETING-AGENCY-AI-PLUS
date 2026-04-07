@@ -19,12 +19,10 @@ export function AiReadinessLabsShell({
     <div
       className="relative z-10 min-h-screen pb-20 selection:bg-[#c9a227]/30 selection:text-white"
       style={{
-        backgroundColor: ARL_BG,
         color: ARL_WHITE,
         fontFamily: "'Archivo', system-ui, sans-serif",
       }}
     >
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grain opacity-80" aria-hidden />
       <header
         className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
         style={{ borderBottomWidth: 1, borderBottomColor: ARL_GOLD }}

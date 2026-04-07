@@ -16,7 +16,7 @@ const DiagnosticResults = () => {
 
   if (!result) {
     return (
-      <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-[#a0aac0] mb-4">No results found. Take the assessment first.</p>
           <Button onClick={() => navigate('/diagnostic')} className="bg-[#00d9ff] text-[#0a0e1a]">
@@ -28,7 +28,7 @@ const DiagnosticResults = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] text-[#e8eef5]">
+    <div className="min-h-screen text-[#e8eef5]">
       <ThemeToggle />
       <div className="container max-w-2xl mx-auto px-4 py-12">
         <motion.div

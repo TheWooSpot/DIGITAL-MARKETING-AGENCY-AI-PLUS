@@ -59,7 +59,7 @@ export default function SharedReportPage() {
 
   if (!routeToken) {
     return (
-      <div className="min-h-screen px-4 py-16 text-center" style={{ backgroundColor: "#07080d", color: "#e8eef5" }}>
+      <div className="min-h-screen px-4 py-16 text-center" style={{ color: "#e8eef5" }}>
         <p className="text-white/70">Invalid link.</p>
         <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
           Run a new diagnostic →
@@ -70,7 +70,7 @@ export default function SharedReportPage() {
 
   if (error && !result) {
     return (
-      <div className="min-h-screen px-4 py-16 text-center" style={{ backgroundColor: "#07080d", color: "#e8eef5" }}>
+      <div className="min-h-screen px-4 py-16 text-center" style={{ color: "#e8eef5" }}>
         <p className="text-white/70">{error}</p>
         <Link to="/doors/url-diagnostic" className="mt-6 inline-block text-[#c9973a] underline">
           Run a new diagnostic →
@@ -81,14 +81,14 @@ export default function SharedReportPage() {
 
   if (!result) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#07080d", color: "#e8eef5" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ color: "#e8eef5" }}>
         <p className="text-sm text-white/50">Loading report…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#07080d", cursor: "crosshair" }}>
+    <div className="min-h-screen">
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
         <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={routeToken} />
       </main>

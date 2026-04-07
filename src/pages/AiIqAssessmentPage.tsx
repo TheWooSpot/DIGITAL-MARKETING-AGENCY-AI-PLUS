@@ -307,10 +307,7 @@ export default function AiIqAssessmentPage() {
 
   if (phase === "loading") {
     return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center gap-4"
-        style={{ backgroundColor: BG, color: WHITE }}
-      >
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
         <div
           className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
           style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
@@ -321,7 +318,7 @@ export default function AiIqAssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16" style={{ backgroundColor: BG, color: WHITE }}>
+    <div className="min-h-screen pb-16" style={{ color: WHITE }}>
       <header
         className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
         style={{ borderBottomWidth: 1, borderBottomColor: GOLD }}

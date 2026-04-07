@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 
 const SESSION_KEY = "socialutely_team_tiers_ok";
-const BG = "#0b0f1a";
 const GOLD = "#d4a843";
 
 function getExpectedPassword(): string {
@@ -225,19 +224,8 @@ function PasswordGate({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div
       className="team-tiers-page fixed inset-0 z-[100] flex min-h-[100dvh] flex-col items-center justify-center px-6"
-      style={{ backgroundColor: BG, fontFamily: "'Archivo', system-ui, sans-serif" }}
+      style={{ fontFamily: "'Archivo', system-ui, sans-serif" }}
     >
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grain opacity-100" aria-hidden />
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(212,168,67,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(212,168,67,0.15) 1px, transparent 1px)",
-          backgroundSize: "72px 72px",
-        }}
-        aria-hidden
-      />
-
       <div className="relative z-10 w-full max-w-sm text-center">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
           Internal
@@ -294,22 +282,10 @@ export default function TeamTiersPage() {
     <div
       className="team-tiers-page min-h-screen pb-24 pt-10 selection:bg-[#d4a843]/25 selection:text-white sm:pt-14"
       style={{
-        backgroundColor: BG,
         fontFamily: "'Archivo', system-ui, sans-serif",
         cursor: "default",
       }}
     >
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grain" aria-hidden />
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.025]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(232,238,245,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(232,238,245,0.06) 1px, transparent 1px)",
-          backgroundSize: "80px 80px",
-        }}
-        aria-hidden
-      />
-
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
         <header className="mb-12 text-center">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: GOLD }}>

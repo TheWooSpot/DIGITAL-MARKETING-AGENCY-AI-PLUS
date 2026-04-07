@@ -1,84 +1,99 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu } from "lucide-react";
 import { PLATFORM_CATEGORIES, PLATFORM_SERVICE_COUNT } from "@/data/platformCatalog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const GOLD = "#c9973a";
-const BG = "#07080d";
-
-/**
- * Optional override if the URL diagnostic is hosted on another origin.
- * Default: same app — `/doors/url-diagnostic` on this Vite deployment.
- */
-function getAnyDoorOrigin(): string {
-  const env = import.meta.env.VITE_ANYDOOR_ORIGIN as string | undefined;
-  if (env) return env.replace(/\/$/, "");
-  return "";
-}
 
 type DoorStatus = "live" | "building" | "planned";
 
-const DOORS: Array<{
-  code: string;
+type DoorCta =
+  | { kind: "link"; href: string; label: string; className?: string }
+  | { kind: "muted"; label: string }
+  | { kind: "planned"; label: string };
+
+type DoorDef = {
+  label: string;
+  status: DoorStatus;
   title: string;
   description: string;
-  cta: string;
-  status: DoorStatus;
-  href?: string;
-  active?: boolean;
-}> = [
+  cta: DoorCta;
+};
+
+const DOORS: DoorDef[] = [
   {
-    code: "b1",
-    title: "URL Diagnostic",
-    description: "Paste a URL. Get scored gaps, mapped services, and tier guidance in seconds.",
-    cta: "Run Free Diagnostic",
-    status: "live",
-    href: "/doors/url-diagnostic",
-    active: true,
-  },
-  {
-    code: "b2",
-    title: "Revenue Goal Planner",
-    description: "Model growth targets and translate them into an execution-ready service stack.",
-    cta: "Coming soon",
+    label: "D-1",
     status: "building",
+    title: "The Direct Reach",
+    description: "Call, text, or email us — we'll respond intelligently across all three.",
+    cta: { kind: "muted", label: "Coming soon" },
   },
   {
-    code: "a",
-    title: "Guided Qualifier (Tally)",
-    description: "Structured qualification flow that routes prospects to the right door.",
-    cta: "Coming soon",
-    status: "building",
-  },
-  {
-    code: "c",
-    title: "SMS Quick Scan",
-    description: "Lightweight SMS capture for fast field diagnostics and follow-up.",
-    cta: "Planned",
-    status: "planned",
-  },
-  {
-    code: "d",
-    title: "AI Voice Conversation",
-    description: "Voice-led discovery that feels consultative — not a chatbot demo.",
-    cta: "Planned",
-    status: "planned",
-  },
-  {
-    code: "e",
-    title: "AI IQ™ Assessment",
-    description: "Native maturity scoring across 7 domains — awareness rung, then routed to Adaptation, Optimization, or Stewardship.",
-    cta: "Take the AI IQ™",
+    label: "D-2",
     status: "live",
-    href: "/ai-iq",
-    active: true,
+    title: "The Mirror",
+    description: "Paste a URL. Get a clear, objective picture of your digital presence.",
+    cta: { kind: "link", href: "/diagnostic", label: "Run free diagnostic" },
+  },
+  {
+    label: "D-3",
+    status: "building",
+    title: "The Self-Discovery",
+    description: "Seven questions that surface something true you hadn't said out loud.",
+    cta: { kind: "muted", label: "Coming soon" },
+  },
+  {
+    label: "D-4",
+    status: "live",
+    title: "The AI IQ™",
+    description: "21 questions. 7 domains. One score that tells you exactly where you stand.",
+    cta: { kind: "link", href: "/ai-iq", label: "Take the AI IQ™" },
+  },
+  {
+    label: "D-5",
+    status: "building",
+    title: "The Calculator",
+    description: "What would a more automated, more visible version of your business be worth?",
+    cta: {
+      kind: "link",
+      href: "/calculator",
+      label: "What could this be worth?",
+      className: "normal-case text-[12px] font-sans tracking-normal text-[#c9973a] hover:text-[#c9973a]/90",
+    },
+  },
+  {
+    label: "D-6",
+    status: "building",
+    title: "The Quote",
+    description: "You know what you want. Select your services and get an instant quote.",
+    cta: { kind: "muted", label: "Coming soon" },
+  },
+  {
+    label: "D-7",
+    status: "building",
+    title: "The Dream",
+    description: "Tell us where you want to go. Amelia will help you see the path.",
+    cta: { kind: "muted", label: "Coming soon" },
+  },
+  {
+    label: "D-8",
+    status: "planned",
+    title: "The Referral Landing",
+    description: "Someone sent you here. That means something — and we treat it that way.",
+    cta: { kind: "planned", label: "Planned" },
+  },
+  {
+    label: "D-9",
+    status: "planned",
+    title: "The Ad Response",
+    description: "You saw something specific. Let's continue that exact conversation.",
+    cta: { kind: "planned", label: "Planned" },
   },
 ];
 
@@ -89,16 +104,26 @@ function statusBadge(status: DoorStatus): { label: string; className: string } {
   return { label: "PLANNED", className: "bg-white/5 text-white/45 border-white/10" };
 }
 
+const navLinkClass =
+  "text-[11px] font-medium uppercase tracking-[0.2em] text-white/55 transition-colors hover:text-white";
+
 const PlatformHome = () => {
   const [activeCategory, setActiveCategory] = useState(PLATFORM_CATEGORIES[0].slug);
-  const [diagnosticUrl, setDiagnosticUrl] = useState("");
-  const anyDoorOrigin = useMemo(() => getAnyDoorOrigin(), []);
   const catalogScrollRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
   const scrollToId = useCallback((id: string) => {
     const el = document.getElementById(id);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  useEffect(() => {
+    if (location.pathname === "/" && location.hash === "#doors") {
+      requestAnimationFrame(() => {
+        document.getElementById("doors")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location.pathname, location.hash]);
 
   useLayoutEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -142,117 +167,91 @@ const PlatformHome = () => {
     };
   }, []);
 
-  const analyzeHref =
-    diagnosticUrl.trim().length > 0
-      ? `${anyDoorOrigin}/doors/url-diagnostic?url=${encodeURIComponent(diagnosticUrl.trim())}`
-      : `${anyDoorOrigin}/doors/url-diagnostic`;
-
   return (
     <div
       className="platform-home min-h-screen text-[#e8eef5] selection:bg-[#c9973a]/30 selection:text-white"
       style={{
-        backgroundColor: BG,
-        cursor: "crosshair",
         fontFamily: "'Archivo', system-ui, sans-serif",
       }}
     >
-      {/* Grain + grid overlay */}
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grain" aria-hidden />
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grid opacity-[0.02]" aria-hidden />
+      {/* Background: global grid + grain on body (index.css); no duplicate full-page overlays here */}
 
       {/* Nav */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#07080d]/70 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#07080d]/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <button
             type="button"
-            onClick={() => scrollToId("hero")}
-            className="text-left text-sm font-medium tracking-tight text-white"
+            onClick={() => scrollToId("platform")}
+            className="shrink-0 text-left text-sm font-medium tracking-tight text-white"
           >
             Socialutely <span style={{ color: GOLD }}>|</span>{" "}
             <span className="text-white/80">AI</span>
           </button>
-          <nav className="hidden items-center gap-6 text-[11px] font-medium uppercase tracking-[0.2em] text-white/55 md:flex">
-            <button type="button" className="hover:text-white" onClick={() => scrollToId("hero")}>
+
+          <nav className="hidden flex-1 justify-center gap-8 lg:flex" aria-label="Primary">
+            <button type="button" className={navLinkClass} onClick={() => scrollToId("platform")}>
               Platform
             </button>
-            <button type="button" className="hover:text-white" onClick={() => scrollToId("catalog")}>
+            <button type="button" className={navLinkClass} onClick={() => scrollToId("catalog")}>
               Services
             </button>
-            <button type="button" className="hover:text-white" onClick={() => scrollToId("anydoor")}>
+            <Link to="/#doors" className={navLinkClass}>
               AnyDoor Engine
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white/55 outline-none hover:text-white data-[state=open]:text-white"
-                type="button"
-              >
-                AI Readiness Labs
-                <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="min-w-[14rem] border border-white/10 bg-[#07080d] text-white shadow-xl"
-              >
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
-                  <Link to="/ai-readiness/rung-2">Rung 2 — Adaptation</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
-                  <Link to="/ai-readiness/rung-3">Rung 3 — Optimization</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/10" />
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
-                  <Link to="/ai-iq">Take the AI IQ™</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <button type="button" className="hover:text-white" onClick={() => scrollToId("footer")}>
+            </Link>
+            <Link to="/ai-iq" className={navLinkClass}>
+              AI Readiness Labs
+            </Link>
+            <button type="button" className={navLinkClass} onClick={() => scrollToId("about")}>
               About
             </button>
-            <Link to="/calculator" className="max-w-[11rem] text-center leading-tight hover:text-white">
-              What could this be worth?
-            </Link>
-            <Link
-              to="/doors/url-diagnostic"
-              className="rounded border border-[#c9973a] bg-[#c9973a] px-4 py-2 text-[10px] font-semibold tracking-[0.18em] text-[#07080d] hover:bg-[#c9973a]/90"
-            >
-              Get Diagnostic
-            </Link>
           </nav>
-          <div className="flex flex-wrap items-center justify-end gap-2 md:hidden">
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger
-                className="rounded border border-white/15 px-3 py-2 text-[10px] font-semibold tracking-widest text-white/80 outline-none"
                 type="button"
+                className="flex items-center gap-2 rounded border border-white/15 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-white/80 outline-none hover:border-white/25 hover:text-white lg:hidden"
+                aria-label="Open menu"
               >
-                Labs ▾
+                <Menu className="h-4 w-4" />
+                Menu
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 className="min-w-[12rem] border border-white/10 bg-[#07080d] text-white shadow-xl"
               >
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
-                  <Link to="/ai-readiness/rung-2">Rung 2 — Adaptation</Link>
+                <DropdownMenuItem
+                  className="cursor-pointer focus:bg-white/10 focus:text-white"
+                  onClick={() => scrollToId("platform")}
+                >
+                  Platform
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer focus:bg-white/10 focus:text-white"
+                  onClick={() => scrollToId("catalog")}
+                >
+                  Services
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
-                  <Link to="/ai-readiness/rung-3">Rung 3 — Optimization</Link>
+                  <Link to="/#doors">AnyDoor Engine</Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/10" />
                 <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
-                  <Link to="/ai-iq">Take the AI IQ™</Link>
+                  <Link to="/ai-iq">AI Readiness Labs</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer focus:bg-white/10 focus:text-white"
+                  onClick={() => scrollToId("about")}
+                >
+                  About
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
             <Link
-              to="/calculator"
-              className="max-w-[8rem] rounded border border-white/15 px-2 py-2 text-center text-[9px] font-semibold leading-tight tracking-widest text-white/85"
+              to="/diagnostic"
+              className="rounded border border-[#c9973a] bg-[#c9973a] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#07080d] transition-colors hover:bg-[#c9973a]/90 sm:px-4"
             >
-              What could this be worth?
-            </Link>
-            <Link
-              to="/doors/url-diagnostic"
-              className="rounded border border-[#c9973a] px-3 py-2 text-[10px] font-semibold tracking-widest text-[#c9973a]"
-            >
-              Diagnostic
+              GET DIAGNOSTIC
             </Link>
           </div>
         </div>
@@ -260,125 +259,87 @@ const PlatformHome = () => {
 
       {/* Hero */}
       <section
-        id="hero"
-        className="platform-hero-grid relative z-10 flex min-h-screen flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-24 lg:px-8"
+        id="platform"
+        className="relative z-10 flex min-h-screen scroll-mt-24 flex-col justify-center px-4 pb-20 pt-28 sm:px-6 sm:pb-28 lg:px-8"
       >
         <div className="relative z-10 mx-auto w-full max-w-6xl">
-          <div className="platform-fade platform-fade-1 mb-6 font-mono text-[11px] uppercase tracking-[0.35em] text-white/40">
-            AI Marketing Platform · AnyDoor Engine
-          </div>
           <h1
-            className="platform-fade platform-fade-2 max-w-4xl font-serif font-light leading-[0.95] tracking-tight text-white"
-            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.75rem, 7vw, 5.75rem)" }}
+            className="platform-fade platform-fade-1 max-w-4xl font-serif font-light leading-[0.98] tracking-tight text-white"
+            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }}
           >
-            <span className="block">Intelligence that</span>
-            <span className="block italic" style={{ color: GOLD }}>
-              finds, scores,
-            </span>
-            <span className="block">and converts.</span>
+            Every door is the right door.
           </h1>
           <p className="platform-fade platform-fade-3 mt-8 max-w-2xl text-base leading-relaxed text-white/55 sm:text-lg">
-            Socialutely is an AI marketing platform built for operators who want clarity: what&apos;s broken, what to fix
-            first, and which services actually move revenue. AnyDoor Engine is the product layer that opens multiple entry
-            doors — starting with a live URL diagnostic — while the catalog stays anchored to{" "}
-            <span className="text-white/75">{PLATFORM_SERVICE_COUNT} services</span> across{" "}
-            <span className="text-white/75">10 categories</span>.
+            One intelligent engine. Nine ways in. One unified experience — powered by AI.
           </p>
-          <div className="platform-fade platform-fade-4 mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="platform-fade platform-fade-4 mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
             <Link
-              to="/doors/url-diagnostic"
-              className="inline-flex items-center justify-center rounded border border-[#c9973a] bg-[#c9973a] px-8 py-3 text-xs font-semibold tracking-[0.2em] text-[#07080d] hover:bg-[#c9973a]/90"
+              to="/diagnostic"
+              className="inline-flex items-center justify-center rounded border border-[#c9973a] bg-[#c9973a] px-8 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#07080d] hover:bg-[#c9973a]/90"
             >
-              Run Free Diagnostic
+              GET YOUR FREE DIAGNOSTIC
             </Link>
             <Link
               to="/ai-iq"
-              className="inline-flex items-center justify-center rounded border border-[#c9973a]/45 bg-transparent px-8 py-3 text-xs font-semibold tracking-[0.2em] text-[#c9973a] hover:border-[#c9973a]/80 hover:bg-[#c9973a]/10"
+              className="inline-flex items-center justify-center rounded border border-[#c9973a]/45 bg-transparent px-8 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#c9973a] hover:border-[#c9973a]/80 hover:bg-[#c9973a]/10"
             >
-              Take the AI IQ™
+              TAKE THE AI IQ™
             </Link>
-            <button
-              type="button"
-              onClick={() => scrollToId("catalog")}
-              className="inline-flex items-center justify-center gap-2 rounded border border-white/15 bg-transparent px-8 py-3 text-xs font-semibold tracking-[0.2em] text-white/80 hover:border-white/25 hover:text-white"
-            >
-              Explore the platform <span aria-hidden>→</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Stats — desktop */}
-        <div className="pointer-events-none absolute bottom-24 right-6 z-10 hidden text-right font-mono text-[11px] leading-loose text-white/35 lg:block xl:right-12">
-          <div>
-            <span style={{ color: GOLD }}>{PLATFORM_SERVICE_COUNT}</span> services
-          </div>
-          <div>
-            <span style={{ color: GOLD }}>10</span> categories
-          </div>
-          <div>
-            <span style={{ color: GOLD }}>5</span> tiered packages
           </div>
         </div>
       </section>
 
-      {/* AnyDoor doors */}
-      <section id="anydoor" className="relative z-10 border-t border-white/[0.06] px-4 py-20 sm:px-6 lg:px-8">
+      {/* AnyDoor Engine — doors */}
+      <section id="doors" className="relative z-10 scroll-mt-24 border-t border-white/[0.06] px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-            AnyDoor Engine
-          </p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-white/50">THE ANYDOOR ENGINE™</p>
           <h2
-            className="mt-4 font-serif text-4xl font-light text-white sm:text-5xl"
+            className="mt-4 font-serif text-3xl font-light text-white sm:text-4xl"
             style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
           >
-            Many doors. One engine.
+            Choose your entry point.
           </h2>
-          <p className="mt-4 max-w-2xl text-sm text-white/50">
-            Each door is an entry point. Behind them is the same orchestration philosophy: diagnose, map, recommend,
-            and operationalize — without turning the platform into a noisy dashboard.
+          <p className="mt-3 max-w-2xl text-sm text-white/50">
+            Every door leads to the same intelligent outcome.
           </p>
 
           <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {DOORS.map((door) => {
               const badge = statusBadge(door.status);
-              const content = (
-                <>
+              const baseCard =
+                "group relative flex min-h-[220px] flex-col rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 transition-[border-color,box-shadow] duration-200 hover:border-[#c9973a]/40 hover:shadow-[0_0_0_1px_rgba(201,151,58,0.15)]";
+              return (
+                <div key={door.label} className={baseCard}>
                   <div className="flex items-start justify-between gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{door.code}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{door.label}</span>
                     <span
                       className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest ${badge.className}`}
                     >
                       {badge.label}
                     </span>
                   </div>
+                  <h3 className="mt-5 text-[15px] font-semibold leading-snug text-white">{door.title}</h3>
+                  <p className="mt-2 flex-1 text-xs leading-relaxed text-white/45">{door.description}</p>
                   <div
-                    className="mt-5 flex h-10 w-10 items-center justify-center border"
-                    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+                    className={`mt-6 font-mono text-[10px] tracking-[0.2em] ${
+                      door.cta.kind === "link" && door.cta.className?.includes("normal-case") ? "" : "uppercase"
+                    }`}
                   >
-                    <span className="font-mono text-[10px] text-white/25">◇</span>
+                    {door.cta.kind === "link" && (
+                      <Link
+                        to={door.cta.href}
+                        className={door.cta.className ?? "text-white/70 hover:text-white"}
+                      >
+                        {door.cta.label}
+                      </Link>
+                    )}
+                    {door.cta.kind === "muted" && (
+                      <span className="uppercase text-white/40">{door.cta.label}</span>
+                    )}
+                    {door.cta.kind === "planned" && (
+                      <span className="uppercase text-white/35">{door.cta.label}</span>
+                    )}
                   </div>
-                  <h3 className="mt-4 text-[15px] font-semibold leading-snug text-white">{door.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-white/45">{door.description}</p>
-                  <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: GOLD }}>
-                    {door.cta}
-                  </div>
-                </>
-              );
-
-              const cardClass = `group relative rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 transition-colors ${
-                door.active ? "border-emerald-500/40" : ""
-              } hover:border-[#c9973a]/60`;
-
-              if (door.href) {
-                return (
-                  <Link key={door.code} to={door.href} className={cardClass}>
-                    {content}
-                  </Link>
-                );
-              }
-              return (
-                <div key={door.code} className={cardClass}>
-                  {content}
                 </div>
               );
             })}
@@ -386,8 +347,44 @@ const PlatformHome = () => {
         </div>
       </section>
 
+      {/* Platform callout */}
+      <section id="about" className="relative z-10 scroll-mt-24 border-t border-white/[0.06] px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-white/45">AI Readiness Labs™</p>
+            <h2
+              className="mt-4 font-serif text-2xl font-light leading-snug text-white sm:text-3xl"
+              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+            >
+              Find out where you stand on the AI adoption curve.
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/50">
+              The AI IQ™ Assessment scores your organization across 7 domains and routes you to the right Rung —
+              Adaptation, Optimization, or Stewardship.
+            </p>
+            <Link to="/ai-iq" className="mt-6 inline-block font-mono text-[11px] uppercase tracking-[0.25em] text-[#c9973a] hover:text-[#c9973a]/90">
+              Take the AI IQ™
+            </Link>
+          </div>
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-white/45">Dreamscape™</p>
+            <h2
+              className="mt-4 font-serif text-2xl font-light leading-snug text-white sm:text-3xl"
+              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+            >
+              Tell us about the world you want to create.
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/50">
+              Amelia leads a warm, voice-based session that draws out your vision — and delivers a personalized Vision
+              Report™ to your inbox.
+            </p>
+            <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.25em] text-white/35">Coming soon</p>
+          </div>
+        </div>
+      </section>
+
       {/* Catalog */}
-      <section id="catalog" className="relative z-10 border-t border-white/[0.06] px-4 py-20 sm:px-6 lg:px-8">
+      <section id="catalog" className="relative z-10 scroll-mt-24 border-t border-white/[0.06] px-4 py-20 sm:px-6 lg:px-8">
         <div className="platform-catalog-row mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-16">
           <aside className="platform-catalog-nav w-full min-w-0 self-start lg:sticky lg:top-[100px] lg:z-10 lg:w-auto">
             <div>
@@ -430,15 +427,15 @@ const PlatformHome = () => {
             </div>
           </aside>
 
-          <div
-            ref={catalogScrollRef}
-            className="platform-catalog-scroll min-w-0 flex-1 space-y-16"
-          >
+          <div ref={catalogScrollRef} className="platform-catalog-scroll min-w-0 flex-1 space-y-16">
             {PLATFORM_CATEGORIES.map((cat) => (
               <div key={cat.slug} id={`category-${cat.slug}`} className="scroll-mt-32">
                 <div className="flex flex-wrap items-baseline gap-3 border-b border-white/[0.06] pb-4">
                   <span className="font-mono text-xs text-white/35">{cat.number}</span>
-                  <h3 className="font-serif text-2xl font-light text-white" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+                  <h3
+                    className="font-serif text-2xl font-light text-white"
+                    style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                  >
                     {cat.name}
                   </h3>
                   <span className="font-mono text-[11px] text-white/35">{cat.services.length} services</span>
@@ -459,77 +456,26 @@ const PlatformHome = () => {
         </div>
       </section>
 
-      {/* Diagnostic CTA */}
-      <section id="diagnostic" className="relative z-10 border-t border-white/[0.06] px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl rounded-lg border border-[#c9973a]/35 bg-white/[0.02] p-6 sm:p-10 lg:p-12">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-            <div>
-              <h2
-                className="font-serif text-3xl font-light leading-tight text-white sm:text-4xl"
-                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-              >
-                Enter a URL. Get a diagnosis.
-              </h2>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="text"
-                  value={diagnosticUrl}
-                  onChange={(e) => setDiagnosticUrl(e.target.value)}
-                  placeholder="yourbusiness.com"
-                  className="min-h-[48px] flex-1 rounded border border-white/10 bg-[#07080d] px-4 text-sm text-white placeholder:text-white/30 focus:border-[#c9973a]/50 focus:outline-none"
-                />
-                <a
-                  href={analyzeHref}
-                  className="inline-flex min-h-[48px] items-center justify-center rounded border border-[#c9973a] bg-[#c9973a] px-6 text-xs font-semibold tracking-[0.2em] text-[#07080d] hover:bg-[#c9973a]/90"
-                >
-                  Analyze
-                </a>
-              </div>
-              <ul className="mt-10 space-y-4 text-sm text-white/55">
-                {[
-                  "Structured scoring across visibility, engagement, and conversion.",
-                  "Gap detection mapped to your live service catalog (29 services).",
-                  "Five tier pathways — Essentials through Sovereign.",
-                  "Results designed to drop into pipeline follow-up.",
-                ].map((t) => (
-                  <li key={t} className="flex gap-3">
-                    <span className="mt-1 h-2 w-2 flex-shrink-0 border border-[#c9973a]/50" />
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="space-y-6 text-sm leading-relaxed text-white/50">
-              <p>
-                <span className="text-white/75">3-dimension scoring</span> — keep diagnostics legible: visibility,
-                engagement, conversion — then roll up to an overall signal you can act on immediately.
-              </p>
-              <p>
-                <span className="text-white/75">Gap-to-service mapping</span> — every gap should point to a real
-                service ID and a real name — not a generic “optimize SEO” platitude.
-              </p>
-              <p>
-                <span className="text-white/75">Five tiered packages</span> — recommendations stay tied to commercial
-                packaging, so sales conversations start in the right lane.
-              </p>
-              <p>
-                <span className="text-white/75">Saved to pipeline</span> — diagnostics are operational artifacts: stored,
-                auditable, and ready for fulfillment handoff.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer id="footer" className="relative z-10 border-t border-white/[0.06] px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 text-[11px] font-mono uppercase tracking-[0.25em] text-white/40 sm:flex-row sm:items-center">
+      <footer id="footer" className="relative z-10 scroll-mt-24 border-t border-white/[0.06] px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 text-sm text-white/45 sm:flex-row sm:items-center">
           <div className="text-white/60">
-            Socialutely <span style={{ color: GOLD }}>|</span> AI Marketing Platform
+            Socialutely <span style={{ color: GOLD }}>|</span> AI — © 2026
           </div>
-          <div>
-            ANYDOOR ENGINE · {PLATFORM_SERVICE_COUNT} SERVICES · 10 CATEGORIES
-          </div>
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em]">
+            <button type="button" className="hover:text-white/80" onClick={() => scrollToId("platform")}>
+              Platform
+            </button>
+            <button type="button" className="hover:text-white/80" onClick={() => scrollToId("catalog")}>
+              Services
+            </button>
+            <button type="button" className="hover:text-white/80" onClick={() => scrollToId("about")}>
+              About
+            </button>
+            <Link to="/privacy" className="hover:text-white/80">
+              Privacy
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

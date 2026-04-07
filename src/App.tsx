@@ -20,12 +20,13 @@ import Rung2AdaptationPage from "./pages/aiReadiness/Rung2AdaptationPage";
 import Rung3OptimizationPage from "./pages/aiReadiness/Rung3OptimizationPage";
 import Door5CalculatorPage from "./pages/Door5CalculatorPage";
 import QuotePage from "./pages/QuotePage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <SessionProvider>
         <TooltipProvider>
           <Toaster />
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/ai-readiness/rung-3" element={<Rung3OptimizationPage />} />
               <Route path="/calculator" element={<Door5CalculatorPage />} />
               <Route path="/quote" element={<QuotePage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -18,8 +18,6 @@ const GREEN = "#2ecc8a";
 const AMBER = "#f0a030";
 const RED = "#e05050";
 
-/** Tally form; after submit, open share link as `/ai-iq/report?id=<tally_submission_id>` (not `/ai-iq`, which is the native Door 4 assessment). */
-const TALLY_FORM_URL = "https://tally.so/r/GxDlRZ?door=9";
 /** Swap for Stripe / Labs checkout when ready. */
 const CTA_AI_READINESS_LABS = "https://socialutely.com/ai-readiness-labs";
 const CTA_HUBAI = "https://socialutely.com/hubai";
@@ -380,10 +378,7 @@ export default function AiIqReport() {
 
   if (loading) {
     return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center gap-4"
-        style={{ backgroundColor: BG, color: WHITE }}
-      >
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
         <div
           className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
           style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
@@ -395,32 +390,32 @@ export default function AiIqReport() {
 
   if (fetchError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center" style={{ backgroundColor: BG }}>
+      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
         <p className="text-lg font-semibold" style={{ color: WHITE }}>
           Something went wrong
         </p>
         <p className="mt-2 max-w-md text-sm" style={{ color: DIM }}>
           {fetchError}
         </p>
-        <a href={TALLY_FORM_URL} className="mt-8 text-sm underline" style={{ color: GOLD }}>
-          Return to AI IQ™ form →
-        </a>
+        <Link to="/ai-iq" className="mt-8 text-sm underline" style={{ color: GOLD }}>
+          Take the AI IQ™ assessment →
+        </Link>
       </div>
     );
   }
 
   if (notFound || !row) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center" style={{ backgroundColor: BG }}>
+      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
         <p className="text-lg font-semibold" style={{ color: WHITE }}>
           Report not found
         </p>
         <p className="mt-2 max-w-md text-sm" style={{ color: DIM }}>
           This link may have expired or the ID is invalid.
         </p>
-        <a href={TALLY_FORM_URL} className="mt-8 text-sm underline" style={{ color: GOLD }}>
+        <Link to="/ai-iq" className="mt-8 text-sm underline" style={{ color: GOLD }}>
           Take the AI IQ™ assessment →
-        </a>
+        </Link>
       </div>
     );
   }
@@ -429,7 +424,7 @@ export default function AiIqReport() {
   const biz = row.business_name?.trim() || row.full_name?.trim() || "your organization";
 
   return (
-    <div className="min-h-screen pb-16" style={{ backgroundColor: BG, color: WHITE }}>
+    <div className="min-h-screen pb-16" style={{ color: WHITE }}>
       {/* 1. Header bar */}
       <header
         className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
