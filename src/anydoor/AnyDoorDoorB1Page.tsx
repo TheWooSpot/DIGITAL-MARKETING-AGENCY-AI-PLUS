@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useSession } from "@/context/SessionContext";
 import { DiagnosticForm, type DiagnosticResult } from "./DiagnosticForm";
 import { DiagnosticResults } from "./DiagnosticResults";
 
@@ -10,6 +11,7 @@ import { DiagnosticResults } from "./DiagnosticResults";
 export default function AnyDoorDoorB1Page() {
   const [searchParams] = useSearchParams();
   const urlParam = searchParams.get("url")?.trim() ?? "";
+  const { url: sessionUrl, mergeSession } = useSession();
 
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [submittedUrl, setSubmittedUrl] = useState("");
@@ -56,11 +58,20 @@ export default function AnyDoorDoorB1Page() {
         <section id="get-started" className="mx-auto w-full max-w-md">
           <DiagnosticForm
             key={urlParam || "default"}
-            initialUrl={urlParam}
+            initialUrl={urlParam || sessionUrl}
             onResult={(r, ctx) => {
               setError("");
               setSubmittedUrl(ctx.submittedUrl);
               setResult(r);
+              const bn = r.business_name?.trim();
+              mergeSession({
+                ...(bn ? { name: bn } : {}),
+                ...(ctx.email?.trim() ? { email: ctx.email.trim() } : {}),
+                url: ctx.submittedUrl,
+                diagnostic_score: typeof r.scores?.overall === "number" ? r.scores.overall : null,
+                scan_token: r.share_token ?? "",
+                recommended_tier: r.recommended_tier ?? "",
+              });
             }}
             onError={setError}
           />

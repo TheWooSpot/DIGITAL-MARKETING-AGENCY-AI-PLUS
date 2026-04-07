@@ -1,6 +1,14 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import { PLATFORM_CATEGORIES, PLATFORM_SERVICE_COUNT } from "@/data/platformCatalog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const GOLD = "#c9973a";
 const BG = "#07080d";
@@ -65,10 +73,12 @@ const DOORS: Array<{
   },
   {
     code: "e",
-    title: "AI Readiness Assessment",
-    description: "Deeper maturity scoring for teams ready to operationalize AI safely.",
-    cta: "Planned",
-    status: "planned",
+    title: "AI IQ™ Assessment",
+    description: "Native maturity scoring across 7 domains — awareness rung, then routed to Adaptation, Optimization, or Stewardship.",
+    cta: "Take the AI IQ™",
+    status: "live",
+    href: "/ai-iq",
+    active: true,
   },
 ];
 
@@ -171,9 +181,36 @@ const PlatformHome = () => {
             <button type="button" className="hover:text-white" onClick={() => scrollToId("anydoor")}>
               AnyDoor Engine
             </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white/55 outline-none hover:text-white data-[state=open]:text-white"
+                type="button"
+              >
+                AI Readiness Labs
+                <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="min-w-[14rem] border border-white/10 bg-[#07080d] text-white shadow-xl"
+              >
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link to="/ai-readiness/rung-2">Rung 2 — Adaptation</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link to="/ai-readiness/rung-3">Rung 3 — Optimization</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link to="/ai-iq">Take the AI IQ™</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button type="button" className="hover:text-white" onClick={() => scrollToId("footer")}>
               About
             </button>
+            <Link to="/calculator" className="max-w-[11rem] text-center leading-tight hover:text-white">
+              What could this be worth?
+            </Link>
             <Link
               to="/doors/url-diagnostic"
               className="rounded border border-[#c9973a] bg-[#c9973a] px-4 py-2 text-[10px] font-semibold tracking-[0.18em] text-[#07080d] hover:bg-[#c9973a]/90"
@@ -181,12 +218,43 @@ const PlatformHome = () => {
               Get Diagnostic
             </Link>
           </nav>
-          <Link
-            to="/doors/url-diagnostic"
-            className="md:hidden rounded border border-[#c9973a] px-3 py-2 text-[10px] font-semibold tracking-widest text-[#c9973a]"
-          >
-            Diagnostic
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2 md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="rounded border border-white/15 px-3 py-2 text-[10px] font-semibold tracking-widest text-white/80 outline-none"
+                type="button"
+              >
+                Labs ▾
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="min-w-[12rem] border border-white/10 bg-[#07080d] text-white shadow-xl"
+              >
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link to="/ai-readiness/rung-2">Rung 2 — Adaptation</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link to="/ai-readiness/rung-3">Rung 3 — Optimization</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link to="/ai-iq">Take the AI IQ™</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link
+              to="/calculator"
+              className="max-w-[8rem] rounded border border-white/15 px-2 py-2 text-center text-[9px] font-semibold leading-tight tracking-widest text-white/85"
+            >
+              What could this be worth?
+            </Link>
+            <Link
+              to="/doors/url-diagnostic"
+              className="rounded border border-[#c9973a] px-3 py-2 text-[10px] font-semibold tracking-widest text-[#c9973a]"
+            >
+              Diagnostic
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -216,12 +284,18 @@ const PlatformHome = () => {
             <span className="text-white/75">{PLATFORM_SERVICE_COUNT} services</span> across{" "}
             <span className="text-white/75">10 categories</span>.
           </p>
-          <div className="platform-fade platform-fade-4 mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="platform-fade platform-fade-4 mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               to="/doors/url-diagnostic"
               className="inline-flex items-center justify-center rounded border border-[#c9973a] bg-[#c9973a] px-8 py-3 text-xs font-semibold tracking-[0.2em] text-[#07080d] hover:bg-[#c9973a]/90"
             >
               Run Free Diagnostic
+            </Link>
+            <Link
+              to="/ai-iq"
+              className="inline-flex items-center justify-center rounded border border-[#c9973a]/45 bg-transparent px-8 py-3 text-xs font-semibold tracking-[0.2em] text-[#c9973a] hover:border-[#c9973a]/80 hover:bg-[#c9973a]/10"
+            >
+              Take the AI IQ™
             </Link>
             <button
               type="button"

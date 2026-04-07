@@ -18,6 +18,7 @@ const GREEN = "#2ecc8a";
 const AMBER = "#f0a030";
 const RED = "#e05050";
 
+/** Tally form; after submit, open share link as `/ai-iq/report?id=<tally_submission_id>` (not `/ai-iq`, which is the native Door 4 assessment). */
 const TALLY_FORM_URL = "https://tally.so/r/GxDlRZ?door=9";
 /** Swap for Stripe / Labs checkout when ready. */
 const CTA_AI_READINESS_LABS = "https://socialutely.com/ai-readiness-labs";

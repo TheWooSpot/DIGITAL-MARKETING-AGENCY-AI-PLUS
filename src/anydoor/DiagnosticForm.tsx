@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSession } from "@/context/SessionContext";
 import { DiagnosticLoadingOverlay, runLoadingStages } from "./DiagnosticLoadingOverlay";
 import { getReportShareBaseUrl } from "./lib/diagnosticShare";
 import { generateReportLink } from "@/utils/urls";
@@ -72,15 +73,16 @@ export interface DiagnosticResult {
 }
 
 interface DiagnosticFormProps {
-  onResult: (result: DiagnosticResult, ctx: { submittedUrl: string }) => void;
+  onResult: (result: DiagnosticResult, ctx: { submittedUrl: string; email?: string }) => void;
   onError: (message: string) => void;
   /** Pre-fill URL (e.g. from ?url= on /doors/url-diagnostic) */
   initialUrl?: string;
 }
 
 export function DiagnosticForm({ onResult, onError, initialUrl = "" }: DiagnosticFormProps) {
-  const [url, setUrl] = useState(initialUrl);
-  const [email, setEmail] = useState("");
+  const { email: sessionEmail, url: sessionUrl } = useSession();
+  const [url, setUrl] = useState(() => (initialUrl.trim() ? initialUrl : sessionUrl));
+  const [email, setEmail] = useState(() => sessionEmail);
   const [loading, setLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -146,7 +148,7 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
           share_url: fallbackShareUrl,
           prospect_id: prospectId,
         },
-        { submittedUrl: trimmedUrl }
+        { submittedUrl: trimmedUrl, email: email.trim() || undefined }
       );
     } catch (err) {
       onError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

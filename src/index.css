@@ -451,6 +451,26 @@ All colors MUST be HSL.
   }
 }
 
+/* Door 5 — Calculator: premium sliders on dark background */
+@layer components {
+  .door5-slider > span:first-of-type {
+    height: 10px;
+    border-radius: 9999px;
+    background: rgba(240, 242, 248, 0.08);
+  }
+  .door5-slider > span:first-of-type > span {
+    background: #c9a227;
+    border-radius: 9999px;
+  }
+  .door5-slider > span[role="slider"] {
+    width: 22px !important;
+    height: 22px !important;
+    border: 2px solid #c9a227 !important;
+    background: #070d1a !important;
+    box-shadow: 0 2px 12px rgba(201, 162, 39, 0.35);
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
