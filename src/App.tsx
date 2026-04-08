@@ -21,6 +21,8 @@ import Door5CalculatorPage from "./pages/Door5CalculatorPage";
 import QuotePage from "./pages/QuotePage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ContactPage from "./pages/ContactPage";
+import SelfDiscoveryPage from "./pages/SelfDiscoveryPage";
+import DreamDoorPage from "./pages/DreamDoorPage";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +50,8 @@ const App = () => (
               <Route path="/ai-readiness/rung-2" element={<Rung2AdaptationPage />} />
               <Route path="/ai-readiness/rung-3" element={<Rung3OptimizationPage />} />
               <Route path="/calculator" element={<Door5CalculatorPage />} />
+              <Route path="/self-discovery" element={<SelfDiscoveryPage />} />
+              <Route path="/dream" element={<DreamDoorPage />} />
               <Route path="/quote" element={<QuotePage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />

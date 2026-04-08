@@ -221,17 +221,14 @@ export default function AiIqAssessmentPage() {
       return;
     }
 
-    const orgJson =
-      n22 && optLabel
-        ? { question: n22.question, selected_option: optLabel }
-        : null;
+    const orgContextText = optLabel?.trim() || null;
 
     const submissionRow = {
       name: name.trim(),
       email: email.trim(),
       url: url.trim() || null,
       total_score: total,
-      org_context: orgJson ? JSON.stringify(orgJson) : null,
+      org_context: orgContextText,
       deployment_depth_score: domains.deployment_depth,
       integration_maturity_score: domains.integration_maturity,
       revenue_alignment_score: domains.revenue_alignment,
@@ -246,28 +243,20 @@ export default function AiIqAssessmentPage() {
     const { error: d9Err } = await supabase.from("door9_submissions").insert(submissionRow);
 
     const rung = rungFromTotalScore(total);
-    const notes = `Recommended Rung ${rung} (${rung === 2 ? "Adaptation" : rung === 3 ? "Optimization" : "Stewardship"}). ${orgJson ? `Org context: ${JSON.stringify(orgJson)}` : ""}`;
+    const notes = `Rung ${rung} · ${orgContextText ?? "No org context provided"}`;
 
-    const prospectRow: Record<string, unknown> = {
-      business_name: name.trim(),
-      email: email.trim(),
-      url: url.trim() || null,
-      overall_score: total,
-      source: "door4-ai-iq",
-      notes,
-      industry: "Unknown",
-      share_token: crypto.randomUUID(),
-      prospect_summary: `AI IQ™ Door 4 — ${bandLabelFromScore(total)} (${total}/100).`,
-      estimated_value: 0,
-      visibility_score: 0,
-      engagement_score: 0,
-      conversion_score: 0,
-      recommended_tier: "Essentials",
-      recommended_services: [],
-      detected_gaps: [],
-    };
-
-    const { error: pErr } = await supabase.from("layer5_prospects").insert(prospectRow);
+    const { error: pErr } = await supabase.from("layer5_prospects").upsert(
+      {
+        email: email.trim(),
+        name: name.trim(),
+        business_name: name.trim(),
+        url: url.trim() || null,
+        overall_score: total,
+        source: "door4-ai-iq",
+        notes,
+      },
+      { onConflict: "email" }
+    );
 
     const parts: string[] = [];
     if (d9Err) parts.push(`door9_submissions: ${d9Err.message}`);

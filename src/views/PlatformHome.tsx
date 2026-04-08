@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Link, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { PLATFORM_CATEGORIES, PLATFORM_SERVICE_COUNT } from "@/data/platformCatalog";
+import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,21 @@ type DoorDef = {
   cta: DoorCta;
 };
 
-const DOORS: DoorDef[] = [
+type AnyDoorDoorRow = {
+  door_id: string;
+  layer: string;
+  sort_order: number;
+  name: string;
+  tagline: string | null;
+  description: string | null;
+  status: string | null;
+  completion_pct: number | null;
+  cta_label: string | null;
+  cta_route: string | null;
+};
+
+/** Local fallback/skeleton dataset used while loading or if Supabase is unreachable. */
+const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-1",
     status: "building",
@@ -109,8 +124,36 @@ const navLinkClass =
 
 const PlatformHome = () => {
   const [activeCategory, setActiveCategory] = useState(PLATFORM_CATEGORIES[0].slug);
+  const [doors, setDoors] = useState<DoorDef[]>(FALLBACK_DOORS);
+  const [doorsLoading, setDoorsLoading] = useState(true);
   const catalogScrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+
+  const mapDbDoorToCard = useCallback((row: AnyDoorDoorRow): DoorDef => {
+    const rawStatus = (row.status ?? "").trim().toLowerCase();
+    const status: DoorStatus =
+      rawStatus === "live" || rawStatus === "building" || rawStatus === "planned" ? rawStatus : "planned";
+
+    const ctaLabelRaw = (row.cta_label ?? "").trim();
+    const ctaRouteRaw = (row.cta_route ?? "").trim();
+    const upperLabel = ctaLabelRaw.toUpperCase();
+    const isPlannedLabel = upperLabel === "COMING SOON" || upperLabel === "PLANNED";
+
+    let cta: DoorCta = { kind: "planned", label: "Planned" };
+    if ((status === "live" || status === "building") && ctaRouteRaw && !isPlannedLabel) {
+      cta = { kind: "link", href: ctaRouteRaw, label: ctaLabelRaw || "Open" };
+    } else if (isPlannedLabel || !ctaRouteRaw) {
+      cta = { kind: "muted", label: ctaLabelRaw || "Coming soon" };
+    }
+
+    return {
+      label: row.door_id,
+      status,
+      title: row.name,
+      description: row.description?.trim() || row.tagline?.trim() || "",
+      cta,
+    };
+  }, []);
 
   const scrollToId = useCallback((id: string) => {
     const el = document.getElementById(id);
@@ -124,6 +167,38 @@ const PlatformHome = () => {
       });
     }
   }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setDoorsLoading(true);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) {
+          if (!cancelled) setDoors(FALLBACK_DOORS);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("anydoor_doors")
+          .select("*")
+          .eq("layer", "experience")
+          .order("sort_order", { ascending: true });
+        if (cancelled) return;
+        if (error || !data || data.length === 0) {
+          setDoors(FALLBACK_DOORS);
+          return;
+        }
+        setDoors((data as AnyDoorDoorRow[]).map(mapDbDoorToCard));
+      } catch {
+        if (!cancelled) setDoors(FALLBACK_DOORS);
+      } finally {
+        if (!cancelled) setDoorsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mapDbDoorToCard]);
 
   useLayoutEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -286,6 +361,24 @@ const PlatformHome = () => {
               TAKE THE AI IQ™
             </Link>
           </div>
+
+          {/* Door 3 — Self-Discovery (BUILDING: no link until launch) */}
+          <div className="platform-fade platform-fade-4 mt-8 max-w-3xl">
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">D-3</span>
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest text-amber-400">
+                  BUILDING
+                </span>
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-white">The Self-Discovery</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/45">
+                Seven questions that surface something true you hadn&apos;t said out loud. No link yet — this card is a
+                preview of what&apos;s shipping next.
+              </p>
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">Coming soon</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -300,16 +393,16 @@ const PlatformHome = () => {
             Choose your entry point.
           </h2>
           <p className="mt-3 max-w-2xl text-sm text-white/50">
-            Every door leads to the same intelligent outcome.
+            Every door leads to rewarding outcomes.
           </p>
 
           <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {DOORS.map((door) => {
+            {(doorsLoading ? FALLBACK_DOORS : doors).map((door) => {
               const badge = statusBadge(door.status);
               const baseCard =
                 "group relative flex min-h-[220px] flex-col rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 transition-[border-color,box-shadow] duration-200 hover:border-[#c9973a]/40 hover:shadow-[0_0_0_1px_rgba(201,151,58,0.15)]";
               return (
-                <div key={door.label} className={baseCard}>
+                <div key={door.label} className={`${baseCard} ${doorsLoading ? "animate-pulse opacity-75" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{door.label}</span>
                     <span
