@@ -1,34 +1,38 @@
 import { Link } from "react-router-dom";
+import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import DreamScapeEntry from "@/components/dreamscape/DreamScapeEntry";
 
 const GOLD = "#c9a227";
-const BG = "#07080d";
-const WHITE = "#e8eef5";
-const DIM = "rgba(232,238,245,0.55)";
 
 /**
- * Door 7 — Dream (placeholder). Full Dreamscape™ flow can replace this route later.
+ * Door 7 — DreamScape™ Vision Session (Amelia / Vapi).
  */
 export default function DreamDoorPage() {
   return (
-    <div className="min-h-screen px-4 pb-20 pt-16" style={{ backgroundColor: BG, color: WHITE }}>
-      <div className="mx-auto max-w-lg text-center">
-        <Link to="/" className="text-sm font-medium" style={{ color: GOLD }}>
-          ← Home
-        </Link>
-        <p className="mt-10 font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-          Dreamscape™ · Door 7
+    <AnyDoorPageShell backHref="/" backLabel="← Home">
+      <header className="mb-8 text-center sm:mb-10">
+        <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
+          AnyDoor Engine · D-7
         </p>
-        <h1 className="mt-4 text-3xl font-light" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-          Talk to Amelia
+        <h1
+          className="mt-3 text-2xl font-light text-white sm:text-3xl"
+          style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+        >
+          DreamScape™
         </h1>
-        <p className="mt-4 text-sm leading-relaxed" style={{ color: DIM }}>
-          Voice-led sessions that draw out your vision and deliver a personalized Vision Report™. Full experience is
-          rolling out — for now, reach us from the platform home or complete another AnyDoor step first.
+        <p className="mx-auto mt-3 max-w-lg text-sm text-white/50">
+          A short voice-led session to articulate where you want your business to go — and what success looks like for
+          you.
         </p>
-        <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.25em]" style={{ color: DIM }}>
-          Coming soon
-        </p>
-      </div>
-    </div>
+      </header>
+
+      <DreamScapeEntry />
+
+      <p className="mt-10 text-center text-[11px] text-white/35">
+        <Link to="/" className="text-[#c9973a]/80 underline-offset-4 hover:text-[#c9973a] hover:underline">
+          Platform home
+        </Link>
+      </p>
+    </AnyDoorPageShell>
   );
 }

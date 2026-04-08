@@ -10,7 +10,10 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "export-claude": "npx -y claude-code-exporter --prompts --markdown --period 7d -o ./docs/exports"
+    "export-claude": "npx -y claude-code-exporter --prompts --markdown --period 7d -o ./docs/exports",
+    "notion:live-links": "node scripts/publish-live-links-to-notion.mjs",
+    "docs:live-links-docx": "node scripts/generate-live-links-docx.mjs",
+    "patch:amelia-prompt": "node scripts/patch-amelia-dreamscape-prompt.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -75,6 +78,7 @@
     "@vercel/node": "^5.6.18",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "autoprefixer": "^10.4.20",
+    "docx": "^9.6.1",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",

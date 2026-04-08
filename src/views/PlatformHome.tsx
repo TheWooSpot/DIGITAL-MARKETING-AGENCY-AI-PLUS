@@ -91,10 +91,10 @@ const FALLBACK_DOORS: DoorDef[] = [
   },
   {
     label: "D-7",
-    status: "building",
+    status: "live",
     title: "The Dream",
     description: "Tell us where you want to go. Amelia will help you see the path.",
-    cta: { kind: "muted", label: "Coming soon" },
+    cta: { kind: "link", href: "/dream", label: "Begin vision session" },
   },
   {
     label: "D-8",
@@ -471,7 +471,12 @@ const PlatformHome = () => {
               Amelia leads a warm, voice-based session that draws out your vision — and delivers a personalized Vision
               Report™ to your inbox.
             </p>
-            <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.25em] text-white/35">Coming soon</p>
+            <Link
+              to="/dream"
+              className="mt-6 inline-block font-mono text-[11px] uppercase tracking-[0.25em] text-[#c9973a] hover:text-[#c9973a]/90"
+            >
+              Begin DreamScape™ vision session →
+            </Link>
           </div>
         </div>
       </section>
