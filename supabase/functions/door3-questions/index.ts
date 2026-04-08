@@ -1,7 +1,7 @@
 /**
  * Door 3 — Generate 7 discovery questions (Claude).
  * POST { name, email, url? }
- * Returns { questions: Array<{ id, question, placeholder, domain }>, industry?, business_descriptor? }
+ * Returns { questions: Array<{ id, question, placeholder, domain }>, context, intro }
  */
 
 const CORS: Record<string, string> = {
@@ -19,16 +19,16 @@ function jsonResponse(body: object, status = 200) {
   });
 }
 
-function extractJsonArray(text: string): unknown {
+function extractJsonObject(text: string): Record<string, unknown> {
   const t = text.trim();
   const fence = /^```(?:json)?\s*([\s\S]*?)```$/m.exec(t);
   const inner = fence ? fence[1].trim() : t;
-  const arrStart = inner.indexOf("[");
-  const arrEnd = inner.lastIndexOf("]");
-  if (arrStart >= 0 && arrEnd > arrStart) {
-    return JSON.parse(inner.slice(arrStart, arrEnd + 1));
+  const objStart = inner.indexOf("{");
+  const objEnd = inner.lastIndexOf("}");
+  if (objStart >= 0 && objEnd > objStart) {
+    return JSON.parse(inner.slice(objStart, objEnd + 1)) as Record<string, unknown>;
   }
-  return JSON.parse(inner);
+  return JSON.parse(inner) as Record<string, unknown>;
 }
 
 interface UrlContext {
@@ -67,6 +67,12 @@ async function fetchUrlContext(url: string, apiKey: string): Promise<UrlContext 
   } catch {
     return null;
   }
+}
+
+interface IntroContent {
+  address: string;
+  nuggets: string[];
+  frame: string;
 }
 
 Deno.serve(async (req) => {
@@ -144,14 +150,43 @@ Good: 'What approaches have you already taken to address this — and what got i
 
 Heavier NEPQ weight is required for consequence, solution_awareness, and priority domains. These should feel emotionally resonant, precise, and reflective.
 
-Format: Return exactly 7 questions as a JSON array.
+Format: Return JSON with:
+{
+  "questions": [ ... 7 items ... ],
+  "intro": {
+    "address": "single sentence addressing them by name",
+    "nuggets": ["nugget 1", "nugget 2", "nugget 3 (optional)"],
+    "frame": "single closing line framing the 7 questions"
+  }
+}
+
+Also generate a personalized welcome intro for this prospect.
+The intro has three parts:
+1. A warm address using their name (1 sentence)
+2. Two or three nuggets — short, specific observations that feel true for someone in their business situation.
+   These are NOT generic motivational quotes.
+3. A single closing line that frames what the 7 questions do.
+
+Rules for nuggets:
+- Must feel specific to their industry or business model
+- Should be the kind of thing a smart advisor would say in the first 60 seconds of a meeting — not a TED talk opener
+- Never use the word 'journey', 'game-changer', 'leverage', or 'synergy'
+- Should be a little bit unexpected — something that makes them think 'yes, exactly' not 'I've heard that before'
+- No statistics that could be made up — only observations that feel true because of lived experience, not data
+
+Example of WRONG nugget (generic):
+'Building a business is one of the most rewarding things you can do, but it comes with real challenges.'
+
+Example of RIGHT nugget (for a marketplace business):
+'Most marketplace founders spend 80% of their energy acquiring supply. The harder problem — and the one that actually determines growth — is making demand feel inevitable.'
+
 Each question has:
 - id: 'Q1' through 'Q7'
 - question: the question text (max 20 words)
 - placeholder: a conversational prompt (max 12 words)
 - domain: one of 'situation' | 'problem' | 'consequence' | 'goal' | 'solution' | 'priority' | 'context'
 
-Return ONLY valid JSON array. No markdown. No explanation.`;
+Return ONLY valid JSON. No markdown. No explanation.`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -175,19 +210,42 @@ Return ONLY valid JSON array. No markdown. No explanation.`;
 
   const data = (await res.json()) as { content?: Array<{ text?: string }> };
   const text = data.content?.[0]?.text ?? "";
-  let questions: unknown;
+  let payload: Record<string, unknown>;
   try {
-    questions = extractJsonArray(text);
+    payload = extractJsonObject(text);
   } catch (e) {
-    return jsonResponse({ error: "Failed to parse questions JSON", detail: String(e) }, 502);
+    return jsonResponse({ error: "Failed to parse questions payload JSON", detail: String(e) }, 502);
   }
 
+  const questions = payload.questions;
   if (!Array.isArray(questions) || questions.length !== 7) {
     return jsonResponse({ error: "Expected exactly 7 questions", got: Array.isArray(questions) ? questions.length : 0 }, 502);
   }
 
+  const rawIntro = (payload.intro ?? {}) as Record<string, unknown>;
+  const intro: IntroContent = {
+    address: String(rawIntro.address ?? `${name} — thanks for being here.`).trim(),
+    nuggets: Array.isArray(rawIntro.nuggets)
+      ? rawIntro.nuggets.map((n) => String(n ?? "").trim()).filter(Boolean).slice(0, 3)
+      : [],
+    frame: String(rawIntro.frame ?? "Seven questions. Honest answers. We'll reflect back exactly what we hear.").trim(),
+  };
+  if (intro.nuggets.length < 2) {
+    intro.nuggets = [
+      "Most businesses don't have a marketing problem first — they have a clarity problem that makes every tactic feel harder.",
+      "What feels like inconsistent demand is often inconsistent positioning; the right message makes the right buyers self-identify faster.",
+    ];
+  }
+
   return jsonResponse({
     questions,
+    context: {
+      industry,
+      business_descriptor,
+      name: business_name,
+    },
+    intro,
+    // Backward-compatible duplicates for existing consumers.
     industry,
     business_descriptor,
     business_name,

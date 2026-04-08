@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
@@ -17,19 +17,30 @@ const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
 
 type Stage = "gate" | "welcome" | "loading" | "questions" | "processing" | "results" | "rate_limited";
-type WelcomeExitReason = "timer" | "skip" | "connect-timeout";
+interface IntroContent {
+  address: string;
+  nuggets: string[];
+  frame: string;
+}
 
-const WELCOME_SCRIPT = (name: string) => `${name} — before we start, one quick thought.
+const FALLBACK_INTRO: IntroContent = {
+  address: "Thanks for being here.",
+  nuggets: [
+    "Most businesses don't have a marketing problem first — they have a clarity problem that makes every tactic feel harder.",
+    "What feels like inconsistent demand is often inconsistent positioning; when the message is sharp, the right buyers self-identify faster.",
+  ],
+  frame: "Seven questions. Honest answers. We'll reflect back exactly what we hear.",
+};
 
-Most diagnostic tools ask you to describe your business.
-This one is different. These seven questions are designed
-to surface something you already know — but may not have
-said out loud yet.
-
-There are no right answers. The more honest you are,
-the more useful what comes back will be.
-
-Take your time. We'll reflect back exactly what we hear.`;
+const FALLBACK_QUESTIONS: DiscoveryQuestion[] = [
+  { id: "Q1", domain: "situation", question: "Walk me through how new customers typically find you right now.", placeholder: "Describe your current reality..." },
+  { id: "Q2", domain: "problem", question: "What part of growth feels hardest to solve consistently today?", placeholder: "Name the hardest part..." },
+  { id: "Q3", domain: "consequence", question: "If nothing changes in the next year, what does that cost you?", placeholder: "What does staying the same mean?" },
+  { id: "Q4", domain: "goal", question: "If 18 months went remarkably well, what would look meaningfully different?", placeholder: "Describe your best-case future..." },
+  { id: "Q5", domain: "solution", question: "What becomes possible for you when this finally works as it should?", placeholder: "What unlocks for you?" },
+  { id: "Q6", domain: "priority", question: "What single issue in the next 90 days would make everything else easier?", placeholder: "Pick the one thing..." },
+  { id: "Q7", domain: "context", question: "What have you already tried, and what blocked it from working?", placeholder: "Share what you've already tested..." },
+];
 
 const PRIMING_TEXT_BY_NEXT_INDEX: Record<number, string> = {
   1: "Most people can describe what they do. Very few have named what's actually getting in the way.",
@@ -105,11 +116,10 @@ export default function SelfDiscoveryPage() {
   const [primingText, setPrimingText] = useState("");
   const [questionVisible, setQuestionVisible] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [welcomeCallActive, setWelcomeCallActive] = useState(false);
-  const [welcomeError, setWelcomeError] = useState<string | null>(null);
+  const [intro, setIntro] = useState<IntroContent | null>(null);
   const [questionsReady, setQuestionsReady] = useState(false);
-  const [welcomeHasStarted, setWelcomeHasStarted] = useState(false);
-  const welcomeExitRef = useRef(false);
+  const [welcomeMinTimeMet, setWelcomeMinTimeMet] = useState(false);
+  const [questionLoadFailed, setQuestionLoadFailed] = useState(false);
 
   const [analysis, setAnalysis] = useState<Door3Analysis | null>(null);
   const [vapiErr, setVapiErr] = useState<string | null>(null);
@@ -143,23 +153,54 @@ export default function SelfDiscoveryPage() {
     });
     const json = (await res.json().catch(() => ({}))) as {
       questions?: DiscoveryQuestion[];
+      context?: {
+        industry?: string;
+        business_descriptor?: string;
+        name?: string;
+      };
+      intro?: IntroContent;
       industry?: string;
       business_descriptor?: string;
       error?: string;
     };
-    if (!res.ok) {
-      setGateError(json.error || "Could not prepare questions. Try again shortly.");
-      setStage("gate");
-      return false;
-    }
-    if (!json.questions || json.questions.length !== 7) {
-      setGateError("Unexpected response from discovery service.");
-      setStage("gate");
-      return false;
+    if (!res.ok || !json.questions || json.questions.length !== 7) {
+      setQuestionLoadFailed(true);
+      setQuestions(FALLBACK_QUESTIONS);
+      setIndustryCtx(typeof json.context?.industry === "string" ? json.context.industry : "");
+      setBusinessDescriptorCtx(
+        typeof json.context?.business_descriptor === "string" ? json.context.business_descriptor : ""
+      );
+      setIntro({
+        ...FALLBACK_INTRO,
+        address: `${fullName} — thanks for being here.`,
+      });
+      setQuestionsReady(true);
+      return true;
     }
     setQuestions(json.questions);
-    setIndustryCtx(typeof json.industry === "string" ? json.industry : "");
-    setBusinessDescriptorCtx(typeof json.business_descriptor === "string" ? json.business_descriptor : "");
+    setIndustryCtx(
+      typeof json.context?.industry === "string"
+        ? json.context.industry
+        : typeof json.industry === "string"
+          ? json.industry
+          : ""
+    );
+    setBusinessDescriptorCtx(
+      typeof json.context?.business_descriptor === "string"
+        ? json.context.business_descriptor
+        : typeof json.business_descriptor === "string"
+          ? json.business_descriptor
+          : ""
+    );
+    setIntro(
+      json.intro && Array.isArray(json.intro.nuggets)
+        ? {
+            address: String(json.intro.address ?? `${fullName} — thanks for being here.`).trim(),
+            nuggets: json.intro.nuggets.map((n) => String(n ?? "").trim()).filter(Boolean).slice(0, 3),
+            frame: String(json.intro.frame ?? FALLBACK_INTRO.frame).trim(),
+          }
+        : { ...FALLBACK_INTRO, address: `${fullName} — thanks for being here.` }
+    );
     setAnswers(Array(7).fill(""));
     setQIndex(0);
     setFadeKey((k) => k + 1);
@@ -169,32 +210,6 @@ export default function SelfDiscoveryPage() {
     setQuestionsReady(true);
     return true;
   }, []);
-
-  const exitWelcome = useCallback(
-    (reason: WelcomeExitReason) => {
-      if (welcomeExitRef.current) return;
-      welcomeExitRef.current = true;
-      if (welcomeCallActive) {
-        try {
-          vapi?.stop();
-        } catch {
-          // ignore
-        } finally {
-          setWelcomeCallActive(false);
-        }
-      }
-      if (questionsReady) {
-        setStartedAt(Date.now());
-        setStage("questions");
-      } else {
-        setStage("loading");
-      }
-      if (reason === "connect-timeout") {
-        setWelcomeError("Voice welcome unavailable — continuing to questions.");
-      }
-    },
-    [questionsReady, welcomeCallActive]
-  );
 
   const runRateLimitAndStart = useCallback(async () => {
     setGateError(null);
@@ -224,11 +239,15 @@ export default function SelfDiscoveryPage() {
         return;
       }
     }
-    welcomeExitRef.current = false;
     setQuestionsReady(false);
-    setWelcomeError(null);
-    setWelcomeHasStarted(false);
+    setWelcomeMinTimeMet(false);
+    setQuestionLoadFailed(false);
+    setIntro({
+      ...FALLBACK_INTRO,
+      address: `${fullName} — thanks for being here.`,
+    });
     setStage("welcome");
+    window.setTimeout(() => setWelcomeMinTimeMet(true), 4000);
     void fetchQuestionsInBackground(fullName, email.trim(), url.trim());
   }, [email, firstName, mergeSession, url, fetchQuestionsInBackground]);
 
@@ -278,58 +297,6 @@ export default function SelfDiscoveryPage() {
     setFadeKey((k) => k + 1);
     setQIndex((i) => i - 1);
   }, [qIndex]);
-
-  useEffect(() => {
-    if (stage !== "welcome" || welcomeHasStarted) return;
-    setWelcomeHasStarted(true);
-    setWelcomeError(null);
-
-    const welcomeTimer = window.setTimeout(() => {
-      exitWelcome("timer");
-    }, 8000);
-
-    const connectGuard = window.setTimeout(() => {
-      if (!welcomeCallActive) {
-        exitWelcome("connect-timeout");
-      }
-    }, 3000);
-
-    const startWelcomeVoice = async () => {
-      if (!vapi) return;
-      try {
-        await vapi.start(getEvaluationSpecialistAssistantId(), {
-          firstMessage: WELCOME_SCRIPT(firstName.trim() || "Welcome"),
-        });
-        setWelcomeCallActive(true);
-      } catch (e) {
-        setWelcomeError(appendVapiAssistantKeyHint(extractVapiErrorMessage(e)));
-      }
-    };
-    void startWelcomeVoice();
-
-    return () => {
-      window.clearTimeout(welcomeTimer);
-      window.clearTimeout(connectGuard);
-    };
-  }, [stage, welcomeHasStarted, firstName, exitWelcome, welcomeCallActive]);
-
-  useEffect(() => {
-    if (stage !== "loading" || !questionsReady) return;
-    setStartedAt(Date.now());
-    setStage("questions");
-  }, [stage, questionsReady]);
-
-  useEffect(() => {
-    if (stage === "welcome") return;
-    if (!welcomeCallActive) return;
-    try {
-      vapi?.stop();
-    } catch {
-      // ignore
-    } finally {
-      setWelcomeCallActive(false);
-    }
-  }, [stage, welcomeCallActive]);
 
   useEffect(() => {
     if (stage !== "processing" || questions.length !== 7) return;
@@ -391,6 +358,11 @@ export default function SelfDiscoveryPage() {
       goNextQuestion();
     }
   };
+
+  const continueFromWelcome = useCallback(() => {
+    setStartedAt(Date.now());
+    setStage("questions");
+  }, []);
 
   const startJordan = useCallback(async () => {
     setVapiErr(null);
@@ -518,26 +490,38 @@ export default function SelfDiscoveryPage() {
       {stage === "welcome" && (
         <section className="mx-auto flex min-h-[62vh] w-full max-w-lg flex-col items-center justify-center text-center">
           <p className="anydoor-exp-eyebrow">D-3 · The Self-Discovery</p>
-          <h1 className="mt-4 text-2xl font-semibold" style={{ color: GOLD, fontFamily: "var(--font-archivo)" }}>
-            Welcome, {firstName.trim() || "there"}.
+          <h1
+            className="door3-fade-in mt-5 text-2xl font-light leading-snug"
+            style={{ color: GOLD, fontFamily: "var(--font-cormorant), Georgia, serif", animationDelay: "0ms" }}
+          >
+            {intro?.address ?? `${firstName.trim() || "Friend"} — thanks for being here.`}
           </h1>
-          <div className="mt-6 flex h-16 w-16 items-center justify-center rounded-full border border-[#c9973a]/40 bg-[#c9973a]/10 text-[#c9973a]">
-            <Mic className={`h-6 w-6 ${welcomeCallActive ? "anydoor-tap-pulse" : ""}`} />
+          <div className="door3-fade-in mt-6 w-full space-y-4" style={{ animationDelay: "600ms" }}>
+            {(intro?.nuggets ?? FALLBACK_INTRO.nuggets).map((n, i, arr) => (
+              <div key={`${i}-${n}`}>
+                <p className="text-sm italic leading-relaxed text-white/70 sm:text-base">{n}</p>
+                {i < arr.length - 1 ? <div className="mx-auto mt-4 h-px w-24 bg-white/10" /> : null}
+              </div>
+            ))}
           </div>
-          <p
-            className="mx-auto mt-6 max-w-md text-lg font-light leading-relaxed text-white/85"
-            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
-          >
-            {WELCOME_SCRIPT(firstName.trim() || "Welcome")}
+          <p className="door3-fade-in mt-6 text-sm text-white/40" style={{ animationDelay: "1200ms" }}>
+            {intro?.frame ?? FALLBACK_INTRO.frame}
           </p>
-          {welcomeError ? <p className="mt-3 text-xs text-amber-300">{welcomeError}</p> : null}
-          <button
-            type="button"
-            className="mt-7 text-xs text-white/45 underline decoration-[#c9973a]/45 underline-offset-4 hover:text-[#c9973a]"
-            onClick={() => exitWelcome("skip")}
-          >
-            Skip to questions →
-          </button>
+
+          {!questionsReady ? (
+            <div className="mt-7 flex items-center gap-3 text-sm text-[#c9973a]">
+              <span className="anydoor-loading-pulse-dot h-2.5 w-2.5 rounded-full bg-[#c9973a]" />
+              <span>Preparing your questions...</span>
+            </div>
+          ) : (
+            <p className="mt-7 text-sm text-white/45">Questions ready.</p>
+          )}
+
+          {(questionsReady && welcomeMinTimeMet) || (questionLoadFailed && welcomeMinTimeMet) ? (
+            <button type="button" className="anydoor-btn-gold mt-6" onClick={continueFromWelcome}>
+              {questionLoadFailed ? "Let's begin →" : "I'm ready →"}
+            </button>
+          ) : null}
         </section>
       )}
 
