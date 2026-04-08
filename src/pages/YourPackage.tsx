@@ -8,6 +8,22 @@ import {
 } from "@/lib/packageBuilderCatalog";
 
 const GOLD = "#c9973a";
+const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
+
+function getCheckoutFunctionUrl(): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+  if (!base) return CHECKOUT_FN_PATH;
+  return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
+}
+
+function staticCheckoutLinkForTier(tier: string): string {
+  const key = tier.trim().toLowerCase();
+  if (key === "momentum") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "/contact";
+  if (key === "signature") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "/contact";
+  if (key === "vanguard") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "/contact";
+  if (key === "sovereign") return "/contact";
+  return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "/contact";
+}
 
 function formatMoney(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(
@@ -51,6 +67,10 @@ export default function YourPackage() {
 
   const [selected, setSelected] = useState<Set<number>>(() => parseInitialSelection(searchParams.get("services")));
   const [view, setView] = useState<"carte" | "bundle">("bundle");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const prospectId = searchParams.get("prospect_id")?.trim() || "";
+  const companySize = searchParams.get("business_size")?.trim() || "";
 
   const toggle = useCallback((id: number) => {
     setSelected((prev) => {
@@ -80,6 +100,44 @@ export default function YourPackage() {
   const bundleMonthly = Math.round(aLaCarteTotal * (1 - discount));
   const monthlySavings = aLaCarteTotal - bundleMonthly;
   const hasBundleSavings = selectedList.length >= 3;
+
+  async function startCheckout() {
+    if (checkoutLoading) return;
+    setCheckoutError(null);
+    const fallbackLink = staticCheckoutLinkForTier(tierParam);
+
+    if (!prospectId || selectedList.length === 0) {
+      window.location.href = fallbackLink;
+      return;
+    }
+
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch(getCheckoutFunctionUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: prospectId,
+          selected_services: selectedList,
+          company_size: companySize,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { session_url?: string; fallback?: boolean; error?: string };
+      if (json.session_url) {
+        window.location.href = json.session_url;
+        return;
+      }
+      if (json.fallback) {
+        window.location.href = fallbackLink;
+        return;
+      }
+      setCheckoutError(json.error || "Could not start checkout.");
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Checkout request failed.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   return (
     <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
@@ -253,6 +311,17 @@ export default function YourPackage() {
             ) : (
               <p className="text-sm text-white/50">Bundle savings unlock at 3+ services</p>
             )}
+          </div>
+          <div className="sm:ml-4">
+            <button
+              type="button"
+              disabled={checkoutLoading || selectedList.length === 0}
+              onClick={() => void startCheckout()}
+              className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {checkoutLoading ? "Starting checkout…" : "Checkout"}
+            </button>
+            {checkoutError ? <p className="mt-2 text-xs text-amber-300">{checkoutError}</p> : null}
           </div>
         </div>
       </aside>

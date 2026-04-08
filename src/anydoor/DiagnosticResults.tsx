@@ -10,6 +10,30 @@ import { useDiagnosticVapiCall } from "./useDiagnosticVapiCall";
 import { useCheckoutConfig } from "@/hooks/useCheckoutConfig";
 
 const GOLD = "#c9973a";
+const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
+
+function getCheckoutFunctionUrl(): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+  if (!base) return CHECKOUT_FN_PATH;
+  return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
+}
+
+function staticCheckoutLinkForTier(tier: PackageTierKey | null): string {
+  const env = import.meta.env;
+  switch (tier) {
+    case "Momentum":
+      return (env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "/contact";
+    case "Signature":
+      return (env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "/contact";
+    case "Vanguard":
+      return (env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "/contact";
+    case "Sovereign":
+      return "/contact";
+    case "Essentials":
+    default:
+      return (env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "/contact";
+  }
+}
 
 function clampScore(n: number): number {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -205,6 +229,8 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const [tapReady, setTapReady] = useState(false);
   const [footerEmail, setFooterEmail] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const { scores, business_name, industry, estimated_size, business_descriptor, tier_statement } = result;
   const marketDescriptor = business_descriptor?.trim() ?? "";
@@ -290,8 +316,55 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
     const services = recommendedNorm.map((r) => r.service_id).join(",");
     const name = encodeURIComponent(business_name ?? "");
     const scoreStr = String(Math.round(overall));
-    navigate(`/your-package?tier=${tier}&services=${services}&name=${name}&score=${scoreStr}`);
+    const prospectId = encodeURIComponent(result.prospect_id ?? "");
+    navigate(`/your-package?tier=${tier}&services=${services}&name=${name}&score=${scoreStr}&prospect_id=${prospectId}`);
   };
+
+  const beginCheckout = useCallback(async () => {
+    if (checkoutLoading) return;
+    setCheckoutError(null);
+    const fallbackLink = staticCheckoutLinkForTier(recTier);
+    if (!result.prospect_id) {
+      window.location.href = fallbackLink;
+      return;
+    }
+    const selectedServices = recommendedNorm.map((r) => r.service_id);
+    if (selectedServices.length === 0) {
+      window.location.href = fallbackLink;
+      return;
+    }
+
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch(getCheckoutFunctionUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: result.prospect_id,
+          selected_services: selectedServices,
+          company_size: estimated_size ?? business_descriptor ?? "",
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        session_url?: string;
+        fallback?: boolean;
+        error?: string;
+      };
+      if (json.session_url) {
+        window.location.href = json.session_url;
+        return;
+      }
+      if (json.fallback) {
+        window.location.href = fallbackLink;
+        return;
+      }
+      setCheckoutError(json.error || "Unable to start checkout right now.");
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Checkout request failed.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }, [business_descriptor, checkoutLoading, estimated_size, recTier, recommendedNorm, result.prospect_id]);
 
   return (
     <div
@@ -647,21 +720,25 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
               {checkoutVariant === "A" ? (
                 <button
                   type="button"
-                  disabled
+                  disabled={checkoutLoading}
+                  onClick={() => void beginCheckout()}
                   className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
                 >
-                  Dynamic session checkout (placeholder)
+                  {checkoutLoading ? "Starting checkout…" : "Checkout"}
                 </button>
               ) : (
                 <button
                   type="button"
-                  disabled
+                  onClick={() => {
+                    window.location.href = staticCheckoutLinkForTier(recTier);
+                  }}
                   className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
                 >
-                  Payment link checkout (placeholder)
+                  Go to payment link
                 </button>
               )}
             </div>
+            {checkoutError ? <p className="mt-3 text-center text-sm text-amber-300">{checkoutError}</p> : null}
           </div>
         )}
       </ScrollSection>

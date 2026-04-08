@@ -16,6 +16,10 @@ interface ImportMetaEnv {
   /** When set to `A` or `B`, overrides Supabase `checkout_config.active_checkout_variant`. */
   readonly VITE_CHECKOUT_VARIANT_OVERRIDE?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;
+  readonly VITE_STRIPE_PAYMENT_LINK_ESSENTIALS?: string;
+  readonly VITE_STRIPE_PAYMENT_LINK_MOMENTUM?: string;
+  readonly VITE_STRIPE_PAYMENT_LINK_SIGNATURE?: string;
+  readonly VITE_STRIPE_PAYMENT_LINK_VANGUARD?: string;
   /**
    * AI IQ™ assessment CTAs — same-origin paths or full URLs.
    * Defaults in app: /ai-readiness/rung-2, /ai-readiness/rung-3, discovery calendar placeholder.
