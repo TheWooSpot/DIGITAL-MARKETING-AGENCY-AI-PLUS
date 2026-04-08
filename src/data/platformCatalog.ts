@@ -19,7 +19,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
     name: "Growth & Visibility",
     services: [
       { id: 101, name: "SearchLift™ SBO Engine" },
-      { id: 102, name: "DirectAlign™ Media Engine" },
+      { id: 102, name: "SpotLight Direct™ Media Engine" },
       { id: 103, name: "Authority Amplifier™ PR System" },
       { id: 104, name: "Signal Surge™ Paid Traffic Lab" },
       { id: 105, name: "NearRank™ Local Discovery Engine" },
@@ -44,7 +44,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
       { id: 301, name: "BookStream™ Smart Scheduling Hub" },
       { id: 302, name: "CloseCraft™ Funnel Builder" },
       { id: 303, name: "DealDrive™ Proposal Automation" },
-      { id: 304, name: "PayNamic™ Dynamic Checkout" },
+      { id: 304, name: "PayNamic™ Dynamic Checkout Engine" },
     ],
   },
   {
@@ -62,7 +62,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
     number: "05",
     name: "Knowledge & Activation",
     services: [
-      { id: 501, name: "SkillSprint™ Academy" },
+      { id: 501, name: "SkillSprint™ Workshop Academy" },
       { id: 502, name: "Onboardly™ Client Activation System" },
       { id: 503, name: "Adaptation™ AI Readiness Rung 2" },
     ],

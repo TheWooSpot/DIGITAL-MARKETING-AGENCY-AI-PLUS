@@ -35,10 +35,10 @@ const growthServices: ServiceDetail[] = [
   },
   {
     id: 'directalign',
-    name: 'DirectAlign™ Media Engine',
+    name: 'SpotLight Direct™ Media Engine',
     tagline: 'Own the screen before competitors appear.',
     description:
-      'DirectAlign™ deploys your brand across connected TV, streaming platforms, and digital out-of-home networks — turning passive audiences into high-trust brand familiarity.',
+      'SpotLight Direct™ deploys your brand across connected TV, streaming platforms, and digital out-of-home networks — turning passive audiences into high-trust brand familiarity.',
     howItWorks: [
       'OTT / CTV campaign placement',
       'Digital out-of-home network deployment',
@@ -308,7 +308,7 @@ const appointmentsServices: ServiceDetail[] = [
   },
   {
     id: 'paynamic',
-    name: 'PayNamic™ Dynamic Checkout',
+    name: 'PayNamic™ Dynamic Checkout Engine',
     slug: 'paynamic',
     tagline: 'Dynamic checkout, pricing logic, and payment orchestration.',
     description:
@@ -411,7 +411,7 @@ const systemsOperationsServices: ServiceDetail[] = [
 const knowledgeActivationServices: ServiceDetail[] = [
   {
     id: 'skillsprint',
-    name: 'SkillSprint™ Academy',
+    name: 'SkillSprint™ Workshop Academy',
     tagline: 'Structured learning environments for internal teams or clients.',
     description:
       'SkillSprint™ delivers guided educational tracks, certifications, and competency development.',

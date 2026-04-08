@@ -43,7 +43,7 @@ export const DYNAMIC_PRICING_SERVICE_MATRIX: DynamicPricingServiceRow[] = SERVIC
     const d = SERVICE_304_DEFINITION;
     return {
       id: d.id,
-      name: "PayNamic™ Dynamic Checkout",
+      name: "PayNamic™ Dynamic Checkout Engine",
       cat: d.category ?? "Appointments & Conversions",
       tier: d.tier ?? "Momentum",
       slug: d.slug,

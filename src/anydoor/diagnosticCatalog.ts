@@ -2,7 +2,7 @@
 
 export const SERVICE_MAP: Record<number, string> = {
   101: "SearchLift™ SBO Engine",
-  102: "DirectAlign™ Media Engine",
+  102: "SpotLight Direct™ Media Engine",
   103: "Authority Amplifier™ PR System",
   104: "Signal Surge™ Paid Traffic Lab",
   105: "NearRank™ Local Discovery Engine",
@@ -14,11 +14,11 @@ export const SERVICE_MAP: Record<number, string> = {
   301: "BookStream™ Smart Scheduling Hub",
   302: "CloseCraft™ Funnel Builder",
   303: "DealDrive™ Proposal Automation",
-  304: "PayNamic™",
+  304: "PayNamic™ Dynamic Checkout Engine",
   401: "HubAI™ CRM Architecture",
   402: "FlowForge™ Automation Lab",
   403: "CommandDesk™ Client Portal System",
-  501: "SkillSprint™ Academy",
+  501: "SkillSprint™ Workshop Academy",
   502: "Onboardly™ Client Activation System",
   601: "Voice & Vibe™ Production Engine",
   602: "StoryFrame™ Brand Narrative Suite",

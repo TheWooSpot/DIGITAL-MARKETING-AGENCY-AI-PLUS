@@ -22,7 +22,7 @@ export interface ServiceCatalogEntry {
 
 export const SERVICE_CATALOG: readonly ServiceCatalogEntry[] = [
   { id: 101, category: "Growth & Visibility", name: "SearchLift™ SBO Engine", tier: "Unknown" },
-  { id: 102, category: "Growth & Visibility", name: "DirectAlign™ Media Engine", tier: "Unknown" },
+  { id: 102, category: "Growth & Visibility", name: "SpotLight Direct™ Media Engine", tier: "Unknown" },
   { id: 103, category: "Growth & Visibility", name: "Authority Amplifier™ PR System", tier: "Unknown" },
   { id: 104, category: "Growth & Visibility", name: "Signal Surge™ Paid Traffic Lab", tier: "Unknown" },
   { id: 105, category: "Growth & Visibility", name: "NearRank™ Local Discovery Engine", tier: "Unknown" },
@@ -38,7 +38,7 @@ export const SERVICE_CATALOG: readonly ServiceCatalogEntry[] = [
   {
     id: 304,
     category: "Appointments & Conversions",
-    name: "PayNamic™ Dynamic Checkout",
+    name: "PayNamic™ Dynamic Checkout Engine",
     tier: "Momentum",
     slug: "paynamic",
     price_monthly: 397,
@@ -56,7 +56,7 @@ export const SERVICE_CATALOG: readonly ServiceCatalogEntry[] = [
   { id: 402, category: "Systems & Operations", name: "FlowForge™ Automation Lab", tier: "Unknown" },
   { id: 403, category: "Systems & Operations", name: "CommandDesk™ Client Portal System", tier: "Unknown" },
 
-  { id: 501, category: "Knowledge & Activation", name: "SkillSprint™ Academy", tier: "Unknown" },
+  { id: 501, category: "Knowledge & Activation", name: "SkillSprint™ Workshop Academy", tier: "Unknown" },
   { id: 502, category: "Knowledge & Activation", name: "Onboardly™ Client Activation System", tier: "Unknown" },
   { id: 503, category: "Knowledge & Activation", name: "Adaptation™ AI Readiness Rung 2", tier: "Unknown" },
 

@@ -1,9 +1,9 @@
 import type { CatalogService } from "@/types/catalogService";
 
-/** Canonical definition for Service ID 304 — PayNamic™ */
+/** Canonical definition for Service ID 304 — PayNamic™ Dynamic Checkout Engine */
 export const SERVICE_304_DEFINITION: CatalogService = {
   id: 304,
-  name: "PayNamic™",
+  name: "PayNamic™ Dynamic Checkout Engine",
   slug: "paynamic",
   category: "Appointments & Conversions",
   tier: "Momentum",

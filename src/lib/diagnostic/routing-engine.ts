@@ -47,7 +47,7 @@ const SERVICE_RULES: Array<{
     condition: (s) => s >= 40 && s < 65,
     services: [
       { id: '402', name: 'FlowForge™ Automation Lab', priority: 'high', rationale: 'Connect tools; reduce manual work' },
-      { id: '501', name: 'SkillSprint™ Academy', priority: 'high', rationale: 'Train team on AI workflows' },
+      { id: '501', name: 'SkillSprint™ Workshop Academy', priority: 'high', rationale: 'Train team on AI workflows' },
       { id: '701', name: 'InsightLoop™ Analytics Dashboard', priority: 'medium', rationale: 'Measure what\'s working; iterate' },
       { id: '503', name: 'Adaptation™ AI Readiness Rung 2', priority: 'high', rationale: 'Advance AI readiness with structured adaptation for Rung 2 operators' },
     ],
