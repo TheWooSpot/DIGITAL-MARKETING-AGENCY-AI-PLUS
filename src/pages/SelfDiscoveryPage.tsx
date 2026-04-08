@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
@@ -16,7 +16,29 @@ const GOLD = "#c9973a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
 
-type Stage = "gate" | "loading" | "questions" | "processing" | "results" | "rate_limited";
+type Stage = "gate" | "welcome" | "loading" | "questions" | "processing" | "results" | "rate_limited";
+type WelcomeExitReason = "timer" | "skip" | "connect-timeout";
+
+const WELCOME_SCRIPT = (name: string) => `${name} — before we start, one quick thought.
+
+Most diagnostic tools ask you to describe your business.
+This one is different. These seven questions are designed
+to surface something you already know — but may not have
+said out loud yet.
+
+There are no right answers. The more honest you are,
+the more useful what comes back will be.
+
+Take your time. We'll reflect back exactly what we hear.`;
+
+const PRIMING_TEXT_BY_NEXT_INDEX: Record<number, string> = {
+  1: "Most people can describe what they do. Very few have named what's actually getting in the way.",
+  2: "The cost of an unsolved problem is rarely just financial. Take your time with this one.",
+  3: "Businesses that can articulate a specific 18-month vision make decisions 3x faster than those that can't.",
+  4: "The next question isn't about strategy. It's about permission — what you'd allow yourself to do differently.",
+  5: "Clarity on the single most urgent thing is worth more than a perfect plan for ten things.",
+  6: "What you've already tried tells us more about your situation than almost anything else.",
+};
 
 function validEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
@@ -79,6 +101,15 @@ export default function SelfDiscoveryPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [fadeKey, setFadeKey] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [showPriming, setShowPriming] = useState(false);
+  const [primingText, setPrimingText] = useState("");
+  const [questionVisible, setQuestionVisible] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [welcomeCallActive, setWelcomeCallActive] = useState(false);
+  const [welcomeError, setWelcomeError] = useState<string | null>(null);
+  const [questionsReady, setQuestionsReady] = useState(false);
+  const [welcomeHasStarted, setWelcomeHasStarted] = useState(false);
+  const welcomeExitRef = useRef(false);
 
   const [analysis, setAnalysis] = useState<Door3Analysis | null>(null);
   const [vapiErr, setVapiErr] = useState<string | null>(null);
@@ -103,6 +134,67 @@ export default function SelfDiscoveryPage() {
     if (sessionSnap.email && !email) setEmail(sessionSnap.email);
     if (sessionSnap.url && !url) setUrl(sessionSnap.url);
   }, [sessionSnap.name, sessionSnap.email, sessionSnap.url, firstName, email, url]);
+
+  const fetchQuestionsInBackground = useCallback(async (fullName: string, nextEmail: string, nextUrl: string) => {
+    const res = await invokeSupabaseEdgeFunction("door3-questions", {
+      name: fullName,
+      email: nextEmail,
+      url: nextUrl || undefined,
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      questions?: DiscoveryQuestion[];
+      industry?: string;
+      business_descriptor?: string;
+      error?: string;
+    };
+    if (!res.ok) {
+      setGateError(json.error || "Could not prepare questions. Try again shortly.");
+      setStage("gate");
+      return false;
+    }
+    if (!json.questions || json.questions.length !== 7) {
+      setGateError("Unexpected response from discovery service.");
+      setStage("gate");
+      return false;
+    }
+    setQuestions(json.questions);
+    setIndustryCtx(typeof json.industry === "string" ? json.industry : "");
+    setBusinessDescriptorCtx(typeof json.business_descriptor === "string" ? json.business_descriptor : "");
+    setAnswers(Array(7).fill(""));
+    setQIndex(0);
+    setFadeKey((k) => k + 1);
+    setQuestionVisible(true);
+    setShowPriming(false);
+    setPrimingText("");
+    setQuestionsReady(true);
+    return true;
+  }, []);
+
+  const exitWelcome = useCallback(
+    (reason: WelcomeExitReason) => {
+      if (welcomeExitRef.current) return;
+      welcomeExitRef.current = true;
+      if (welcomeCallActive) {
+        try {
+          vapi?.stop();
+        } catch {
+          // ignore
+        } finally {
+          setWelcomeCallActive(false);
+        }
+      }
+      if (questionsReady) {
+        setStartedAt(Date.now());
+        setStage("questions");
+      } else {
+        setStage("loading");
+      }
+      if (reason === "connect-timeout") {
+        setWelcomeError("Voice welcome unavailable — continuing to questions.");
+      }
+    },
+    [questionsReady, welcomeCallActive]
+  );
 
   const runRateLimitAndStart = useCallback(async () => {
     setGateError(null);
@@ -132,57 +224,112 @@ export default function SelfDiscoveryPage() {
         return;
       }
     }
-    setStage("loading");
-    const res = await invokeSupabaseEdgeFunction("door3-questions", {
-      name: fullName,
-      email: email.trim(),
-      url: url.trim() || undefined,
-    });
-    const json = (await res.json().catch(() => ({}))) as {
-      questions?: DiscoveryQuestion[];
-      industry?: string;
-      business_descriptor?: string;
-      error?: string;
-    };
-    if (!res.ok) {
-      setGateError(json.error || "Could not prepare questions. Try again shortly.");
-      setStage("gate");
-      return;
-    }
-    if (!json.questions || json.questions.length !== 7) {
-      setGateError("Unexpected response from discovery service.");
-      setStage("gate");
-      return;
-    }
-    setQuestions(json.questions);
-    setIndustryCtx(typeof json.industry === "string" ? json.industry : "");
-    setBusinessDescriptorCtx(typeof json.business_descriptor === "string" ? json.business_descriptor : "");
-    setAnswers(Array(7).fill(""));
-    setQIndex(0);
-    setStartedAt(Date.now());
-    setFadeKey((k) => k + 1);
-    setStage("questions");
-  }, [email, firstName, mergeSession, url]);
+    welcomeExitRef.current = false;
+    setQuestionsReady(false);
+    setWelcomeError(null);
+    setWelcomeHasStarted(false);
+    setStage("welcome");
+    void fetchQuestionsInBackground(fullName, email.trim(), url.trim());
+  }, [email, firstName, mergeSession, url, fetchQuestionsInBackground]);
 
   const goNextQuestion = useCallback(() => {
     const a = (answers[qIndex] ?? "").trim();
-    if (a.length < 10) return;
+    if (a.length < 10 || isTransitioning) return;
     if (qIndex >= 6) {
       setStage("processing");
       return;
     }
-    setFadeKey((k) => k + 1);
-    setTimeout(() => setQIndex((i) => i + 1), 300);
-  }, [answers, qIndex]);
+    setIsTransitioning(true);
+    setQuestionVisible(false);
+    const nextIndex = qIndex + 1;
+    const prime = PRIMING_TEXT_BY_NEXT_INDEX[nextIndex] ?? "";
+    window.setTimeout(() => {
+      if (!prime) {
+        setQIndex(nextIndex);
+        setFadeKey((k) => k + 1);
+        setQuestionVisible(true);
+        setIsTransitioning(false);
+        return;
+      }
+      setPrimingText(prime);
+      setShowPriming(true);
+      window.setTimeout(() => {
+        setShowPriming(false);
+        window.setTimeout(() => {
+          setPrimingText("");
+          setQIndex(nextIndex);
+          setFadeKey((k) => k + 1);
+          setQuestionVisible(true);
+          setIsTransitioning(false);
+        }, 300);
+      }, 2500);
+    }, 300);
+  }, [answers, qIndex, isTransitioning]);
 
   const goBack = useCallback(() => {
     if (qIndex <= 0) {
       setStage("gate");
       return;
     }
+    setShowPriming(false);
+    setPrimingText("");
+    setQuestionVisible(true);
+    setIsTransitioning(false);
     setFadeKey((k) => k + 1);
     setQIndex((i) => i - 1);
   }, [qIndex]);
+
+  useEffect(() => {
+    if (stage !== "welcome" || welcomeHasStarted) return;
+    setWelcomeHasStarted(true);
+    setWelcomeError(null);
+
+    const welcomeTimer = window.setTimeout(() => {
+      exitWelcome("timer");
+    }, 8000);
+
+    const connectGuard = window.setTimeout(() => {
+      if (!welcomeCallActive) {
+        exitWelcome("connect-timeout");
+      }
+    }, 3000);
+
+    const startWelcomeVoice = async () => {
+      if (!vapi) return;
+      try {
+        await vapi.start(getEvaluationSpecialistAssistantId(), {
+          firstMessage: WELCOME_SCRIPT(firstName.trim() || "Welcome"),
+        });
+        setWelcomeCallActive(true);
+      } catch (e) {
+        setWelcomeError(appendVapiAssistantKeyHint(extractVapiErrorMessage(e)));
+      }
+    };
+    void startWelcomeVoice();
+
+    return () => {
+      window.clearTimeout(welcomeTimer);
+      window.clearTimeout(connectGuard);
+    };
+  }, [stage, welcomeHasStarted, firstName, exitWelcome, welcomeCallActive]);
+
+  useEffect(() => {
+    if (stage !== "loading" || !questionsReady) return;
+    setStartedAt(Date.now());
+    setStage("questions");
+  }, [stage, questionsReady]);
+
+  useEffect(() => {
+    if (stage === "welcome") return;
+    if (!welcomeCallActive) return;
+    try {
+      vapi?.stop();
+    } catch {
+      // ignore
+    } finally {
+      setWelcomeCallActive(false);
+    }
+  }, [stage, welcomeCallActive]);
 
   useEffect(() => {
     if (stage !== "processing" || questions.length !== 7) return;
@@ -368,6 +515,32 @@ export default function SelfDiscoveryPage() {
         </div>
       )}
 
+      {stage === "welcome" && (
+        <section className="mx-auto flex min-h-[62vh] w-full max-w-lg flex-col items-center justify-center text-center">
+          <p className="anydoor-exp-eyebrow">D-3 · The Self-Discovery</p>
+          <h1 className="mt-4 text-2xl font-semibold" style={{ color: GOLD, fontFamily: "var(--font-archivo)" }}>
+            Welcome, {firstName.trim() || "there"}.
+          </h1>
+          <div className="mt-6 flex h-16 w-16 items-center justify-center rounded-full border border-[#c9973a]/40 bg-[#c9973a]/10 text-[#c9973a]">
+            <Mic className={`h-6 w-6 ${welcomeCallActive ? "anydoor-tap-pulse" : ""}`} />
+          </div>
+          <p
+            className="mx-auto mt-6 max-w-md text-lg font-light leading-relaxed text-white/85"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+          >
+            {WELCOME_SCRIPT(firstName.trim() || "Welcome")}
+          </p>
+          {welcomeError ? <p className="mt-3 text-xs text-amber-300">{welcomeError}</p> : null}
+          <button
+            type="button"
+            className="mt-7 text-xs text-white/45 underline decoration-[#c9973a]/45 underline-offset-4 hover:text-[#c9973a]"
+            onClick={() => exitWelcome("skip")}
+          >
+            Skip to questions →
+          </button>
+        </section>
+      )}
+
       {stage === "questions" && currentQ && (
         <div className="mx-auto max-w-2xl">
           <div className="mb-8">
@@ -383,18 +556,35 @@ export default function SelfDiscoveryPage() {
             </div>
           </div>
 
-          <div key={fadeKey} className="door3-fade-in mb-8 text-center">
+          <div
+            key={fadeKey}
+            className={`mb-8 text-center transition-opacity duration-300 ${questionVisible ? "opacity-100" : "opacity-0"}`}
+          >
             <p className="anydoor-exp-eyebrow">{currentQ.domain}</p>
-            <h2
-              className="mt-6 font-light leading-snug text-white sm:text-3xl"
-              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
-            >
-              {currentQ.question}
-            </h2>
-            <p className="mt-2 font-mono text-[10px] text-white/35">{currentQ.id}</p>
+            {!showPriming ? (
+              <>
+                <h2
+                  className="door3-fade-in mt-6 font-light leading-snug text-white sm:text-3xl"
+                  style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+                >
+                  {currentQ.question}
+                </h2>
+                <p className="mt-2 font-mono text-[10px] text-white/35">{currentQ.id}</p>
+              </>
+            ) : (
+              <p
+                className={`mx-auto mt-10 max-w-2xl text-base italic transition-opacity duration-500 ${showPriming ? "opacity-100" : "opacity-0"}`}
+                style={{ color: "rgba(201, 151, 58, 0.7)" }}
+              >
+                {primingText}
+              </p>
+            )}
           </div>
 
-          <div key={`${fadeKey}-fields`} className="door3-fade-in space-y-3">
+          <div
+            key={`${fadeKey}-fields`}
+            className={`space-y-3 transition-opacity duration-300 ${showPriming ? "pointer-events-none opacity-0" : "opacity-100"}`}
+          >
             <label htmlFor="d3-answer" className="sr-only">
               Your answer
             </label>
@@ -422,7 +612,7 @@ export default function SelfDiscoveryPage() {
             <button
               type="button"
               className="anydoor-btn-gold"
-              disabled={currentAnswer.trim().length < 10}
+              disabled={currentAnswer.trim().length < 10 || isTransitioning}
               onClick={() => goNextQuestion()}
             >
               {qIndex >= 6 ? "Finish →" : "Next →"}

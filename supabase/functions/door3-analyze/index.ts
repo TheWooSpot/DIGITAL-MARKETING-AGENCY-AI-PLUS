@@ -90,9 +90,40 @@ ${qaBlock}
 
 Based ONLY on what they said — not on assumptions — write:
 
-1. discovery_narrative (150-200 words):
-   A first-person reflection of what they shared, written as if you were them. Use their words and phrases where possible. Make them feel deeply understood. Start with: 'Here's what I heard you say...'
-   End with a single sentence that names the core tension or opportunity in what they described.
+1. discovery_narrative (180-220 words):
+   
+   This is the most important output. It must feel like someone who was truly listening, not summarizing.
+   
+   Rules:
+   - Start with: 'Here's what I heard you say...'
+   - Use their EXACT words and phrases wherever possible.
+     If they said 'buy-in to our platform' — use that phrase.
+     If they said 'greater and more measurable marketing' — mirror that language back exactly.
+   - Reflect the EMOTION behind what they shared, not just the content.
+     If they expressed frustration, name it.
+     If they expressed excitement, honor it.
+   - Name what they want as if you can see it clearly — even if they only half-articulated it.
+   - Do NOT use business jargon. Use their language.
+   - Do NOT summarize each answer sequentially.
+     Weave the responses into a single coherent reflection.
+   - Skip entirely any question they said 'does not apply' to.
+   - End with ONE sentence that names the core tension or opportunity with precision.
+     This sentence should feel like a moment of recognition — the kind where someone
+     thinks 'that's exactly it, I've never said it that clearly.'
+   
+   Example of wrong approach:
+   'You mentioned that your current situation involves X.
+   You also said that your goal is Y. This suggests Z.'
+   
+   Example of right approach:
+   'Here's what I heard you say: You're not building a
+   store — you're building a home for people who've
+   outgrown where they've been selling. The platform
+   exists. The products exist. What's missing is the
+   moment when enough of the right people discover it
+   and think — finally, this is where I belong. That
+   moment hasn't happened yet. Making it happen is
+   everything.'
 
 2. primary_gap (1 sentence):
    The single most important thing standing between where they are and where they want to be, based on their answers.

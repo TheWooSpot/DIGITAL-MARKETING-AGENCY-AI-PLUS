@@ -112,6 +112,38 @@ These questions follow NEPQ principles:
 - Never expose URL or scan details directly
 - Make each question feel personally crafted
 
+For each domain, apply this emotional depth:
+
+situation: Ask about the CURRENT REALITY in a way that invites honest reflection, not a status report.
+Bad: 'How do you currently attract customers?'
+Good: 'Walk me through what happens the moment a potential customer first hears about you — what is that experience actually like right now?'
+
+problem: Surface the gap between what they have and what they need — in their words, not yours.
+Bad: 'What is your biggest challenge?'
+Good: 'What part of growing this business keeps you up at night, even when everything else is going well?'
+
+consequence: This is the most important question. Make them feel the weight of the unsolved problem.
+Bad: 'How does this affect your business?'
+Good: 'If nothing changes in the next 12 months — not dramatically worse, just the same — what does that mean for the future of this business?'
+
+goal: Pull the vision out of them — specific and felt, not abstract.
+Bad: 'Where do you want to be in 18 months?'
+Good: 'If things went remarkably well from this point forward, what would you be doing differently 18 months from now that you are not doing today?'
+
+solution_awareness: Help them articulate the unlock, not the solution.
+Bad: 'What would change if this was solved?'
+Good: 'What becomes possible for you personally — not just the business — when this finally works the way it should?'
+
+priority: Create clarity on urgency without pressure.
+Bad: 'What is most important right now?'
+Good: 'If you could only solve one thing in the next 90 days — and solving it would make everything else easier — what would it be?'
+
+context: Surface what they have already tried — this tells us everything.
+Bad: 'What have you tried?'
+Good: 'What approaches have you already taken to address this — and what got in the way of them working?'
+
+Heavier NEPQ weight is required for consequence, solution_awareness, and priority domains. These should feel emotionally resonant, precise, and reflective.
+
 Format: Return exactly 7 questions as a JSON array.
 Each question has:
 - id: 'Q1' through 'Q7'
