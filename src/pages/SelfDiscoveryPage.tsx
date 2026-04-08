@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
+import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { useSession } from "@/context/SessionContext";
 import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 import { door3ServiceName } from "@/lib/door3/serviceNames";
@@ -14,10 +11,8 @@ import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 import { Mic, PhoneOff } from "lucide-react";
 
-const BG = "#07080d";
-const CARD = "#0e1829";
-const GOLD = "#c9a227";
-const BORDER = "rgba(201,162,39,0.22)";
+/** Aligned with AiIqAssessmentPage / AnyDoor tokens */
+const GOLD = "#c9973a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
 
@@ -90,7 +85,8 @@ export default function SelfDiscoveryPage() {
   const [callActive, setCallActive] = useState(false);
 
   const currentQ = questions[qIndex];
-  const progress = questions.length > 0 ? ((qIndex + 1) / 7) * 100 : 0;
+  const totalSteps = 7;
+  const progressPct = questions.length > 0 ? Math.min(100, Math.round(((qIndex + 1) / totalSteps) * 100)) : 0;
   const currentAnswer = answers[qIndex] ?? "";
 
   const minutesElapsed = useMemo(() => {
@@ -274,319 +270,278 @@ export default function SelfDiscoveryPage() {
   }, []);
 
   return (
-    <div
-      className="relative z-10 min-h-screen selection:bg-[#c9a227]/30 selection:text-white"
-      style={{ backgroundColor: BG, color: WHITE, fontFamily: "'Archivo', system-ui, sans-serif" }}
-    >
-      <div className="pointer-events-none fixed inset-0 z-0 platform-grain opacity-70" aria-hidden />
-
-      <header
-        className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-8"
-        style={{ borderBottomWidth: 1, borderBottomColor: GOLD }}
-      >
-        <Link to="/" className="text-sm font-semibold" style={{ color: GOLD }}>
-          ← Home
-        </Link>
-        <span className="text-xs font-mono uppercase tracking-[0.2em]" style={{ color: DIM }}>
-          AnyDoor Engine · Door 3
-        </span>
-      </header>
-
-      <main className="relative z-10 mx-auto max-w-2xl px-4 pb-24 pt-10 sm:px-6">
-        {stage === "gate" && (
-          <section className="mx-auto max-w-md">
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-              The Self-Discovery
-            </p>
-            <h1
-              className="mt-3 text-3xl font-light leading-tight sm:text-4xl"
-              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-            >
-              Seven questions. One truth.
+    <AnyDoorPageShell backHref="/" backLabel="← Home">
+      {stage === "gate" && (
+        <>
+          <header className="mb-10 text-center sm:mb-14">
+            <p className="anydoor-exp-eyebrow">D-3 · The Self-Discovery</p>
+            <h1 className="mt-3 text-xl font-semibold leading-snug text-white sm:text-2xl" style={{ fontFamily: "var(--font-archivo)" }}>
+              Seven questions — then we reflect what we heard
             </h1>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: DIM }}>
-              This isn&apos;t a lead form — it&apos;s a short discovery. We&apos;ll ask only seven questions, then reflect
-              what we heard.
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/50">
+              This isn&apos;t a lead form. It&apos;s a short discovery — open text, your words, no multiple choice.
             </p>
+          </header>
 
-            <div
-              className="mt-10 space-y-4 rounded-xl border p-6 sm:p-8"
-              style={{ backgroundColor: CARD, borderColor: BORDER }}
-            >
-              <div>
-                <Label htmlFor="d3-first" className="text-white">
-                  First name
-                </Label>
-                <Input
-                  id="d3-first"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="mt-1.5 border-white/10 bg-black/25 text-white"
-                  autoComplete="given-name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="d3-email" className="text-white">
-                  Business email
-                </Label>
-                <Input
-                  id="d3-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1.5 border-white/10 bg-black/25 text-white"
-                  autoComplete="email"
-                />
-              </div>
-              <div>
-                <Label htmlFor="d3-url" className="text-white">
-                  Business URL <span style={{ color: DIM }}>(optional)</span>
-                </Label>
-                <Input
-                  id="d3-url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="mt-1.5 border-white/10 bg-black/25 text-white"
-                  placeholder="https://"
-                />
-              </div>
-              {gateError && <p className="text-sm text-amber-400">{gateError}</p>}
-              <Button
-                type="button"
-                className="w-full font-semibold sm:w-auto"
-                style={{ backgroundColor: GOLD, color: BG }}
-                onClick={() => void runRateLimitAndStart()}
-              >
-                Start my discovery →
-              </Button>
+          <section className="mx-auto w-full max-w-md space-y-4">
+            <div>
+              <label htmlFor="d3-first" className="anydoor-field-label--primary">
+                First name
+              </label>
+              <input
+                id="d3-first"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="anydoor-field-input"
+                placeholder="Your first name"
+                autoComplete="given-name"
+              />
             </div>
-          </section>
-        )}
-
-        {stage === "rate_limited" && (
-          <section className="mx-auto max-w-lg text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-              Already with us today
-            </p>
-            <h1 className="mt-4 text-2xl font-semibold" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-              You&apos;ve already completed a discovery session today.
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed" style={{ color: DIM }}>
-              Your results are still fresh — check your email for your personalized recommendations.
-            </p>
-            <Button asChild className="mt-8 font-semibold" style={{ backgroundColor: GOLD, color: BG }}>
-              <Link to="/doors/url-diagnostic">Run a full URL diagnostic instead →</Link>
-            </Button>
-            <p className="mt-6">
-              <Link to="/" className="text-sm underline" style={{ color: DIM }}>
-                ← Home
-              </Link>
-            </p>
-          </section>
-        )}
-
-        {stage === "loading" && (
-          <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
-            <div
-              className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
-              style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
-            />
-            <p className="text-sm" style={{ color: DIM }}>
-              Preparing your discovery questions...
-            </p>
-          </div>
-        )}
-
-        {stage === "questions" && currentQ && (
-          <section className="door3-question-shell min-h-[60vh]">
-            <div className="mb-6 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={goBack}
-                className="text-xs underline decoration-white/20 hover:decoration-white/50"
-                style={{ color: DIM }}
-              >
-                ← Back
-              </button>
-              <span className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: GOLD }}>
-                Question {qIndex + 1} of 7
-              </span>
+            <div>
+              <label htmlFor="d3-email" className="anydoor-field-label--primary">
+                Business email
+              </label>
+              <input
+                id="d3-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="anydoor-field-input"
+                placeholder="you@company.com"
+                autoComplete="email"
+              />
             </div>
-            <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+            <div>
+              <label htmlFor="d3-url" className="anydoor-field-label--muted">
+                Business URL <span className="text-white/35">(optional)</span>
+              </label>
+              <input
+                id="d3-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="anydoor-field-input"
+                placeholder="https://"
+                autoComplete="url"
+              />
+            </div>
+            {gateError && <p className="text-center text-sm text-red-400">{gateError}</p>}
+            <button type="button" className="anydoor-btn-gold" onClick={() => void runRateLimitAndStart()}>
+              Start my discovery →
+            </button>
+          </section>
+        </>
+      )}
+
+      {stage === "rate_limited" && (
+        <section className="mx-auto max-w-lg text-center">
+          <p className="anydoor-exp-eyebrow">Already with us today</p>
+          <h1
+            className="mt-4 text-xl font-semibold text-white sm:text-2xl"
+            style={{ fontFamily: "var(--font-archivo)" }}
+          >
+            You&apos;ve already completed a discovery session today.
+          </h1>
+          <p className="mt-4 text-sm leading-relaxed text-white/50">
+            Your results are still fresh — check your email for your personalized recommendations.
+          </p>
+          <Link
+            to="/doors/url-diagnostic"
+            className="mt-8 inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
+          >
+            Run a full URL diagnostic instead →
+          </Link>
+          <p className="mt-6">
+            <Link to="/" className="anydoor-exp-navlink">
+              ← Home
+            </Link>
+          </p>
+        </section>
+      )}
+
+      {stage === "loading" && (
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+            style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+          />
+          <p style={{ color: DIM }}>Preparing your discovery questions...</p>
+        </div>
+      )}
+
+      {stage === "questions" && currentQ && (
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-8">
+            <div className="mb-2 flex justify-between text-xs font-mono" style={{ color: DIM }}>
+              <span>Progress</span>
+              <span>{progressPct}%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.08]">
               <div
-                className="door3-progress-bar h-full rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progress}%`, backgroundColor: GOLD }}
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${((qIndex + 1) / totalSteps) * 100}%`, backgroundColor: GOLD }}
               />
             </div>
-
-            <div key={fadeKey} className="door3-fade-in mt-10 flex flex-col items-center text-center">
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: DIM }}>
-                {currentQ.domain}
-              </p>
-              <h2
-                className="mt-6 max-w-xl text-2xl font-light leading-snug sm:text-3xl"
-                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-              >
-                {currentQ.question}
-              </h2>
-              <Textarea
-                className="door3-textarea mt-10 min-h-[120px] w-full max-w-xl border-white/15 bg-black/30 text-base text-white placeholder:text-white/35"
-                placeholder={currentQ.placeholder}
-                value={currentAnswer}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setAnswers((prev) => {
-                    const next = [...prev];
-                    next[qIndex] = v;
-                    return next;
-                  });
-                }}
-                onKeyDown={onKeyDownArea}
-              />
-              <p className="mt-2 w-full max-w-xl text-left text-[11px]" style={{ color: DIM }}>
-                {currentAnswer.trim().length < 10
-                  ? `${10 - Math.min(currentAnswer.trim().length, 10)} more characters to continue`
-                  : "Cmd/Ctrl + Enter to continue"}
-              </p>
-              <Button
-                type="button"
-                className="mt-8 font-semibold"
-                style={{ backgroundColor: GOLD, color: BG }}
-                disabled={currentAnswer.trim().length < 10}
-                onClick={() => goNextQuestion()}
-              >
-                {qIndex >= 6 ? "Finish →" : "Next →"}
-              </Button>
-            </div>
-          </section>
-        )}
-
-        {stage === "processing" && (
-          <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
-            <p className="text-lg font-light" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-              Reading between the lines...
-            </p>
-            <p className="max-w-sm text-sm" style={{ color: DIM }}>
-              Taking a moment to reflect on what you shared.
-            </p>
           </div>
-        )}
 
-        {stage === "results" && analysis && (
-          <section className="space-y-10 pb-12">
-            <header className="text-center">
-              <h1 className="text-3xl font-light sm:text-4xl" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-                Here&apos;s what we heard.
-              </h1>
-              <p className="mt-3 text-sm" style={{ color: DIM }}>
-                {firstName.trim()}, this took about {minutesElapsed} minute{minutesElapsed === 1 ? "" : "s"}. Here&apos;s
-                what stood out.
-              </p>
-            </header>
+          <div key={fadeKey} className="door3-fade-in mb-8 text-center">
+            <p className="anydoor-exp-eyebrow">{currentQ.domain}</p>
+            <h2
+              className="mt-6 font-light leading-snug text-white sm:text-3xl"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              {currentQ.question}
+            </h2>
+            <p className="mt-2 font-mono text-[10px] text-white/35">{currentQ.id}</p>
+          </div>
 
-            <article
-              className="rounded-2xl border px-6 py-8 sm:px-10 sm:py-10"
-              style={{
-                borderColor: BORDER,
-                backgroundColor: CARD,
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: "1.15rem",
-                lineHeight: 1.75,
+          <div key={`${fadeKey}-fields`} className="door3-fade-in space-y-3">
+            <label htmlFor="d3-answer" className="sr-only">
+              Your answer
+            </label>
+            <textarea
+              id="d3-answer"
+              rows={5}
+              value={currentAnswer}
+              onChange={(e) => {
+                const v = e.target.value;
+                setAnswers((prev) => {
+                  const next = [...prev];
+                  next[qIndex] = v;
+                  return next;
+                });
               }}
-            >
-              {analysis.discovery_narrative.split("\n").map((para, i) => (
-                <p key={i} className={i > 0 ? "mt-4" : ""}>
-                  {para}
-                </p>
-              ))}
-            </article>
-
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-                The core tension
-              </p>
-              <p className="mt-3 text-lg font-medium leading-relaxed text-white/95">{analysis.primary_gap}</p>
-            </div>
-
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-                Where we&apos;d focus first
-              </p>
-              <ul className="mt-4 grid gap-3 sm:grid-cols-1">
-                {analysis.recommended_services.map((s) => (
-                  <li
-                    key={s.service_id}
-                    className="rounded-xl border px-4 py-4 text-left text-sm"
-                    style={{ borderColor: BORDER, backgroundColor: "rgba(14,24,41,0.6)" }}
-                  >
-                    <span className="font-semibold text-white">{door3ServiceName(s.service_id)}</span>
-                    <span style={{ color: DIM }}> — {s.reason}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs" style={{ color: "rgba(232,238,245,0.4)" }}>
-                Pricing isn&apos;t shown here — it unlocks when you&apos;re ready on the next step.
-              </p>
-            </div>
-
-            <div
-              className="rounded-xl border px-5 py-6 text-center"
-              style={{ borderColor: BORDER, backgroundColor: "rgba(14,24,41,0.45)" }}
-            >
-              <p className="text-sm" style={{ color: DIM }}>
-                Based on what you shared...
-              </p>
-              <p className="mt-2 font-medium text-white">{nextStepLabel(analysis.next_step as NextStepKey).title}</p>
-              <p className="mt-1 text-sm" style={{ color: DIM }}>
-                {nextStepLabel(analysis.next_step as NextStepKey).body}
-              </p>
-              <p className="mt-2 text-xs italic" style={{ color: DIM }}>
-                {analysis.next_step_reason}
-              </p>
-              <Button asChild className="mt-6 font-semibold" style={{ backgroundColor: GOLD, color: BG }}>
-                <Link to={nextStepHref(analysis.next_step as NextStepKey)}>Continue →</Link>
-              </Button>
-            </div>
-
-            <div className="rounded-xl border px-5 py-6" style={{ borderColor: BORDER, backgroundColor: CARD }}>
-              <p className="text-center text-sm font-medium text-white">Talk to someone about this →</p>
-              <p className="mt-1 text-center text-xs" style={{ color: DIM }}>
-                Tap to talk with Jordan (Evaluation Specialist).
-              </p>
-              {vapiErr && <p className="mt-3 text-center text-sm text-amber-400">{vapiErr}</p>}
-              <div className="mt-4 flex justify-center gap-3">
-                {!callActive ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-[#c9a227]/50 bg-transparent text-white hover:bg-[#c9a227]/10"
-                    onClick={() => void startJordan()}
-                  >
-                    <Mic className="mr-2 h-4 w-4" />
-                    Tap to Talk
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-red-500/40 text-red-300 hover:bg-red-500/10"
-                    onClick={endJordan}
-                  >
-                    <PhoneOff className="mr-2 h-4 w-4" />
-                    End call
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <p className="text-center">
-              <Link to="/" className="text-sm underline" style={{ color: DIM }}>
-                ← Home
-              </Link>
+              onKeyDown={onKeyDownArea}
+              placeholder={currentQ.placeholder}
+              className="anydoor-field-input min-h-[120px] resize-y py-3"
+            />
+            <p className="text-xs text-white/40">
+              {currentAnswer.trim().length < 10
+                ? `${10 - Math.min(currentAnswer.trim().length, 10)} more characters to continue`
+                : "Cmd/Ctrl + Enter to continue"}
             </p>
-          </section>
-        )}
-      </main>
-    </div>
+            <button
+              type="button"
+              className="anydoor-btn-gold"
+              disabled={currentAnswer.trim().length < 10}
+              onClick={() => goNextQuestion()}
+            >
+              {qIndex >= 6 ? "Finish →" : "Next →"}
+            </button>
+          </div>
+
+          <div className="mt-10 flex flex-wrap justify-center gap-3 sm:justify-start">
+            <button type="button" className="anydoor-btn-outline" onClick={goBack}>
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+
+      {stage === "processing" && (
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center" style={{ color: WHITE }}>
+          <p className="text-base font-medium text-white/90">Reading between the lines...</p>
+          <p className="max-w-sm text-sm" style={{ color: DIM }}>
+            Taking a moment to reflect on what you shared.
+          </p>
+        </div>
+      )}
+
+      {stage === "results" && analysis && (
+        <div className="mx-auto max-w-3xl space-y-10 pb-12">
+          <header className="text-center">
+            <h1
+              className="text-2xl font-light text-white sm:text-3xl"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              Here&apos;s what we heard.
+            </h1>
+            <p className="mt-3 text-sm" style={{ color: DIM }}>
+              {firstName.trim()}, this took about {minutesElapsed} minute{minutesElapsed === 1 ? "" : "s"}. Here&apos;s
+              what stood out.
+            </p>
+          </header>
+
+          <article className="anydoor-surface-card text-[15px] leading-[1.7] text-white/90 sm:text-base" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
+            {analysis.discovery_narrative.split("\n").map((para, i) => (
+              <p key={i} className={i > 0 ? "mt-4" : ""}>
+                {para}
+              </p>
+            ))}
+          </article>
+
+          <div>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
+              The core tension
+            </p>
+            <p className="mt-3 text-lg font-medium leading-relaxed text-white">{analysis.primary_gap}</p>
+          </div>
+
+          <div>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
+              Where we&apos;d focus first
+            </p>
+            <ul className="mt-4 grid gap-3">
+              {analysis.recommended_services.map((s) => (
+                <li key={s.service_id} className="anydoor-surface-card p-4 text-left text-sm">
+                  <span className="font-semibold text-white">{door3ServiceName(s.service_id)}</span>
+                  <span style={{ color: DIM }}> — {s.reason}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-white/40">Pricing isn&apos;t shown here — it unlocks when you&apos;re ready on the next step.</p>
+          </div>
+
+          <div className="anydoor-surface-card text-center">
+            <p className="text-sm" style={{ color: DIM }}>
+              Based on what you shared...
+            </p>
+            <p className="mt-2 font-medium text-white">{nextStepLabel(analysis.next_step as NextStepKey).title}</p>
+            <p className="mt-1 text-sm" style={{ color: DIM }}>
+              {nextStepLabel(analysis.next_step as NextStepKey).body}
+            </p>
+            <p className="mt-2 text-xs italic" style={{ color: DIM }}>
+              {analysis.next_step_reason}
+            </p>
+            <Link
+              to={nextStepHref(analysis.next_step as NextStepKey)}
+              className="mt-6 inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
+            >
+              Continue →
+            </Link>
+          </div>
+
+          <div className="anydoor-surface-card">
+            <p className="text-center text-sm font-medium text-white">Talk to someone about this →</p>
+            <p className="mt-1 text-center text-xs" style={{ color: DIM }}>
+              Tap to talk with Jordan (Evaluation Specialist).
+            </p>
+            {vapiErr && <p className="mt-3 text-center text-sm text-amber-400">{vapiErr}</p>}
+            <div className="mt-4 flex justify-center gap-3">
+              {!callActive ? (
+                <button type="button" className="anydoor-btn-outline inline-flex items-center" onClick={() => void startJordan()}>
+                  <Mic className="mr-2 h-4 w-4" />
+                  Tap to Talk
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="rounded-lg border border-red-500/40 bg-transparent px-5 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
+                  onClick={endJordan}
+                >
+                  <PhoneOff className="mr-2 inline h-4 w-4" />
+                  End call
+                </button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-center">
+            <Link to="/" className="anydoor-exp-navlink">
+              ← Home
+            </Link>
+          </p>
+        </div>
+      )}
+    </AnyDoorPageShell>
   );
 }
