@@ -384,6 +384,8 @@ All colors MUST be HSL.
 :root {
   --font-cormorant: "Cormorant Garamond", Georgia, serif;
   --font-dm-mono: "DM Mono", ui-monospace, monospace;
+  --font-dm-sans: "DM Sans", system-ui, sans-serif;
+  --font-dm-serif-display: "DM Serif Display", Georgia, serif;
   --font-archivo: "Archivo", system-ui, sans-serif;
   --anydoor-ink: #07080d;
   --anydoor-gold: #c9973a;
@@ -455,6 +457,36 @@ All colors MUST be HSL.
 
   .sovereign-cta {
     @apply rounded-xl border border-[#c9973a]/50 bg-[#07080d]/90 px-6 py-8 sm:px-8;
+  }
+
+  /* AI Readiness Labs — Partner Brief (/partner-brief); matches standalone brief HTML tokens */
+  .partner-brief-page {
+    --partner-bg: #07090f;
+    --partner-gold: #c9993a;
+    font-family: var(--font-dm-sans), var(--font-archivo), system-ui, sans-serif;
+    background-color: var(--partner-bg);
+    color: rgba(232, 238, 245, 0.92);
+  }
+
+  .partner-brief-serif {
+    font-family: var(--font-dm-serif-display), Georgia, serif;
+  }
+
+  .partner-brief-h2 {
+    font-family: var(--font-dm-serif-display), Georgia, serif;
+    @apply text-lg font-medium tracking-tight sm:text-xl;
+    color: var(--partner-gold);
+  }
+
+  .partner-brief-card {
+    @apply rounded-xl border p-6 sm:p-8;
+    border-color: rgba(201, 153, 58, 0.22);
+    background: rgba(7, 9, 15, 0.65);
+  }
+
+  .partner-brief-rule {
+    @apply my-10 h-px w-full max-w-2xl border-0;
+    background: linear-gradient(90deg, transparent, rgba(201, 153, 58, 0.45), transparent);
   }
 
   .sovereign-label {

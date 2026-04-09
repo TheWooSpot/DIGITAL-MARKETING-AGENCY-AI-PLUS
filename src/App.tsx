@@ -23,6 +23,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import ContactPage from "./pages/ContactPage";
 import SelfDiscoveryPage from "./pages/SelfDiscoveryPage";
 import DreamDoorPage from "./pages/DreamDoorPage";
+import PartnerBrief from "./pages/PartnerBrief";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/ai-readiness" element={<Navigate to="/ai-readiness/rung-2" replace />} />
               <Route path="/ai-readiness/rung-2" element={<Rung2AdaptationPage />} />
               <Route path="/ai-readiness/rung-3" element={<Rung3OptimizationPage />} />
+              <Route path="/partner-brief" element={<PartnerBrief />} />
               <Route path="/calculator" element={<Door5CalculatorPage />} />
               <Route path="/self-discovery" element={<SelfDiscoveryPage />} />
               <Route path="/dream" element={<DreamDoorPage />} />
