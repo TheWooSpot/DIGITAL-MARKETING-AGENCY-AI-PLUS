@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Vapi from "@vapi-ai/web";
 import { Mic, PhoneOff } from "lucide-react";
-import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 
-/** DreamScape™ Amelia — Vapi dashboard assistant (override with VITE_DREAMSCAPE_ASSISTANT_ID). */
+/** DreamScape™ Amelia — set `VITE_DREAMSCAPE_ASSISTANT_ID` in env (Vapi dashboard assistant id). */
 const DREAMSCAPE_ASSISTANT_ID =
-  (import.meta.env.VITE_DREAMSCAPE_ASSISTANT_ID as string | undefined)?.trim() ||
-  "0693b0d9-6e89-436f-bdbd-9fe25cc1bf3c";
+  (import.meta.env.VITE_DREAMSCAPE_ASSISTANT_ID as string | undefined)?.trim() ?? "";
 
 function extractErr(e: unknown): string {
   return appendVapiAssistantKeyHint(extractVapiErrorMessage(e));
@@ -16,15 +15,23 @@ function extractErr(e: unknown): string {
  * Door 7 — DreamScape™ entry: Vapi voice session with Amelia (warm card + pulsing orb while active).
  */
 export default function DreamScapeEntry() {
-  const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
-  const hasPublicKey = publicKey.length > 0;
+  const hasPublicKey = Boolean((import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim());
+
+  /** Dedicated client for Door 7 — `VITE_VAPI_PUBLIC_KEY` (trimmed so pasted keys with newlines work). */
+  const vapi = useMemo(() => {
+    const pub = import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined;
+    if (!pub?.trim()) return null;
+    return new Vapi((import.meta.env.VITE_VAPI_PUBLIC_KEY as string).trim());
+  }, []);
+  const hasAssistantId = DREAMSCAPE_ASSISTANT_ID.length > 0;
+  const canStart = hasPublicKey && hasAssistantId && vapi !== null;
   const [isCallActive, setIsCallActive] = useState(false);
   const [showThanks, setShowThanks] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const client = vapi;
-    if (!hasPublicKey || !client) return;
+    if (!canStart || !client) return;
     const onStart = () => {
       setIsCallActive(true);
       setShowThanks(false);
@@ -48,11 +55,17 @@ export default function DreamScapeEntry() {
       client.removeListener("error", onErr);
       client.removeListener("call-start-failed", onErr);
     };
-  }, [hasPublicKey]);
+  }, [canStart, vapi]);
 
   const start = useCallback(() => {
-    if (!hasPublicKey || !vapi) {
-      setError("Add VITE_VAPI_PUBLIC_KEY to your environment and rebuild.");
+    if (!canStart || !vapi) {
+      setError(
+        !hasPublicKey
+          ? "Add VITE_VAPI_PUBLIC_KEY to your environment and rebuild."
+          : !hasAssistantId
+            ? "Add VITE_DREAMSCAPE_ASSISTANT_ID to your environment and rebuild."
+            : "Voice client could not be initialized.",
+      );
       return;
     }
     setError(null);
@@ -60,7 +73,7 @@ export default function DreamScapeEntry() {
     vapi.start(DREAMSCAPE_ASSISTANT_ID, {
       maxDurationSeconds: 600,
     });
-  }, [hasPublicKey]);
+  }, [canStart, vapi, hasPublicKey, hasAssistantId]);
 
   const end = useCallback(() => {
     try {
@@ -69,7 +82,7 @@ export default function DreamScapeEntry() {
       setIsCallActive(false);
       setShowThanks(true);
     }
-  }, []);
+  }, [vapi]);
 
   return (
     <div className="dreamscape-entry-card relative mx-auto w-full max-w-xl overflow-hidden rounded-xl border border-[#c9973a]/45 bg-[#07080d] px-6 py-10 shadow-[0_0_48px_rgba(201,151,58,0.12)] sm:px-10">
@@ -86,7 +99,7 @@ export default function DreamScapeEntry() {
           Tell us where you want to take your business. Amelia will listen.
         </p>
 
-        {!hasPublicKey ? (
+        {!canStart ? (
           <p className="mt-6 text-xs text-amber-400/90">
             Voice session unavailable: set <span className="font-mono">VITE_VAPI_PUBLIC_KEY</span> and{" "}
             <span className="font-mono">VITE_DREAMSCAPE_ASSISTANT_ID</span>, then rebuild.
