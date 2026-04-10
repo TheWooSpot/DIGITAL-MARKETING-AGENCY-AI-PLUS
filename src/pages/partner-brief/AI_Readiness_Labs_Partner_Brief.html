@@ -38,45 +38,86 @@
       padding: 2rem 1.25rem;
       text-align: center;
     }
-    #pb-gate h1 {
+    #pb-gate .pb-gate-titles {
+      max-width: 22rem;
+    }
+    #pb-gate .pb-gate-title-main {
       font-family: "DM Serif Display", Georgia, serif;
       font-weight: 400;
-      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      font-size: clamp(2rem, 5.5vw, 2.85rem);
       color: white;
-      max-width: 20ch;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+    }
+    #pb-gate .pb-gate-title-sub {
+      font-family: "DM Serif Display", Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(1.35rem, 3.8vw, 1.85rem);
+      color: white;
+      line-height: 1.2;
+      margin-top: 0.45rem;
     }
     #pb-gate .eyebrow {
-      font-family: ui-monospace, monospace;
+      font-family: "DM Sans", system-ui, sans-serif;
       font-size: 10px;
-      letter-spacing: 0.35em;
+      font-weight: 600;
+      letter-spacing: 0.38em;
       text-transform: uppercase;
       color: var(--pb-gold);
-      margin-bottom: 1rem;
+      margin-bottom: 1.35rem;
     }
-    #pb-gate p.sub { margin-top: 1rem; color: var(--pb-muted); max-width: 34rem; font-size: 0.9rem; }
-    #pb-gate .gate-form { margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; align-items: center; }
+    #pb-gate p.sub {
+      margin-top: 1.35rem;
+      color: var(--pb-muted);
+      max-width: 26rem;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      font-family: "DM Sans", system-ui, sans-serif;
+    }
+    #pb-gate .gate-form {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      width: min(100%, 360px);
+      align-items: stretch;
+    }
     #pb-gate input[type="password"] {
-      width: min(100%, 260px);
-      padding: 0.75rem 1rem;
+      width: 100%;
+      padding: 0.85rem 1.1rem;
       border-radius: 0.5rem;
-      border: 1px solid rgba(201, 153, 58, 0.35);
-      background: rgba(7, 9, 15, 0.8);
+      border: 1px solid rgba(201, 153, 58, 0.5);
+      background: rgba(7, 9, 15, 0.85);
       color: var(--pb-text);
       font-size: 1rem;
+      font-family: "DM Sans", system-ui, sans-serif;
+    }
+    #pb-gate input::placeholder {
+      color: rgba(232, 238, 245, 0.38);
     }
     #pb-gate input:focus { outline: none; border-color: var(--pb-gold); box-shadow: 0 0 0 2px rgba(201, 153, 58, 0.25); }
     #pb-gate button[type="submit"] {
-      padding: 0.75rem 1.5rem;
+      width: 100%;
+      padding: 0.85rem 1.5rem;
       border-radius: 0.5rem;
       border: none;
       background: var(--pb-gold);
       color: var(--pb-bg);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.9375rem;
+      font-family: "DM Sans", system-ui, sans-serif;
       cursor: pointer;
     }
     #pb-gate button[type="submit"]:hover { filter: brightness(1.05); }
-    #pb-gate .gate-err { margin-top: 1rem; color: #f87171; font-size: 0.85rem; display: none; }
+    #pb-gate .gate-err {
+      margin-top: 1.35rem;
+      color: #f87171;
+      font-size: 0.875rem;
+      line-height: 1.45;
+      font-family: "DM Sans", system-ui, sans-serif;
+      display: none;
+      max-width: 26rem;
+    }
     #pb-gate .gate-err.visible { display: block; }
     #pb-main { display: none; }
     #pb-main.visible { display: block; }
@@ -129,7 +170,10 @@
   <div class="partner-brief-root">
     <div id="pb-gate">
       <p class="eyebrow">Confidential</p>
-      <h1>AI Readiness Labs™ Partner Brief</h1>
+      <div class="pb-gate-titles">
+        <h1 class="pb-gate-title-main">AI Readiness Labs™</h1>
+        <p class="pb-gate-title-sub">Partner Brief</p>
+      </div>
       <p class="sub">Enter the access phrase supplied by Socialutely to view this document.</p>
       <form class="gate-form" id="pb-gate-form" action="javascript:void(0)">
         <input type="password" id="pb-access" autocomplete="off" placeholder="Access phrase" aria-label="Access phrase" />
