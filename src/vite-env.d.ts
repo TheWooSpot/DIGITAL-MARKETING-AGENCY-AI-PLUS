@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+declare module "*.html?raw" {
+  const content: string;
+  export default content;
+}
+
 interface ImportMetaEnv {
   readonly VITE_VAPI_PUBLIC_KEY: string;
   /** Evaluation Specialist assistant UUID (Vapi dashboard). Required for `vapi.start()`. */
@@ -27,6 +32,10 @@ interface ImportMetaEnv {
   readonly VITE_AI_IQ_RUNG2_URL?: string;
   readonly VITE_AI_IQ_RUNG3_URL?: string;
   readonly VITE_AI_IQ_DISCOVERY_CALENDAR_URL?: string;
+  /** Partner brief gate (/partner-brief). Case-insensitive match. Default scaffold: PARTNER */
+  readonly VITE_PARTNER_BRIEF_ACCESS_PHRASE?: string;
+  /** ElevenLabs ConvAI agent for partner brief widget; falls back to VITE_ELEVENLABS_JORDAN_AGENT_ID */
+  readonly VITE_PARTNER_BRIEF_ELEVENLABS_AGENT_ID?: string;
 }
 
 interface ImportMeta {
