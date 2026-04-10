@@ -36,6 +36,10 @@ interface ImportMetaEnv {
   readonly VITE_PARTNER_BRIEF_ACCESS_PHRASE?: string;
   /** ElevenLabs ConvAI agent for partner brief widget; falls back to VITE_ELEVENLABS_JORDAN_AGENT_ID */
   readonly VITE_PARTNER_BRIEF_ELEVENLABS_AGENT_ID?: string;
+  /** Supabase table for `?token=` partner brief access rows (default: partner_brief_tokens). */
+  readonly VITE_PARTNER_BRIEF_SUPABASE_TABLE?: string;
+  /** Column matched against the URL `token` query param (default: token). */
+  readonly VITE_PARTNER_BRIEF_TOKEN_COLUMN?: string;
 }
 
 interface ImportMeta {

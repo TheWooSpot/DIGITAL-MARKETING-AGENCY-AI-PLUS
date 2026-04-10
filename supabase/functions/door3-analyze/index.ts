@@ -7,7 +7,7 @@ const CORS: Record<string, string> = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
 };
 
-const MODEL = "claude-haiku-4-5-20251001";
+const MODEL = "claude-sonnet-4-20250514";
 
 function jsonResponse(body: object, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -28,10 +28,16 @@ function extractJsonObject(text: string): Record<string, unknown> {
   return JSON.parse(inner) as Record<string, unknown>;
 }
 
-interface AnalysisResult {
-  discovery_narrative: string;
-  primary_gap: string;
-  recommended_services: Array<{ service_id: number; reason: string }>;
+interface RichAnalysis {
+  per_question_reflections: Array<{ domain: string; question: string; interpretation: string }>;
+  core_tension: string;
+  grace_note: string;
+  top_gaps: string[];
+  recommended_services: Array<{
+    service_id: number;
+    what_it_is: string;
+    benefit_for_you: string;
+  }>;
   recommended_tier: string;
   next_step: string;
   next_step_reason: string;
@@ -54,6 +60,8 @@ Deno.serve(async (req) => {
     url?: string | null;
     industry?: string;
     business_descriptor?: string;
+    business_context?: Record<string, unknown>;
+    questions_generated?: string[];
     questions?: unknown[];
     responses?: Array<{ question?: string; answer?: string; domain?: string; id?: string }>;
   };
@@ -71,8 +79,9 @@ Deno.serve(async (req) => {
   const url = typeof body.url === "string" ? body.url.trim() : "";
   const business_descriptor = typeof body.business_descriptor === "string" ? body.business_descriptor : "";
   const responses = Array.isArray(body.responses) ? body.responses : [];
+  const business_context = body.business_context && typeof body.business_context === "object" ? body.business_context : {};
 
-  const qaBlock = responses
+  const qaLines = responses
     .map((r, i) => {
       const q = typeof r.question === "string" ? r.question : "";
       const a = typeof r.answer === "string" ? r.answer : "";
@@ -81,77 +90,49 @@ Deno.serve(async (req) => {
     })
     .join("\n\n");
 
-  const prompt = `You are a senior business strategist at Socialutely.
-A prospect named ${name} from ${industry}${business_descriptor ? ` (${business_descriptor})` : ""} just completed a 7-question discovery session.
+  const prompt = `You are a senior strategist at Socialutely. A business owner named ${name} (${industry}${business_descriptor ? `, ${business_descriptor}` : ""}) answered 7 self-discovery questions.
 
-Their exact responses:
+Their full Q&A:
 
-${qaBlock}
+${qaLines}
 
-Based ONLY on what they said — not on assumptions — write:
+Return ONLY valid JSON (no markdown) with this exact structure:
+{
+  "per_question_reflections": [
+    {
+      "domain": "situation|problem|consequence|goal|solution|priority|context",
+      "question": "the exact question text they saw",
+      "interpretation": "1-2 sentences: reflect core insight from their answer — NOT a restatement. Clarifying mirror. Warm, direct, not clinical. Max 30 words each."
+    }
+  ],
+  "core_tension": "One sentence (max 20 words) naming the single central challenge across ALL answers.",
+  "grace_note": "One paragraph. Start with: The clearest signal from this conversation is [one short personalized insight woven in]. Then: That's not a gap to be embarrassed about — it's the exact thing that, when addressed, changes the trajectory. Warm, resolving, honest, forward-looking. Not congratulatory.",
+  "top_gaps": ["2-3 short theme labels summarizing tension/friction from their answers"],
+  "recommended_services": [
+    {
+      "service_id": <number from list below only>,
+      "what_it_is": "one sentence: what this branded service IS",
+      "benefit_for_you": "one sentence: how THIS person's business benefits given what they wrote — reference their context"
+    }
+  ],
+  "recommended_tier": "Essentials | Momentum | Signature | Vanguard",
+  "next_step": "diagnostic | ai-iq | calculator | dream",
+  "next_step_reason": "one sentence why that next step for this person"
+}
 
-1. discovery_narrative (180-220 words):
-   
-   This is the most important output. It must feel like someone who was truly listening, not summarizing.
-   
-   Rules:
-   - Start with: 'Here's what I heard you say...'
-   - Use their EXACT words and phrases wherever possible.
-     If they said 'buy-in to our platform' — use that phrase.
-     If they said 'greater and more measurable marketing' — mirror that language back exactly.
-   - Reflect the EMOTION behind what they shared, not just the content.
-     If they expressed frustration, name it.
-     If they expressed excitement, honor it.
-   - Name what they want as if you can see it clearly — even if they only half-articulated it.
-   - Do NOT use business jargon. Use their language.
-   - Do NOT summarize each answer sequentially.
-     Weave the responses into a single coherent reflection.
-   - Skip entirely any question they said 'does not apply' to.
-   - End with ONE sentence that names the core tension or opportunity with precision.
-     This sentence should feel like a moment of recognition — the kind where someone
-     thinks 'that's exactly it, I've never said it that clearly.'
-   
-   Example of wrong approach:
-   'You mentioned that your current situation involves X.
-   You also said that your goal is Y. This suggests Z.'
-   
-   Example of right approach:
-   'Here's what I heard you say: You're not building a
-   store — you're building a home for people who've
-   outgrown where they've been selling. The platform
-   exists. The products exist. What's missing is the
-   moment when enough of the right people discover it
-   and think — finally, this is where I belong. That
-   moment hasn't happened yet. Making it happen is
-   everything.'
+Rules for per_question_reflections: exactly 7 entries, same order as Q1–Q7 above. Use the user's domain labels from the Q&A.
 
-2. primary_gap (1 sentence):
-   The single most important thing standing between where they are and where they want to be, based on their answers.
+For each interpretation, follow this mental prompt: "The user answered self-discovery question: '[question]'. Their answer was: '[answer]'. Write 1-2 sentences that reflect back the core insight — not restatement — clarifying mirror. Max 30 words."
 
-3. recommended_services (array of 2-3):
-   Each service has:
-   - service_id (from this list only):
-     101 SearchLift™, 105 NearRank™, 106 AutoRank™,
-     201 VoiceBridge™, 202 InboxIgnite™, 203 TextPulse™,
-     301 BookStream™, 302 CloseCraft™, 303 DealDrive™,
-     401 HubAI™, 402 FlowForge™, 502 Onboardly™,
-     601 Voice & Vibe™, 701 InsightLoop™,
-     801 TrustGuard™, 901 AllianceOS™
-   - reason (1 sentence, using their language from responses)
+Service IDs allowed (use only these numbers):
+101 SearchLift™, 105 NearRank™, 106 AutoRank™,
+201 VoiceBridge™, 202 InboxIgnite™, 203 TextPulse™,
+301 BookStream™, 302 CloseCraft™, 303 DealDrive™,
+401 HubAI™, 402 FlowForge™, 502 Onboardly™,
+601 Voice & Vibe™, 701 InsightLoop™,
+801 TrustGuard™, 901 AllianceOS™
 
-4. recommended_tier:
-   One of: Essentials | Momentum | Signature | Vanguard
-   Based on the complexity and scale implied in their answers.
-   Never choose Sovereign.
-
-5. next_step:
-   One of: 'diagnostic' | 'ai-iq' | 'calculator' | 'dream'
-   Which door should they go through next based on what they revealed?
-
-6. next_step_reason (1 sentence):
-   Why that next step specifically for this person.
-
-Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_services, recommended_tier, next_step, next_step_reason.`;
+Pick 2-3 services. Never choose Sovereign tier. recommended_tier: Essentials | Momentum | Signature | Vanguard only.`;
 
   const ar = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -162,7 +143,7 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: 4096,
       temperature: 0.35,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -182,32 +163,76 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
     return jsonResponse({ error: "Failed to parse analysis JSON", detail: String(e) }, 502);
   }
 
-  const analysis: AnalysisResult = {
-    discovery_narrative: String(raw.discovery_narrative ?? "").trim(),
-    primary_gap: String(raw.primary_gap ?? "").trim(),
-    recommended_services: Array.isArray(raw.recommended_services)
-      ? (raw.recommended_services as Array<{ service_id?: number; reason?: string }>)
-          .filter((x) => x && typeof x.service_id === "number")
-          .map((x) => ({ service_id: x.service_id as number, reason: String(x.reason ?? "").trim() }))
-          .slice(0, 3)
-      : [],
-    recommended_tier: String(raw.recommended_tier ?? "Essentials").trim(),
-    next_step: String(raw.next_step ?? "diagnostic").trim(),
-    next_step_reason: String(raw.next_step_reason ?? "").trim(),
-  };
+  const reflections = Array.isArray(raw.per_question_reflections)
+    ? (raw.per_question_reflections as Array<Record<string, unknown>>)
+        .map((x) => ({
+          domain: String(x.domain ?? "").trim(),
+          question: String(x.question ?? "").trim(),
+          interpretation: String(x.interpretation ?? "").trim(),
+        }))
+        .slice(0, 7)
+    : [];
+
+  const core_tension = String(raw.core_tension ?? "").trim();
+  const grace_note = String(raw.grace_note ?? "").trim();
+  const top_gaps = Array.isArray(raw.top_gaps)
+    ? (raw.top_gaps as unknown[]).map((x) => String(x ?? "").trim()).filter(Boolean).slice(0, 3)
+    : [];
+
+  const richServices = Array.isArray(raw.recommended_services)
+    ? (raw.recommended_services as Array<Record<string, unknown>>)
+        .filter((x) => typeof x.service_id === "number")
+        .map((x) => ({
+          service_id: x.service_id as number,
+          what_it_is: String(x.what_it_is ?? "").trim(),
+          benefit_for_you: String(x.benefit_for_you ?? "").trim(),
+        }))
+        .slice(0, 3)
+    : [];
+
+  const recommended_tier = String(raw.recommended_tier ?? "Essentials").trim();
+  const next_step = String(raw.next_step ?? "diagnostic").trim();
+  const next_step_reason = String(raw.next_step_reason ?? "").trim();
 
   const allowedTier = ["Essentials", "Momentum", "Signature", "Vanguard"];
-  if (!allowedTier.includes(analysis.recommended_tier)) analysis.recommended_tier = "Essentials";
+  const tier = allowedTier.includes(recommended_tier) ? recommended_tier : "Essentials";
 
   const allowedNext = ["diagnostic", "ai-iq", "calculator", "dream"];
-  if (!allowedNext.includes(analysis.next_step)) analysis.next_step = "diagnostic";
+  const next = allowedNext.includes(next_step) ? next_step : "diagnostic";
+
+  const recommended_services_flat = richServices.map((s) => ({
+    service_id: s.service_id,
+    reason: s.benefit_for_you || s.what_it_is,
+    what_it_is: s.what_it_is,
+    benefit_for_you: s.benefit_for_you,
+  }));
+
+  const primary_gap = core_tension || "Clarity on the next right move.";
+  const discovery_narrative = [grace_note, core_tension].filter(Boolean).join("\n\n");
+
+  const analysisRich: RichAnalysis = {
+    per_question_reflections: reflections,
+    core_tension,
+    grace_note,
+    top_gaps,
+    recommended_services: richServices,
+    recommended_tier: tier,
+    next_step: next,
+    next_step_reason,
+  };
 
   const questionsJson = body.questions ?? [];
+  const questions_generated = Array.isArray(body.questions_generated)
+    ? body.questions_generated.map((q) => String(q ?? "").trim()).filter(Boolean).slice(0, 7)
+    : [];
+
   const notesPayload = {
-    primary_gap: analysis.primary_gap,
-    next_step: analysis.next_step,
-    next_step_reason: analysis.next_step_reason,
-    discovery_narrative: analysis.discovery_narrative.slice(0, 200),
+    primary_gap,
+    core_tension,
+    next_step: next,
+    next_step_reason,
+    grace_note: grace_note.slice(0, 400),
+    top_gaps,
     responses: responses.map((r) => ({
       question: r.question,
       answer: r.answer,
@@ -215,7 +240,7 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
     })),
   };
 
-  const serviceIds = analysis.recommended_services.map((s) => s.service_id);
+  const serviceIds = recommended_services_flat.map((s) => s.service_id);
 
   const insertSubmission = await fetch(`${SUPABASE_URL}/rest/v1/door3_submissions`, {
     method: "POST",
@@ -231,13 +256,16 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
       url: url || null,
       industry,
       questions: questionsJson,
+      questions_generated,
+      business_context,
       responses,
-      discovery_narrative: analysis.discovery_narrative,
-      primary_gap: analysis.primary_gap,
-      recommended_services: analysis.recommended_services,
-      recommended_tier: analysis.recommended_tier,
-      next_step: analysis.next_step,
-      next_step_reason: analysis.next_step_reason,
+      discovery_narrative,
+      primary_gap,
+      recommended_services: recommended_services_flat,
+      recommended_tier: tier,
+      next_step: next,
+      next_step_reason,
+      analysis_rich: analysisRich,
     }),
   });
 
@@ -260,16 +288,16 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
     url: url || null,
     industry,
     source: "door3-self-discovery",
-    recommended_tier: analysis.recommended_tier,
+    recommended_tier: tier,
     recommended_services: serviceIds,
     notes: JSON.stringify(notesPayload),
-    prospect_summary: `Door 3 Self-Discovery — ${analysis.primary_gap.slice(0, 200)}`,
+    prospect_summary: `Door 3 Self-Discovery — ${primary_gap.slice(0, 200)}`,
     overall_score: 0,
     visibility_score: 0,
     engagement_score: 0,
     conversion_score: 0,
     estimated_value: 0,
-    detected_gaps: [],
+    detected_gaps: top_gaps,
     share_token: crypto.randomUUID(),
   };
 
@@ -287,10 +315,11 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
         url: url || null,
         industry,
         source: "door3-self-discovery",
-        recommended_tier: analysis.recommended_tier,
+        recommended_tier: tier,
         recommended_services: serviceIds,
         notes: JSON.stringify(notesPayload),
         prospect_summary: prospectRow.prospect_summary,
+        detected_gaps: top_gaps,
       }),
     });
     if (!patch.ok) console.error("layer5 patch failed", await patch.text());
@@ -309,7 +338,16 @@ Return ONLY valid JSON with keys: discovery_narrative, primary_gap, recommended_
   }
 
   return jsonResponse({
-    ...analysis,
+    discovery_narrative,
+    primary_gap,
+    core_tension,
+    per_question_reflections: reflections,
+    grace_note,
+    top_gaps,
+    recommended_services: recommended_services_flat,
+    recommended_tier: tier,
+    next_step: next,
+    next_step_reason,
     industry,
     business_descriptor: business_descriptor || null,
   });

@@ -29,7 +29,7 @@ const ALLOWED_SERVICE_IDS = [
   701, 801, 802, 901, 1001, 1002, 1003, 1004,
 ];
 
-const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
+const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 
 interface RecommendedServiceEntry {
   service_id: number;
@@ -51,6 +51,24 @@ interface DiagnosticResult {
   tier_statement: string;
 }
 
+function parseDiagnosticJson(rawText: string): DiagnosticResult & { recommended_services?: unknown } {
+  const text = rawText.trim();
+  try {
+    return JSON.parse(text) as DiagnosticResult & { recommended_services?: unknown };
+  } catch {
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenced?.[1]) {
+      return JSON.parse(fenced[1]) as DiagnosticResult & { recommended_services?: unknown };
+    }
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(text.slice(start, end + 1)) as DiagnosticResult & { recommended_services?: unknown };
+    }
+    throw new Error("Model output was not valid JSON.");
+  }
+}
+
 function jsonResponse(data: object, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -61,11 +79,19 @@ function jsonResponse(data: object, status = 200) {
 async function callAnthropic(url: string, apiKey: string): Promise<DiagnosticResult> {
   const systemPrompt = `You are a prospect analyst for Socialutely, a digital marketing agency. Given a business URL (domain only, no fetch), use your knowledge about that business or similar businesses at that domain to produce a structured diagnostic.
 
+SCORING RUBRIC
 Score the business on four dimensions from 0-100:
 - visibility: search presence, local visibility, brand discoverability
 - engagement: social/email/chat engagement, content effectiveness
 - conversion: booking, checkout, lead capture, revenue conversion
 - overall: weighted combination; use (visibility + engagement + conversion) / 3 rounded to integer
+
+═══════════════════════════════════════════════════
+SCORE CONSISTENCY RULES — MANDATORY
+═══════════════════════════════════════════════════
+Before assigning scores, commit to a single business classification. Your classification of what this business is MUST be consistent with the typical score ranges defined below. If you classify a business as an "early-stage marketplace", its overall score MUST fall in the 12–38 range. If you classify it as a "dominant national platform", its overall score MUST be 75–92. You cannot classify a business as sophisticated and score it low, or classify it as early-stage and score it high. The classification and score must be internally consistent.
+
+Additionally: Do NOT allow outside knowledge to inflate scores beyond what the business's actual web presence, traffic signals, and observable marketing infrastructure would justify. Score based on observable evidence, not assumed sophistication.
 
 Map detected gaps to Socialutely service IDs. Only use these IDs: ${ALLOWED_SERVICE_IDS.join(", ")}.
 Each gap: service_id (from list), gap_description (short), priority ("high" | "medium" | "low").
@@ -91,7 +117,7 @@ business_name, industry, business_descriptor, scores (object with visibility, en
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 1536,
+      max_tokens: 3000,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     }),
@@ -104,9 +130,7 @@ business_name, industry, business_descriptor, scores (object with visibility, en
 
   const data = (await res.json()) as { content: Array<{ type: string; text?: string }> };
   const text = data.content?.[0]?.text ?? "";
-  const parsed = JSON.parse(text) as DiagnosticResult & {
-    recommended_services?: unknown;
-  };
+  const parsed = parseDiagnosticJson(text);
 
   const rawRecs = parsed.recommended_services ?? [];
   const normalizedRecs: RecommendedServiceEntry[] = [];

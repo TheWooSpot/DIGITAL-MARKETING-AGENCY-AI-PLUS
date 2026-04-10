@@ -15,11 +15,21 @@ import {
   rungFromTotalScore,
 } from "@/lib/aiIq/door4Scoring";
 
-/** Door B1-aligned chrome (#c9973a, Cormorant heroes, anydoor-* fields) */
-const BG = "#07080d";
-const GOLD = "#c9973a";
+/** Door B1–aligned chrome (AnyDoor tokens: #07090f, #c9993a, DM Sans / DM Serif Display) */
+const BG = "#07090f";
+const GOLD = "#c9993a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
+const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+
+type AiIqBusinessContext = {
+  industry: string;
+  business_type: string;
+  primary_audience: string;
+  business_name: string;
+  detected_gaps: string[];
+  source: "layer5" | "metadata" | "fallback";
+};
 
 type QuestionRow = {
   question_id: string;
@@ -85,9 +95,66 @@ function domainBarColor(score: number, max: number): string {
   return "#e05050";
 }
 
+function normalizeUrlInput(value: string): { raw: string; host: string; fetchUrl: string } {
+  const raw = value.trim();
+  if (!raw) return { raw: "", host: "", fetchUrl: "" };
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const u = new URL(withProtocol);
+    return { raw, host: u.hostname.replace(/^www\./, ""), fetchUrl: `${u.protocol}//${u.hostname}` };
+  } catch {
+    const host = raw.replace(/^https?:\/\//i, "").replace(/^www\./, "").split("/")[0] ?? "";
+    return { raw, host, fetchUrl: host ? `https://${host}` : "" };
+  }
+}
+
+function extractJsonValue(text: string): unknown {
+  const t = text.trim();
+  try {
+    return JSON.parse(t);
+  } catch {
+    const fenced = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(t);
+    if (fenced?.[1]) return JSON.parse(fenced[1]);
+    const arrStart = t.indexOf("[");
+    const arrEnd = t.lastIndexOf("]");
+    if (arrStart >= 0 && arrEnd > arrStart) return JSON.parse(t.slice(arrStart, arrEnd + 1));
+    const objStart = t.indexOf("{");
+    const objEnd = t.lastIndexOf("}");
+    if (objStart >= 0 && objEnd > objStart) return JSON.parse(t.slice(objStart, objEnd + 1));
+    throw new Error("No JSON found.");
+  }
+}
+
+function parseDetectedGaps(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((g) => {
+      if (typeof g === "string") return g.trim();
+      if (g && typeof g === "object" && "gap_description" in g) {
+        return String((g as Record<string, unknown>).gap_description ?? "").trim();
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+function fallbackBusinessContext(name: string): AiIqBusinessContext {
+  return {
+    industry: "general business",
+    business_type: "growth-focused business",
+    primary_audience: "Unknown",
+    business_name: name || "your business",
+    detected_gaps: [],
+    source: "fallback",
+  };
+}
+
 export default function AiIqAssessmentPage() {
   const { mergeSession, ...sessionSnapshot } = useSession();
-  const [phase, setPhase] = useState<"loading" | "gate" | "quiz" | "results">("loading");
+  const [phase, setPhase] = useState<
+    "loading" | "gate" | "personalized_intro" | "quiz" | "domain_bridge" | "results"
+  >("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<GroupedQuestion[]>([]);
 
@@ -110,6 +177,11 @@ export default function AiIqAssessmentPage() {
   const [orgContext, setOrgContext] = useState<{ option: string; question: string } | null>(null);
   const [persistError, setPersistError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [businessContext, setBusinessContext] = useState<AiIqBusinessContext>(fallbackBusinessContext(sessionSnapshot.name));
+  const [bridgeText, setBridgeText] = useState("");
+  const [pendingStepAfterBridge, setPendingStepAfterBridge] = useState<number | null>(null);
+  const [bridgeCache, setBridgeCache] = useState<Record<string, string>>({});
+  const [personalizedSummary, setPersonalizedSummary] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +224,181 @@ export default function AiIqAssessmentPage() {
   const totalSteps = questions.length;
   const current = questions[step];
 
-  const startQuiz = useCallback(() => {
+  const loadBusinessContext = useCallback(
+    async (inputName: string, inputUrl: string, supabase: ReturnType<typeof getSupabaseBrowserClient>): Promise<AiIqBusinessContext> => {
+      const norm = normalizeUrlInput(inputUrl);
+      const fallback = fallbackBusinessContext(inputName);
+      if (!supabase || !norm.raw) return fallback;
+
+      const candidates = Array.from(
+        new Set(
+          [norm.raw, norm.host, `https://${norm.host}`, `http://${norm.host}`, `${norm.host}/`]
+            .map((x) => x.trim())
+            .filter(Boolean)
+        )
+      );
+
+      for (const candidate of candidates) {
+        const tryQuery = async (column: "website_url" | "url") => {
+          const { data, error } = await supabase
+            .from("layer5_prospects")
+            .select("business_name,industry,business_descriptor,detected_gaps")
+            .eq(column, candidate)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error || !data) return null;
+          return {
+            industry: String(data.industry ?? "").trim() || fallback.industry,
+            business_type: String(data.business_descriptor ?? "").trim() || fallback.business_type,
+            primary_audience: "Unknown",
+            business_name: String(data.business_name ?? "").trim() || fallback.business_name,
+            detected_gaps: parseDetectedGaps(data.detected_gaps),
+            source: "layer5" as const,
+          };
+        };
+
+        const byWebsite = await tryQuery("website_url");
+        if (byWebsite) return byWebsite;
+        const byUrl = await tryQuery("url");
+        if (byUrl) return byUrl;
+      }
+
+      const anthropicKey = (import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined)?.trim();
+      if (!anthropicKey || !norm.fetchUrl) return fallback;
+      try {
+        const metaRes = await fetch(norm.fetchUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (Door4-AI-IQ-Metadata/1.0)" },
+        });
+        const html = metaRes.ok ? (await metaRes.text()).slice(0, 200_000) : "";
+        const titleMatch = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
+        const descMatch =
+          /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i.exec(html) ||
+          /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["'][^>]*>/i.exec(html);
+        const title = (titleMatch?.[1] ?? "").replace(/\s+/g, " ").trim();
+        const description = (descMatch?.[1] ?? "").replace(/\s+/g, " ").trim();
+
+        const detectRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": anthropicKey,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: ANTHROPIC_MODEL,
+            max_tokens: 400,
+            temperature: 0,
+            system:
+              'Detect the business type and primary industry from this URL metadata. Return JSON: { "industry": string, "business_type": string, "primary_audience": string }.',
+            messages: [
+              {
+                role: "user",
+                content: `URL: ${norm.raw}\nTitle: ${title || "(none)"}\nDescription: ${description || "(none)"}`,
+              },
+            ],
+          }),
+        });
+        if (!detectRes.ok) return fallback;
+        const detectJson = (await detectRes.json()) as { content?: Array<{ text?: string }> };
+        const parsed = extractJsonValue(detectJson.content?.[0]?.text ?? "") as Record<string, unknown>;
+        return {
+          industry: String(parsed.industry ?? "").trim() || fallback.industry,
+          business_type: String(parsed.business_type ?? "").trim() || fallback.business_type,
+          primary_audience: String(parsed.primary_audience ?? "").trim() || fallback.primary_audience,
+          business_name: fallback.business_name,
+          detected_gaps: [],
+          source: "metadata",
+        };
+      } catch {
+        return fallback;
+      }
+    },
+    []
+  );
+
+  const generateDomainBridge = useCallback(
+    async (previousDomain: string, nextDomain: string, context: AiIqBusinessContext): Promise<string> => {
+      const cacheKey = `${previousDomain}__${nextDomain}__${context.business_type}__${context.industry}`;
+      if (bridgeCache[cacheKey]) return bridgeCache[cacheKey];
+      const anthropicKey = (import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined)?.trim();
+      if (!anthropicKey) return "";
+      try {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": anthropicKey,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: ANTHROPIC_MODEL,
+            max_tokens: 120,
+            temperature: 0.2,
+            messages: [
+              {
+                role: "user",
+                content:
+                  `Write a single conversational sentence (max 18 words) that bridges from ${previousDomain} to ${nextDomain} for a ${context.business_type} in ${context.industry}. ` +
+                  "Make it feel like an advisor talking to them, not a quiz narrator.",
+              },
+            ],
+          }),
+        });
+        if (!res.ok) return "";
+        const data = (await res.json()) as { content?: Array<{ text?: string }> };
+        const sentence = String(data.content?.[0]?.text ?? "")
+          .replace(/\s+/g, " ")
+          .replace(/^["'\s]+|["'\s]+$/g, "")
+          .trim();
+        if (!sentence) return "";
+        setBridgeCache((prev) => ({ ...prev, [cacheKey]: sentence }));
+        return sentence;
+      } catch {
+        return "";
+      }
+    },
+    [bridgeCache]
+  );
+
+  const generateResultsSummary = useCallback(
+    async (score: number, context: AiIqBusinessContext, gaps: string[]): Promise<string> => {
+      const anthropicKey = (import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined)?.trim();
+      if (!anthropicKey) return "";
+      try {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": anthropicKey,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: ANTHROPIC_MODEL,
+            max_tokens: 220,
+            temperature: 0.2,
+            messages: [
+              {
+                role: "user",
+                content:
+                  `Given a ${context.industry} business with score ${score} and these top gaps ${gaps.join(", ") || "none"}, ` +
+                  "write 2 sentences in plain language explaining what this score means specifically for their type of business. " +
+                  "Be honest. Be direct. Reference the industry without being generic.",
+              },
+            ],
+          }),
+        });
+        if (!res.ok) return "";
+        const data = (await res.json()) as { content?: Array<{ text?: string }> };
+        return String(data.content?.[0]?.text ?? "").replace(/\s+/g, " ").trim();
+      } catch {
+        return "";
+      }
+    },
+    []
+  );
+
+  const startQuiz = useCallback(async () => {
     setGateError(null);
     const em = getBusinessEmailError(email);
     if (em) {
@@ -175,8 +421,18 @@ export default function AiIqAssessmentPage() {
     setStep(0);
     setAnswers(new Map());
     setSelectedOptionByQuestion(new Map());
-    setPhase("quiz");
-  }, [email, mergeSession, name, questions.length, url]);
+    setPersonalizedSummary("");
+    setBridgeText("");
+    setPendingStepAfterBridge(null);
+
+    const supabase = getSupabaseBrowserClient();
+    const ctx = await loadBusinessContext(name.trim(), url.trim(), supabase);
+    setBusinessContext(ctx);
+    setPhase("personalized_intro");
+    window.setTimeout(() => {
+      setPhase("quiz");
+    }, 2300);
+  }, [email, mergeSession, name, questions.length, url, loadBusinessContext]);
 
   const selectOption = useCallback((qid: string, optionLabel: string, score: number) => {
     setSelectedOptionByQuestion((prev) => {
@@ -238,6 +494,8 @@ export default function AiIqAssessmentPage() {
       strategic_leadership_score: domains.strategic_leadership,
       recommended_rung: rungFromTotalScore(total),
       source: "door4-ai-iq",
+      business_context: businessContext,
+      personalization_applied: businessContext.source !== "fallback",
     };
 
     const { error: d9Err } = await supabase.from("door9_submissions").insert(submissionRow);
@@ -264,7 +522,7 @@ export default function AiIqAssessmentPage() {
     if (parts.length > 0) setPersistError(parts.join(" · "));
 
     setSubmitting(false);
-  }, [answers, email, mergeSession, name, questions, selectedOptionByQuestion, url]);
+  }, [answers, email, mergeSession, name, questions, selectedOptionByQuestion, url, businessContext]);
 
   const goBack = useCallback(() => {
     pendingQuizAdvanceRef.current = false;
@@ -283,12 +541,24 @@ export default function AiIqAssessmentPage() {
     if (quizAdvanceTimeoutRef.current !== null) {
       window.clearTimeout(quizAdvanceTimeoutRef.current);
     }
-    quizAdvanceTimeoutRef.current = window.setTimeout(() => {
+    quizAdvanceTimeoutRef.current = window.setTimeout(async () => {
       quizAdvanceTimeoutRef.current = null;
       if (step >= totalSteps - 1) {
         void finishQuiz();
       } else {
-        setStep((s) => s + 1);
+        const nextStep = step + 1;
+        const nextQuestion = questions[nextStep];
+        const isDomainChange = !!nextQuestion && nextQuestion.domain !== current.domain;
+        if (isDomainChange) {
+          const bridge = await generateDomainBridge(current.domain, nextQuestion.domain, businessContext);
+          if (bridge) {
+            setBridgeText(bridge);
+            setPendingStepAfterBridge(nextStep);
+            setPhase("domain_bridge");
+            return;
+          }
+        }
+        setStep(nextStep);
       }
     }, 160);
     return () => {
@@ -297,9 +567,33 @@ export default function AiIqAssessmentPage() {
         quizAdvanceTimeoutRef.current = null;
       }
     };
-  }, [answers, phase, current, step, totalSteps, finishQuiz]);
+  }, [answers, phase, current, step, totalSteps, finishQuiz, questions, generateDomainBridge, businessContext]);
+
+  useEffect(() => {
+    if (phase !== "domain_bridge" || pendingStepAfterBridge == null) return;
+    const t = window.setTimeout(() => {
+      setStep(pendingStepAfterBridge);
+      setPendingStepAfterBridge(null);
+      setBridgeText("");
+      setPhase("quiz");
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [phase, pendingStepAfterBridge]);
 
   const gapBlocks = useMemo(() => (resultDomains ? topGapDomains(resultDomains) : []), [resultDomains]);
+
+  useEffect(() => {
+    if (phase !== "results" || !resultDomains) return;
+    let cancelled = false;
+    const topGaps = gapBlocks.map((g) => g.domain);
+    void generateResultsSummary(resultTotal, businessContext, topGaps).then((summary) => {
+      if (cancelled || !summary) return;
+      setPersonalizedSummary(summary);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, resultDomains, gapBlocks, generateResultsSummary, resultTotal, businessContext]);
 
   const cta = useMemo(() => {
     if (resultRung === 2)
@@ -313,19 +607,22 @@ export default function AiIqAssessmentPage() {
 
   if (phase === "loading") {
     return (
-      <AnyDoorPageShell>
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
-          <div
-            className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
-            style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
-          />
-          <p style={{ color: DIM }}>Loading assessment…</p>
-        </div>
-      </AnyDoorPageShell>
+      <div className="anydoor-door-page min-h-screen">
+        <AnyDoorPageShell>
+          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+              style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+            />
+            <p style={{ color: DIM }}>Loading assessment…</p>
+          </div>
+        </AnyDoorPageShell>
+      </div>
     );
   }
 
   return (
+    <div className="anydoor-door-page min-h-screen">
     <AnyDoorPageShell>
       {phase === "gate" && (
         <>
@@ -385,13 +682,31 @@ export default function AiIqAssessmentPage() {
             <button
               type="button"
               className="anydoor-btn-gold"
-              onClick={startQuiz}
+              onClick={() => void startQuiz()}
               disabled={questions.length === 0}
             >
               Begin assessment
             </button>
           </section>
         </>
+      )}
+
+      {phase === "personalized_intro" && (
+        <div className="flex min-h-[42vh] flex-col items-center justify-center text-center">
+          <div className="anydoor-surface-card max-w-2xl">
+            <p className="anydoor-exp-eyebrow">Personalized framing</p>
+            <p
+              className="mt-4 text-xl font-light leading-snug text-white sm:text-2xl"
+              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+            >
+              We pulled some context on {businessContext.business_name || "your business"}.
+            </p>
+            <p className="mt-3 text-sm text-white/65">
+              Here is what we are about to measure — and why it matters for a {businessContext.industry} business like
+              yours.
+            </p>
+          </div>
+        </div>
       )}
 
       {phase === "quiz" && current && (
@@ -416,10 +731,14 @@ export default function AiIqAssessmentPage() {
             <p className="anydoor-exp-eyebrow">{current.domain}</p>
             <h2
               className="mt-6 font-light leading-snug text-white sm:text-3xl"
-              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
             >
               {current.question}
             </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm text-white/60">
+              For {businessContext.industry} businesses, {current.domain.toLowerCase()} usually determines how quickly AI
+              turns into measurable outcomes.
+            </p>
             <p className="mt-2 font-mono text-[10px] text-white/35">{current.question_id}</p>
           </div>
 
@@ -448,6 +767,14 @@ export default function AiIqAssessmentPage() {
         </div>
       )}
 
+      {phase === "domain_bridge" && (
+        <div className="flex min-h-[32vh] flex-col items-center justify-center text-center">
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] px-6 py-5">
+            <p className="text-sm italic text-white/70">{bridgeText || "Shifting to the next capability..."}</p>
+          </div>
+        </div>
+      )}
+
       {phase === "results" && resultDomains && (
         <div className="mx-auto max-w-3xl">
           <div className="anydoor-surface-card">
@@ -458,7 +785,7 @@ export default function AiIqAssessmentPage() {
               <div>
                 <span
                   className="text-5xl font-light tabular-nums text-white"
-                  style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+                  style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
                 >
                   {resultTotal}
                 </span>
@@ -475,9 +802,15 @@ export default function AiIqAssessmentPage() {
             </div>
           </div>
 
-          <div className="mt-6 bg-[#c9973a] py-3 text-center font-[family-name:var(--font-dm-mono)] text-xs font-bold uppercase tracking-[0.25em] text-[#07080d]">
+          <div className="mt-6 bg-[var(--anydoor-gold)] py-3 text-center font-[family-name:var(--font-dm-mono)] text-xs font-bold uppercase tracking-[0.25em] text-[#07090f]">
             ✓ Rung 1: Awareness — complete
           </div>
+
+          {personalizedSummary ? (
+            <div className="anydoor-surface-card mt-6 border border-white/10 text-sm leading-relaxed text-white/70">
+              {personalizedSummary}
+            </div>
+          ) : null}
 
           <section className="mt-10">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
@@ -514,11 +847,11 @@ export default function AiIqAssessmentPage() {
               Recommended next rung
             </p>
             <div
-              className="mt-4 rounded-xl border-2 border-[#c9973a]/50 bg-[#07080d]/90 p-6 shadow-[0_0_40px_rgba(201,151,58,0.12)]"
+              className="mt-4 rounded-xl border-2 border-[#c9993a]/50 bg-[#07090f]/90 p-6 shadow-[0_0_40px_rgba(201,153,58,0.12)]"
             >
               <p
-                className="text-3xl font-light tabular-nums text-[#c9973a]"
-                style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+                className="text-3xl font-light tabular-nums text-[#c9993a]"
+                style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
               >
                 Rung {resultRung}
               </p>
@@ -561,7 +894,7 @@ export default function AiIqAssessmentPage() {
             {cta.href.startsWith("/") ? (
               <Link
                 to={cta.href}
-                className="inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
+                className="inline-block rounded-lg bg-[#c9993a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07090f] transition-colors hover:brightness-105"
               >
                 {cta.label}
               </Link>
@@ -570,7 +903,7 @@ export default function AiIqAssessmentPage() {
                 href={cta.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
+                className="inline-block rounded-lg bg-[#c9993a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07090f] transition-colors hover:brightness-105"
               >
                 {cta.label}
               </a>
@@ -587,5 +920,6 @@ export default function AiIqAssessmentPage() {
         </div>
       )}
     </AnyDoorPageShell>
+    </div>
   );
 }

@@ -118,6 +118,14 @@ All colors MUST be HSL.
     background-position: center top;
   }
 
+  /* AnyDoor door routes: single gold grid (see `.anydoor-door-page`), match ink to #07090f */
+  html:has(.anydoor-door-page) body {
+    background-color: #07090f;
+  }
+  html:has(.anydoor-door-page) body::before {
+    opacity: 0;
+  }
+
   /* Subtle film grain — fixed overlay, does not block clicks */
   body::after {
     content: "";
@@ -387,8 +395,8 @@ All colors MUST be HSL.
   --font-dm-sans: "DM Sans", system-ui, sans-serif;
   --font-dm-serif-display: "DM Serif Display", Georgia, serif;
   --font-archivo: "Archivo", system-ui, sans-serif;
-  --anydoor-ink: #07080d;
-  --anydoor-gold: #c9973a;
+  --anydoor-ink: #07090f;
+  --anydoor-gold: #c9993a;
   --anydoor-gold-muted: #b8923a;
   --anydoor-surface: #131a2b;
   --anydoor-border: #1e2a42;
@@ -402,61 +410,139 @@ All colors MUST be HSL.
 /* Shared “Door B1” URL diagnostic look — forms, cards, CTAs (AI IQ, calculator, labs, etc.) */
 @layer components {
   .anydoor-exp-body {
-    font-family: var(--font-archivo);
+    font-family: var(--font-dm-sans), var(--font-archivo), system-ui, sans-serif;
     color: var(--anydoor-text);
   }
 
   .anydoor-exp-navlink {
-    @apply text-sm text-white/45 underline decoration-[#c9973a]/50 transition-colors hover:text-[#c9973a];
+    @apply text-sm text-white/45 underline transition-colors;
+    text-decoration-color: color-mix(in srgb, var(--anydoor-gold) 45%, transparent);
+  }
+  .anydoor-exp-navlink:hover {
+    color: var(--anydoor-gold);
   }
 
+  /** Eyebrow — DM Sans, gold (matches Door B1 reference) */
   .anydoor-exp-eyebrow {
-    @apply font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a];
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply text-[10px] font-medium uppercase tracking-[0.32em];
+    color: var(--anydoor-gold);
   }
 
+  /** Hero title — DM Serif Display: accent line smaller/italic gold, main line large white */
   .anydoor-exp-title {
-    font-family: var(--font-cormorant);
-    @apply mt-3 text-3xl font-light leading-tight text-white sm:text-4xl md:text-5xl;
+    font-family: var(--font-dm-serif-display), Georgia, serif;
+    @apply mt-3 leading-tight;
+  }
+
+  .anydoor-exp-title-accent {
+    @apply block text-2xl font-light italic sm:text-3xl;
+    color: var(--anydoor-gold);
+  }
+
+  .anydoor-exp-title-rest {
+    @apply mt-2 block text-3xl font-light text-white sm:text-4xl md:text-5xl;
   }
 
   .anydoor-exp-subtitle {
-    @apply mx-auto mt-4 max-w-2xl text-lg text-white/50;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply mx-auto mt-4 max-w-2xl text-base leading-relaxed text-white/50 sm:text-lg;
   }
 
   .anydoor-field-label--primary {
-    @apply mb-1 block text-sm font-medium text-[#c9973a];
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply mb-1 block text-sm font-medium;
+    color: var(--anydoor-gold);
   }
 
   .anydoor-field-label--muted {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
     @apply mb-1 block text-sm font-medium text-white/50;
   }
 
   .anydoor-field-input {
-    @apply w-full rounded-lg border border-white/[0.08] bg-[#07080d] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:border-[#c9973a]/50 focus:outline-none focus:ring-2 focus:ring-[#c9973a]/30 disabled:opacity-60;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply w-full rounded-lg border border-white/[0.08] px-4 py-3 text-[#e8eef5] placeholder:text-white/35 focus:outline-none disabled:opacity-60;
+    background-color: var(--anydoor-ink);
+    --tw-ring-color: color-mix(in srgb, var(--anydoor-gold) 30%, transparent);
+  }
+  .anydoor-field-input:focus {
+    border-color: color-mix(in srgb, var(--anydoor-gold) 50%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--anydoor-gold) 22%, transparent);
   }
 
   .anydoor-btn-gold {
-    @apply w-full rounded-lg bg-[#c9973a] px-6 py-3 font-semibold text-[#07080d] transition-colors hover:bg-[#c9973a]/90 focus:outline-none focus:ring-2 focus:ring-[#c9973a] focus:ring-offset-2 focus:ring-offset-[#07080d] disabled:cursor-not-allowed disabled:opacity-60;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply w-full rounded-lg px-6 py-3 font-semibold text-[#07090f] transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-60;
+    background-color: var(--anydoor-gold);
+  }
+  .anydoor-btn-gold:hover {
+    filter: brightness(1.06);
+  }
+  .anydoor-btn-gold:focus-visible {
+    box-shadow: 0 0 0 2px var(--anydoor-ink), 0 0 0 4px color-mix(in srgb, var(--anydoor-gold) 45%, transparent);
   }
 
   .anydoor-btn-outline {
-    @apply rounded-lg border border-white/15 bg-transparent px-5 py-2.5 text-sm font-medium text-white/85 transition-colors hover:border-[#c9973a]/45 hover:text-white;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply rounded-lg border border-white/15 bg-transparent px-5 py-2.5 text-sm font-medium text-white/85 transition-colors hover:text-white;
+  }
+  .anydoor-btn-outline:hover {
+    border-color: color-mix(in srgb, var(--anydoor-gold) 45%, transparent);
   }
 
   .anydoor-surface-card {
-    @apply rounded-xl border border-white/[0.08] bg-[#07080d]/90 p-6 sm:p-8;
+    @apply rounded-xl border border-white/[0.08] p-6 sm:p-8;
+    background-color: color-mix(in srgb, var(--anydoor-ink) 92%, transparent);
   }
 
   .anydoor-option-tile {
-    @apply rounded-lg border border-white/[0.08] bg-[#07080d]/80 p-4 text-left text-sm text-[#e8eef5] transition-colors hover:border-[#c9973a]/35;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply rounded-lg border border-white/[0.08] p-4 text-left text-sm text-[#e8eef5] transition-colors;
+    background-color: color-mix(in srgb, var(--anydoor-ink) 80%, white 2%);
+  }
+  .anydoor-option-tile:hover {
+    border-color: color-mix(in srgb, var(--anydoor-gold) 35%, transparent);
   }
 
   .anydoor-option-tile--selected {
-    @apply border-[#c9973a]/55 bg-[#c9973a]/10;
+    border-color: color-mix(in srgb, var(--anydoor-gold) 55%, transparent);
+    background-color: color-mix(in srgb, var(--anydoor-gold) 10%, transparent);
   }
 
   .sovereign-cta {
-    @apply rounded-xl border border-[#c9973a]/50 bg-[#07080d]/90 px-6 py-8 sm:px-8;
+    @apply rounded-xl border px-6 py-8 sm:px-8;
+    border-color: color-mix(in srgb, var(--anydoor-gold) 50%, transparent);
+    background-color: color-mix(in srgb, var(--anydoor-ink) 90%, transparent);
+  }
+
+  /**
+   * AnyDoor “doors” shell — near-black + gold grid (shared by Door 3, B1, Door 4, …).
+   * `.door3-page-root` kept as an alias for Self-Discovery.
+   */
+  .anydoor-door-page,
+  .door3-page-root {
+    position: relative;
+    isolation: isolate;
+    background-color: #07090f;
+  }
+  .anydoor-door-page::before,
+  .door3-page-root::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(201, 153, 58, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201, 153, 58, 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: center top;
+  }
+  .anydoor-door-page > *,
+  .door3-page-root > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* AI Readiness Labs — Partner Brief (/partner-brief); matches standalone brief HTML tokens */
@@ -487,6 +573,27 @@ All colors MUST be HSL.
   .partner-brief-rule {
     @apply my-10 h-px w-full max-w-2xl border-0;
     background: linear-gradient(90deg, transparent, rgba(201, 153, 58, 0.45), transparent);
+  }
+
+  /* Post-checkout thank-you (/thank-you) */
+  .thank-you-page {
+    --thank-you-bg: #07090f;
+    --thank-you-gold: #c9973a;
+    background-color: var(--thank-you-bg);
+    color: rgba(232, 238, 245, 0.92);
+  }
+
+  .thank-you-page .thank-you-heading {
+    font-family: var(--font-cormorant), Georgia, serif;
+    @apply text-3xl font-light text-white sm:text-4xl;
+  }
+
+  .thank-you-page .thank-you-sub {
+    @apply mt-4 max-w-md text-sm leading-relaxed text-white/60 sm:text-base;
+  }
+
+  .thank-you-page .thank-you-btn {
+    @apply mt-10 inline-flex items-center justify-center rounded border border-[#c9973a] bg-[#c9973a] px-8 py-3 text-xs font-semibold uppercase tracking-widest text-[#07080d] transition-colors hover:bg-[#c9973a]/90;
   }
 
   .sovereign-label {
@@ -641,6 +748,56 @@ All colors MUST be HSL.
   }
   .door3-progress-bar {
     transition: width 0.5s ease;
+  }
+
+  @keyframes door3-status-ready-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .door3-status-ready {
+    animation: door3-status-ready-in 0.3s ease forwards;
+  }
+
+  @keyframes door3-enc-line {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes door3-q-line {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .door3-encouragement {
+    animation: door3-enc-line 0.2s ease forwards;
+    opacity: 0;
+  }
+  .door3-q-text {
+    animation: door3-q-line 0.25s ease 0.2s forwards;
+    opacity: 0;
+  }
+
+  .door3-results-cta:hover {
+    filter: brightness(1.06);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .door3-status-ready,
+    .door3-encouragement,
+    .door3-q-text {
+      animation: none;
+      opacity: 1;
+    }
   }
 
   /* Door 7 — DreamScape™ entry card */

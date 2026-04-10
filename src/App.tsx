@@ -7,7 +7,6 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SessionProvider } from "@/context/SessionContext";
 import Index from "./views/Index";
 import NotFound from "./views/NotFound";
-import DiagnosticResults from "./views/DiagnosticResults";
 import DiagnosticUnlock from "./views/DiagnosticUnlock";
 import DoorsUrlDiagnostic from "./views/DoorsUrlDiagnostic";
 import SharedReportPage from "./views/SharedReportPage";
@@ -24,6 +23,7 @@ import ContactPage from "./pages/ContactPage";
 import SelfDiscoveryPage from "./pages/SelfDiscoveryPage";
 import DreamDoorPage from "./pages/DreamDoorPage";
 import PartnerBrief from "./pages/PartnerBrief";
+import ThankYou from "./pages/ThankYou";
 
 const queryClient = new QueryClient();
 
@@ -41,10 +41,12 @@ const App = () => (
               <Route path="/doors/url-diagnostic" element={<DoorsUrlDiagnostic />} />
               <Route path="/diagnostic" element={<DoorsUrlDiagnostic />} />
               <Route path="/report/:token" element={<SharedReportPage />} />
-              <Route path="/diagnostic/results" element={<DiagnosticResults />} />
+              {/* Legacy AI IQ results page used old tier routing; canonical flow is `/ai-iq` -> `/ai-iq/report`. */}
+              <Route path="/diagnostic/results" element={<Navigate to="/ai-iq" replace />} />
               <Route path="/diagnostic/unlock" element={<DiagnosticUnlock />} />
               <Route path="/team/tiers" element={<TeamTiersPage />} />
               <Route path="/your-package" element={<YourPackage />} />
+              <Route path="/thank-you" element={<ThankYou />} />
               <Route path="/ai-iq" element={<AiIqAssessmentPage />} />
               <Route path="/ai-iq/report" element={<AiIqReport />} />
               <Route path="/ai-readiness" element={<Navigate to="/ai-readiness/rung-2" replace />} />

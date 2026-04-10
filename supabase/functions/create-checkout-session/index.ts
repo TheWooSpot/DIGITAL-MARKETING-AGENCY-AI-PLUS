@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     discounts = [{ coupon: couponId }];
   }
 
-  const successUrl = `${SITE_URL.replace(/\/$/, "")}/your-package?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+  const successUrl = `${SITE_URL.replace(/\/$/, "")}/thank-you?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${SITE_URL.replace(/\/$/, "")}/your-package?checkout=cancelled`;
 
   const session = await stripe.checkout.sessions.create({

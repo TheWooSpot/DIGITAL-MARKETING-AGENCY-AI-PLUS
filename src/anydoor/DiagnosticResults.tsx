@@ -8,6 +8,7 @@ import { Download, Mic } from "lucide-react";
 import { ReportVapiTapToTalk } from "./ReportVapiTapToTalk";
 import { useDiagnosticVapiCall } from "./useDiagnosticVapiCall";
 import { useCheckoutConfig } from "@/hooks/useCheckoutConfig";
+import { getSupabaseBrowserClient } from "./lib/supabaseBrowserClient";
 
 const GOLD = "#c9973a";
 const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
@@ -18,7 +19,7 @@ function getCheckoutFunctionUrl(): string {
   return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
 }
 
-function staticCheckoutLinkForTier(tier: PackageTierKey | null): string {
+function staticCheckoutLinkForTier(tier: PackageTierKey | null, routeToDiscoveryCall: boolean): string {
   const env = import.meta.env;
   switch (tier) {
     case "Momentum":
@@ -28,7 +29,8 @@ function staticCheckoutLinkForTier(tier: PackageTierKey | null): string {
     case "Vanguard":
       return (env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "/contact";
     case "Sovereign":
-      return "/contact";
+      if (routeToDiscoveryCall) return "/contact";
+      return (env.VITE_STRIPE_PAYMENT_LINK_SOVEREIGN as string | undefined)?.trim() || "/contact";
     case "Essentials":
     default:
       return (env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "/contact";
@@ -217,10 +219,7 @@ interface DiagnosticResultsProps {
 
 export function DiagnosticResults({ result, submittedUrl, reportShareToken }: DiagnosticResultsProps) {
   const navigate = useNavigate();
-  const {
-    variant: checkoutVariant = "A",
-    loading: checkoutConfigLoading = false,
-  } = useCheckoutConfig();
+  const { variant: checkoutVariant = "A" } = useCheckoutConfig();
   const diagnosticVapi = useDiagnosticVapiCall(result);
   const [tab, setTab] = useState<"summary" | "full">("summary");
   const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
@@ -231,6 +230,8 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const [shareCopied, setShareCopied] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [prospectMeta, setProspectMeta] = useState<{ source: string; call_type: string } | null>(null);
+  const [prospectMetaLoading, setProspectMetaLoading] = useState(false);
 
   const { scores, business_name, industry, estimated_size, business_descriptor, tier_statement } = result;
   const marketDescriptor = business_descriptor?.trim() ?? "";
@@ -248,6 +249,11 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   /** Tier highlight comes from the diagnostic outcome (`recommended_tier`), not a static package dropdown. */
   const recTier = normalizeTier(result.recommended_tier);
   const isSovereign = recTier === "Sovereign";
+  const source = (prospectMeta?.source ?? "").toLowerCase();
+  const callType = (prospectMeta?.call_type ?? "").toLowerCase();
+  const isAiIqEntry = source === "door9" || source === "door4-ai-iq" || callType === "ai_iq";
+  const showSovereignDiscoveryCta = isSovereign && isAiIqEntry;
+  const sovereignRoutingPending = isSovereign && !!result.prospect_id && prospectMetaLoading && !prospectMeta;
   const sovereignTierCopy = "Custom engagement — pricing scoped to your organization";
 
   const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
@@ -291,6 +297,38 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
     return () => io.disconnect();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProspectMeta() {
+      if (!result.prospect_id) {
+        setProspectMeta(null);
+        setProspectMetaLoading(false);
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      setProspectMetaLoading(true);
+      const { data, error } = await supabase
+        .from("layer5_prospects")
+        .select("source, call_type")
+        .eq("id", result.prospect_id)
+        .maybeSingle<{ source: string | null; call_type: string | null }>();
+      if (!cancelled) {
+        if (!error && data) {
+          setProspectMeta({
+            source: data.source?.trim() ?? "",
+            call_type: data.call_type?.trim() ?? "",
+          });
+        }
+        setProspectMetaLoading(false);
+      }
+    }
+    void loadProspectMeta();
+    return () => {
+      cancelled = true;
+    };
+  }, [result.prospect_id]);
+
   const togglePanel = (i: number) => setOpenPanels((s) => ({ ...s, [i]: !s[i] }));
 
   const impactForService = useCallback(
@@ -322,8 +360,12 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
   const beginCheckout = useCallback(async () => {
     if (checkoutLoading) return;
+    if (sovereignRoutingPending) {
+      setCheckoutError("Loading offer routing. Please wait a moment and retry.");
+      return;
+    }
     setCheckoutError(null);
-    const fallbackLink = staticCheckoutLinkForTier(recTier);
+    const fallbackLink = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
     if (!result.prospect_id) {
       window.location.href = fallbackLink;
       return;
@@ -364,7 +406,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
     } finally {
       setCheckoutLoading(false);
     }
-  }, [business_descriptor, checkoutLoading, estimated_size, recTier, recommendedNorm, result.prospect_id]);
+  }, [business_descriptor, checkoutLoading, estimated_size, recTier, recommendedNorm, result.prospect_id, showSovereignDiscoveryCta, sovereignRoutingPending]);
 
   return (
     <div
@@ -665,7 +707,15 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
       {/* Checkout CTA slot — variant from Supabase checkout_config or env override; never hardcode Stripe IDs/URLs here */}
       <ScrollSection className="no-print">
-        {isSovereign ? (
+        {sovereignRoutingPending ? (
+          <div
+            data-slot="checkout-cta"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Routing</p>
+            <p className="mt-3 text-sm text-white/60">Finalizing your checkout path…</p>
+          </div>
+        ) : showSovereignDiscoveryCta ? (
           <div
             data-slot="checkout-cta"
             className="sovereign-cta"
@@ -707,20 +757,14 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
               Continue when you&apos;re ready
             </h3>
             <p className="mt-2 text-sm text-white/55">
-              Active experiment:{" "}
-              <span className="font-mono text-[#c9973a]/90">
-                {checkoutConfigLoading ? "…" : checkoutVariant}
-              </span>
-              {checkoutVariant === "A"
-                ? " — dynamic session flow (configure in a later pass)."
-                : " — static payment link flow (configure via env / backend)."}
-              {" "}Stripe products and payment links must only be supplied through environment variables or a config layer.
+              You&apos;ll complete checkout securely on Stripe. After payment, you&apos;ll land on a confirmation page
+              and we&apos;ll follow up to get things moving.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
               {checkoutVariant === "A" ? (
                 <button
                   type="button"
-                  disabled={checkoutLoading}
+                  disabled={checkoutLoading || sovereignRoutingPending}
                   onClick={() => void beginCheckout()}
                   className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
                 >
@@ -730,7 +774,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
                 <button
                   type="button"
                   onClick={() => {
-                    window.location.href = staticCheckoutLinkForTier(recTier);
+                    window.location.href = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
                   }}
                   className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
                 >
@@ -869,9 +913,7 @@ function PackageColumn({
         <p className="mt-1 text-sm leading-snug text-white/60">{sovereignTierCopy}</p>
       ) : isRec && tierStatement ? (
         <p className="mt-1 text-sm italic leading-snug text-[#c9973a]/80 print:text-amber-900">{tierStatement}</p>
-      ) : (
-        <p className="mt-1 font-mono text-xs text-white/50">{tier.range}</p>
-      )}
+      ) : null}
       {isRec && (
         <span className="mt-3 inline-flex w-fit rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#c9973a]">
           ★ Recommended

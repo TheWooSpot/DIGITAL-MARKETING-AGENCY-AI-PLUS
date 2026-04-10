@@ -42,8 +42,8 @@ export function AnyDoorHero({
     <header className={className ?? "mb-10 text-center sm:mb-14"}>
       <p className="anydoor-exp-eyebrow">{eyebrow}</p>
       <h1 className="anydoor-exp-title">
-        <span className="italic text-[#c9973a]">{titleAccent}</span>
-        <span className="block text-white">{titleRest}</span>
+        <span className="anydoor-exp-title-accent">{titleAccent}</span>
+        <span className="anydoor-exp-title-rest">{titleRest}</span>
       </h1>
       {subtitle ? <p className="anydoor-exp-subtitle">{subtitle}</p> : null}
     </header>

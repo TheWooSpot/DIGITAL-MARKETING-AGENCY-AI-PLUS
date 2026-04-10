@@ -27,7 +27,7 @@ export default function AnyDoorDoorB1Page() {
   }, [result]);
 
   return (
-    <div id="anydoor-door-b1">
+    <div id="anydoor-door-b1" className="anydoor-door-page min-h-screen">
       <AnyDoorPageShell>
         <AnyDoorHero
           className={`mb-10 text-center sm:mb-14${result ? " no-print" : ""}`}

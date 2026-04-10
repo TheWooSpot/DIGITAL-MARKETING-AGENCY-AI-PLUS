@@ -5,22 +5,30 @@ import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { useSession } from "@/context/SessionContext";
 import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 import { door3ServiceName } from "@/lib/door3/serviceNames";
-import type { DiscoveryQuestion, Door3Analysis, NextStepKey } from "@/lib/door3/types";
+import type { DiscoveryQuestion, Door3Analysis } from "@/lib/door3/types";
 import { getEvaluationSpecialistAssistantId } from "@/anydoor/useDiagnosticVapiCall";
 import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 import { Mic, PhoneOff } from "lucide-react";
 
 /** Aligned with AiIqAssessmentPage / AnyDoor tokens */
-const GOLD = "#c9973a";
-const WHITE = "#e8eef5";
+const GOLD = "#c9993a";
 const DIM = "rgba(232,238,245,0.55)";
 
-type Stage = "gate" | "welcome" | "loading" | "questions" | "processing" | "results" | "rate_limited";
+type Stage = "gate" | "welcome" | "questions" | "processing" | "results" | "rate_limited";
 interface IntroContent {
   address: string;
   nuggets: string[];
   frame: string;
+}
+interface Door3BusinessContext {
+  industry: string;
+  business_type: string;
+  primary_audience: string;
+  business_name: string;
+  detected_gaps: string[];
+  recommended_tier?: string | null;
+  source?: string;
 }
 
 const FALLBACK_INTRO: IntroContent = {
@@ -33,68 +41,76 @@ const FALLBACK_INTRO: IntroContent = {
 };
 
 const FALLBACK_QUESTIONS: DiscoveryQuestion[] = [
-  { id: "Q1", domain: "situation", question: "Walk me through how new customers typically find you right now.", placeholder: "Describe your current reality..." },
-  { id: "Q2", domain: "problem", question: "What part of growth feels hardest to solve consistently today?", placeholder: "Name the hardest part..." },
-  { id: "Q3", domain: "consequence", question: "If nothing changes in the next year, what does that cost you?", placeholder: "What does staying the same mean?" },
-  { id: "Q4", domain: "goal", question: "If 18 months went remarkably well, what would look meaningfully different?", placeholder: "Describe your best-case future..." },
-  { id: "Q5", domain: "solution", question: "What becomes possible for you when this finally works as it should?", placeholder: "What unlocks for you?" },
-  { id: "Q6", domain: "priority", question: "What single issue in the next 90 days would make everything else easier?", placeholder: "Pick the one thing..." },
-  { id: "Q7", domain: "context", question: "What have you already tried, and what blocked it from working?", placeholder: "Share what you've already tested..." },
+  {
+    id: "Q1",
+    domain: "situation",
+    question: "Walk me through how new customers typically find you right now.",
+    placeholder: "Describe your current reality...",
+    encouragement: "The clearest picture starts with the simplest truth.",
+  },
+  {
+    id: "Q2",
+    domain: "problem",
+    question: "What part of growth feels hardest to solve consistently today?",
+    placeholder: "Name the hardest part...",
+    encouragement: "Naming it is the first act of solving it.",
+  },
+  {
+    id: "Q3",
+    domain: "consequence",
+    question: "If nothing changes in the next year, what does that cost you?",
+    placeholder: "What does staying the same mean?",
+    encouragement: "The real cost is rarely just money.",
+  },
+  {
+    id: "Q4",
+    domain: "goal",
+    question: "If 18 months went remarkably well, what would look meaningfully different?",
+    placeholder: "Describe your best-case future...",
+    encouragement: "Say it out loud — it changes what comes next.",
+  },
+  {
+    id: "Q5",
+    domain: "solution",
+    question: "What becomes possible for you when this finally works as it should?",
+    placeholder: "What unlocks for you?",
+    encouragement: "Most answers are already inside the question.",
+  },
+  {
+    id: "Q6",
+    domain: "priority",
+    question: "What single issue in the next 90 days would make everything else easier?",
+    placeholder: "Pick the one thing...",
+    encouragement: "What matters most rarely needs defending.",
+  },
+  {
+    id: "Q7",
+    domain: "context",
+    question: "What have you already tried, and what blocked it from working?",
+    placeholder: "Share what you've already tested...",
+    encouragement: "Everything you've tried has taught you something.",
+  },
 ];
 
-const PRIMING_TEXT_BY_NEXT_INDEX: Record<number, string> = {
-  1: "Most people can describe what they do. Very few have named what's actually getting in the way.",
-  2: "The cost of an unsolved problem is rarely just financial. Take your time with this one.",
-  3: "Businesses that can articulate a specific 18-month vision make decisions 3x faster than those that can't.",
-  4: "The next question isn't about strategy. It's about permission — what you'd allow yourself to do differently.",
-  5: "Clarity on the single most urgent thing is worth more than a perfect plan for ten things.",
-  6: "What you've already tried tells us more about your situation than almost anything else.",
-};
+const FALLBACK_INTERPRETATIONS = [
+  "Your snapshot of how things work today frames everything that follows.",
+  "You named a friction point that often hides in plain sight until someone says it aloud.",
+  "The tradeoff you described is the kind of detail that changes what “urgent” means.",
+  "The future you sketched gives a clear test for whether tactics actually match intent.",
+  "What you said about possibility hints at where leverage really lives for you.",
+  "Your 90-day priority reads like a decision, not a wish list — that matters.",
+  "What you’ve already tried is data; it tells us what to protect and what to rethink.",
+];
 
 function validEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 }
 
-function nextStepHref(step: NextStepKey): string {
-  switch (step) {
-    case "diagnostic":
-      return "/doors/url-diagnostic";
-    case "ai-iq":
-      return "/ai-iq";
-    case "calculator":
-      return "/calculator";
-    case "dream":
-      return "/dream";
-    default:
-      return "/doors/url-diagnostic";
-  }
-}
-
-function nextStepLabel(step: NextStepKey): { title: string; body: string } {
-  switch (step) {
-    case "diagnostic":
-      return {
-        title: "Run your free URL diagnostic",
-        body: "See your business from the outside — clear, objective, actionable.",
-      };
-    case "ai-iq":
-      return {
-        title: "Take the AI IQ™",
-        body: "Find out where you actually stand on the AI adoption curve.",
-      };
-    case "calculator":
-      return {
-        title: "See what this could be worth",
-        body: "Model projected return — not line-item pricing.",
-      };
-    case "dream":
-      return {
-        title: "Talk to Amelia",
-        body: "Explore the future you're building — voice-led Dreamscape™.",
-      };
-    default:
-      return { title: "Next step", body: "" };
-  }
+function domainLabel(domain: string): string {
+  return String(domain || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, " ");
 }
 
 export default function SelfDiscoveryPage() {
@@ -112,14 +128,13 @@ export default function SelfDiscoveryPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [fadeKey, setFadeKey] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [showPriming, setShowPriming] = useState(false);
-  const [primingText, setPrimingText] = useState("");
   const [questionVisible, setQuestionVisible] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [intro, setIntro] = useState<IntroContent | null>(null);
   const [questionsReady, setQuestionsReady] = useState(false);
-  const [welcomeMinTimeMet, setWelcomeMinTimeMet] = useState(false);
   const [questionLoadFailed, setQuestionLoadFailed] = useState(false);
+  const [businessContext, setBusinessContext] = useState<Door3BusinessContext | null>(null);
+  const [generatedQuestionTexts, setGeneratedQuestionTexts] = useState<string[]>([]);
 
   const [analysis, setAnalysis] = useState<Door3Analysis | null>(null);
   const [vapiErr, setVapiErr] = useState<string | null>(null);
@@ -153,31 +168,63 @@ export default function SelfDiscoveryPage() {
     });
     const json = (await res.json().catch(() => ({}))) as {
       questions?: DiscoveryQuestion[];
+      questions_generated?: string[];
       context?: {
         industry?: string;
-        business_descriptor?: string;
-        name?: string;
+        business_type?: string;
+        primary_audience?: string;
+        business_name?: string;
+        detected_gaps?: string[];
+        recommended_tier?: string | null;
+        source?: string;
       };
       intro?: IntroContent;
       industry?: string;
       business_descriptor?: string;
       error?: string;
     };
+    const normalizeQs = (raw: DiscoveryQuestion[]): DiscoveryQuestion[] =>
+      raw.map((q, i) => ({
+        ...q,
+        encouragement: q.encouragement?.trim() || FALLBACK_QUESTIONS[i]?.encouragement,
+      }));
+
     if (!res.ok || !json.questions || json.questions.length !== 7) {
       setQuestionLoadFailed(true);
       setQuestions(FALLBACK_QUESTIONS);
+      setGeneratedQuestionTexts(FALLBACK_QUESTIONS.map((q) => q.question));
       setIndustryCtx(typeof json.context?.industry === "string" ? json.context.industry : "");
       setBusinessDescriptorCtx(
-        typeof json.context?.business_descriptor === "string" ? json.context.business_descriptor : ""
+        typeof json.context?.business_type === "string" ? json.context.business_type : ""
+      );
+      setBusinessContext(
+        typeof json.context?.industry === "string"
+          ? {
+              industry: json.context.industry,
+              business_type:
+                typeof json.context.business_type === "string" ? json.context.business_type : "growing business",
+              primary_audience:
+                typeof json.context.primary_audience === "string" ? json.context.primary_audience : "Unknown",
+              business_name: typeof json.context.business_name === "string" ? json.context.business_name : fullName,
+              detected_gaps: Array.isArray(json.context.detected_gaps) ? json.context.detected_gaps : [],
+              recommended_tier: json.context.recommended_tier ?? null,
+              source: typeof json.context.source === "string" ? json.context.source : "fallback",
+            }
+          : null
       );
       setIntro({
         ...FALLBACK_INTRO,
-        address: `${fullName} — thanks for being here.`,
+        address: fullName ? `${fullName} — thanks for being here.` : "Thanks for being here.",
       });
       setQuestionsReady(true);
       return true;
     }
-    setQuestions(json.questions);
+    setQuestions(normalizeQs(json.questions));
+    setGeneratedQuestionTexts(
+      Array.isArray(json.questions_generated) && json.questions_generated.length === 7
+        ? json.questions_generated.map((q) => String(q))
+        : json.questions.map((q) => q.question)
+    );
     setIndustryCtx(
       typeof json.context?.industry === "string"
         ? json.context.industry
@@ -186,11 +233,30 @@ export default function SelfDiscoveryPage() {
           : ""
     );
     setBusinessDescriptorCtx(
-      typeof json.context?.business_descriptor === "string"
-        ? json.context.business_descriptor
+      typeof json.context?.business_type === "string"
+        ? json.context.business_type
         : typeof json.business_descriptor === "string"
           ? json.business_descriptor
           : ""
+    );
+    setBusinessContext(
+      json.context
+        ? {
+            industry: typeof json.context.industry === "string" ? json.context.industry : "",
+            business_type:
+              typeof json.context.business_type === "string"
+                ? json.context.business_type
+                : typeof json.business_descriptor === "string"
+                  ? json.business_descriptor
+                  : "",
+            primary_audience:
+              typeof json.context.primary_audience === "string" ? json.context.primary_audience : "Unknown",
+            business_name: typeof json.context.business_name === "string" ? json.context.business_name : fullName,
+            detected_gaps: Array.isArray(json.context.detected_gaps) ? json.context.detected_gaps : [],
+            recommended_tier: json.context.recommended_tier ?? null,
+            source: typeof json.context.source === "string" ? json.context.source : undefined,
+          }
+        : null
     );
     setIntro(
       json.intro && Array.isArray(json.intro.nuggets)
@@ -205,8 +271,6 @@ export default function SelfDiscoveryPage() {
     setQIndex(0);
     setFadeKey((k) => k + 1);
     setQuestionVisible(true);
-    setShowPriming(false);
-    setPrimingText("");
     setQuestionsReady(true);
     return true;
   }, []);
@@ -240,14 +304,12 @@ export default function SelfDiscoveryPage() {
       }
     }
     setQuestionsReady(false);
-    setWelcomeMinTimeMet(false);
     setQuestionLoadFailed(false);
     setIntro({
       ...FALLBACK_INTRO,
-      address: `${fullName} — thanks for being here.`,
+      address: fullName ? `${fullName} — thanks for being here.` : "Thanks for being here.",
     });
     setStage("welcome");
-    window.setTimeout(() => setWelcomeMinTimeMet(true), 4000);
     void fetchQuestionsInBackground(fullName, email.trim(), url.trim());
   }, [email, firstName, mergeSession, url, fetchQuestionsInBackground]);
 
@@ -260,29 +322,12 @@ export default function SelfDiscoveryPage() {
     }
     setIsTransitioning(true);
     setQuestionVisible(false);
-    const nextIndex = qIndex + 1;
-    const prime = PRIMING_TEXT_BY_NEXT_INDEX[nextIndex] ?? "";
     window.setTimeout(() => {
-      if (!prime) {
-        setQIndex(nextIndex);
-        setFadeKey((k) => k + 1);
-        setQuestionVisible(true);
-        setIsTransitioning(false);
-        return;
-      }
-      setPrimingText(prime);
-      setShowPriming(true);
-      window.setTimeout(() => {
-        setShowPriming(false);
-        window.setTimeout(() => {
-          setPrimingText("");
-          setQIndex(nextIndex);
-          setFadeKey((k) => k + 1);
-          setQuestionVisible(true);
-          setIsTransitioning(false);
-        }, 300);
-      }, 2500);
-    }, 300);
+      setQIndex((i) => i + 1);
+      setFadeKey((k) => k + 1);
+      setQuestionVisible(true);
+      setIsTransitioning(false);
+    }, 280);
   }, [answers, qIndex, isTransitioning]);
 
   const goBack = useCallback(() => {
@@ -290,8 +335,6 @@ export default function SelfDiscoveryPage() {
       setStage("gate");
       return;
     }
-    setShowPriming(false);
-    setPrimingText("");
     setQuestionVisible(true);
     setIsTransitioning(false);
     setFadeKey((k) => k + 1);
@@ -314,6 +357,17 @@ export default function SelfDiscoveryPage() {
         domain: q.domain,
         answer: (answers[i] ?? "").trim(),
       })),
+      questions_generated: generatedQuestionTexts,
+      business_context:
+        businessContext ??
+        {
+          industry: industryCtx || "Unknown",
+          business_type: businessDescriptorCtx || "Unknown",
+          primary_audience: "Unknown",
+          business_name: firstName.trim(),
+          detected_gaps: [],
+          source: "fallback",
+        },
     };
 
     let cancelled = false;
@@ -350,7 +404,7 @@ export default function SelfDiscoveryPage() {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [stage, questions, firstName, email, url, industryCtx, businessDescriptorCtx, answers, mergeSession]);
+  }, [stage, questions, firstName, email, url, industryCtx, businessDescriptorCtx, answers, mergeSession, generatedQuestionTexts, businessContext]);
 
   const onKeyDownArea = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -370,15 +424,35 @@ export default function SelfDiscoveryPage() {
       setVapiErr("Voice isn’t configured (add VITE_VAPI_PUBLIC_KEY).");
       return;
     }
+    if (!analysis) return;
+    const gaps =
+      analysis.top_gaps && analysis.top_gaps.length > 0
+        ? analysis.top_gaps
+        : [analysis.primary_gap].filter(Boolean);
+    const variableValues: Record<string, string> = {
+      business_name: businessContext?.business_name ?? firstName.trim(),
+      industry: businessContext?.industry ?? industryCtx ?? "Unknown",
+      top_gaps: JSON.stringify(gaps.slice(0, 3)),
+      recommended_services: JSON.stringify(
+        (analysis.recommended_services ?? []).map((s) => ({
+          name: door3ServiceName(s.service_id),
+          what_it_is: s.what_it_is ?? "",
+          benefit_for_you: s.benefit_for_you ?? s.reason ?? "",
+        }))
+      ),
+      source: "door3-self-discovery",
+      door3_summary: analysis.core_tension ?? analysis.primary_gap ?? "",
+    };
     try {
       await vapi.start(getEvaluationSpecialistAssistantId(), {
-        firstMessage: `Hi — I'm Jordan at Socialutely. I read your discovery notes. What's on your mind?`,
+        maxDurationSeconds: 420,
+        variableValues,
       });
       setCallActive(true);
     } catch (e) {
       setVapiErr(appendVapiAssistantKeyHint(extractVapiErrorMessage(e)));
     }
-  }, []);
+  }, [analysis, businessContext, firstName, industryCtx]);
 
   const endJordan = useCallback(() => {
     try {
@@ -389,7 +463,8 @@ export default function SelfDiscoveryPage() {
   }, []);
 
   return (
-    <AnyDoorPageShell backHref="/" backLabel="← Home">
+    <div className="anydoor-door-page min-h-screen">
+      <AnyDoorPageShell backHref="/" backLabel="← Home">
       {stage === "gate" && (
         <>
           <header className="mb-10 text-center sm:mb-14">
@@ -477,51 +552,62 @@ export default function SelfDiscoveryPage() {
         </section>
       )}
 
-      {stage === "loading" && (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
-          <div
-            className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
-            style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
-          />
-          <p style={{ color: DIM }}>Preparing your discovery questions...</p>
-        </div>
-      )}
-
       {stage === "welcome" && (
-        <section className="mx-auto flex min-h-[62vh] w-full max-w-lg flex-col items-center justify-center text-center">
-          <p className="anydoor-exp-eyebrow">D-3 · The Self-Discovery</p>
+        <section
+          className="door3-splash mx-auto flex w-full max-w-[580px] flex-col items-center px-5 pb-16 text-center"
+          style={{ paddingTop: "80px", gap: "48px" }}
+        >
+          <p
+            className="text-[11px] font-medium uppercase tracking-[0.28em]"
+            style={{ color: GOLD, fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
+          >
+            D-3 · THE SELF-DISCOVERY
+          </p>
           <h1
-            className="door3-fade-in mt-5 text-2xl font-light leading-snug"
-            style={{ color: GOLD, fontFamily: "var(--font-cormorant), Georgia, serif", animationDelay: "0ms" }}
+            className="text-[clamp(2rem,5vw,2.625rem)] font-light leading-tight"
+            style={{ color: GOLD, fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
           >
             {intro?.address ?? `${firstName.trim() || "Friend"} — thanks for being here.`}
           </h1>
-          <div className="door3-fade-in mt-6 w-full space-y-4" style={{ animationDelay: "600ms" }}>
-            {(intro?.nuggets ?? FALLBACK_INTRO.nuggets).map((n, i, arr) => (
-              <div key={`${i}-${n}`}>
-                <p className="text-sm italic leading-relaxed text-white/70 sm:text-base">{n}</p>
-                {i < arr.length - 1 ? <div className="mx-auto mt-4 h-px w-24 bg-white/10" /> : null}
-              </div>
+          <div className="w-full space-y-3">
+            {(intro?.nuggets ?? FALLBACK_INTRO.nuggets).slice(0, 2).map((n, i) => (
+              <p
+                key={`nug-${i}`}
+                className="text-lg italic leading-relaxed"
+                style={{ color: "rgba(201, 153, 58, 0.92)", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
+              >
+                {n}
+              </p>
             ))}
           </div>
-          <p className="door3-fade-in mt-6 text-sm text-white/40" style={{ animationDelay: "1200ms" }}>
-            {intro?.frame ?? FALLBACK_INTRO.frame}
+          <div className="h-px w-[80px] shrink-0" style={{ backgroundColor: GOLD, opacity: 0.85 }} aria-hidden />
+          <p
+            className="text-lg italic leading-snug text-white"
+            style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
+          >
+            Honest answers beat polished answers. Clarity here makes every next step easier.
           </p>
-
-          {!questionsReady ? (
-            <div className="mt-7 flex items-center gap-3 text-sm text-[#c9973a]">
-              <span className="anydoor-loading-pulse-dot h-2.5 w-2.5 rounded-full bg-[#c9973a]" />
-              <span>Preparing your questions...</span>
-            </div>
+          <p className="text-sm leading-relaxed text-white/50" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+            Seven questions. Honest answers. We&apos;ll reflect back exactly what we hear.
+          </p>
+          {questionsReady ? (
+            <p className="door3-status-ready text-sm" style={{ color: GOLD }}>
+              Questions ready.
+            </p>
           ) : (
-            <p className="mt-7 text-sm text-white/45">Questions ready.</p>
+            <span className="invisible text-sm" aria-hidden>
+              &nbsp;
+            </span>
           )}
-
-          {(questionsReady && welcomeMinTimeMet) || (questionLoadFailed && welcomeMinTimeMet) ? (
-            <button type="button" className="anydoor-btn-gold mt-6" onClick={continueFromWelcome}>
-              {questionLoadFailed ? "Let's begin →" : "I'm ready →"}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            disabled={!questionsReady}
+            className="door3-ready-cta w-full max-w-[580px] rounded-lg px-6 py-3.5 text-sm font-semibold uppercase tracking-widest transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ backgroundColor: GOLD, color: "#07090f", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
+            onClick={continueFromWelcome}
+          >
+            {questionLoadFailed ? "Let's begin →" : "I'm ready →"}
+          </button>
         </section>
       )}
 
@@ -544,31 +630,24 @@ export default function SelfDiscoveryPage() {
             key={fadeKey}
             className={`mb-8 text-center transition-opacity duration-300 ${questionVisible ? "opacity-100" : "opacity-0"}`}
           >
-            <p className="anydoor-exp-eyebrow">{currentQ.domain}</p>
-            {!showPriming ? (
-              <>
-                <h2
-                  className="door3-fade-in mt-6 font-light leading-snug text-white sm:text-3xl"
-                  style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
-                >
-                  {currentQ.question}
-                </h2>
-                <p className="mt-2 font-mono text-[10px] text-white/35">{currentQ.id}</p>
-              </>
-            ) : (
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/40">{currentQ.domain}</p>
+            {currentQ.encouragement ? (
               <p
-                className={`mx-auto mt-10 max-w-2xl text-base italic transition-opacity duration-500 ${showPriming ? "opacity-100" : "opacity-0"}`}
-                style={{ color: "rgba(201, 151, 58, 0.7)" }}
+                className="door3-encouragement mx-auto mt-5 max-w-2xl text-sm italic leading-relaxed"
+                style={{ color: GOLD, fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
               >
-                {primingText}
+                {currentQ.encouragement}
               </p>
-            )}
+            ) : null}
+            <h2
+              className="door3-q-text mt-5 font-light leading-snug text-white sm:text-3xl"
+              style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
+            >
+              {currentQ.question}
+            </h2>
           </div>
 
-          <div
-            key={`${fadeKey}-fields`}
-            className={`space-y-3 transition-opacity duration-300 ${showPriming ? "pointer-events-none opacity-0" : "opacity-100"}`}
-          >
+          <div key={`${fadeKey}-fields`} className="space-y-3 transition-opacity duration-300">
             <label htmlFor="d3-answer" className="sr-only">
               Your answer
             </label>
@@ -612,102 +691,149 @@ export default function SelfDiscoveryPage() {
       )}
 
       {stage === "processing" && (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center" style={{ color: WHITE }}>
-          <p className="text-base font-medium text-white/90">Reading between the lines...</p>
-          <p className="max-w-sm text-sm" style={{ color: DIM }}>
-            Taking a moment to reflect on what you shared.
+        <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center" aria-live="polite">
+          <p className="text-sm text-white/35" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+            One moment.
           </p>
         </div>
       )}
 
       {stage === "results" && analysis && (
-        <div className="mx-auto max-w-3xl space-y-10 pb-12">
+        <div className="mx-auto max-w-3xl space-y-12 pb-16">
           <header className="text-center">
             <h1
               className="text-2xl font-light text-white sm:text-3xl"
-              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+              style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
             >
               Here&apos;s what we heard.
             </h1>
-            <p className="mt-3 text-sm" style={{ color: DIM }}>
+            <p className="mt-4 text-sm leading-relaxed text-white/55" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
               {firstName.trim()}, this took about {minutesElapsed} minute{minutesElapsed === 1 ? "" : "s"}. Here&apos;s
               what stood out.
             </p>
           </header>
 
-          <article className="anydoor-surface-card text-[15px] leading-[1.7] text-white/90 sm:text-base" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
-            {analysis.discovery_narrative.split("\n").map((para, i) => (
-              <p key={i} className={i > 0 ? "mt-4" : ""}>
-                {para}
-              </p>
-            ))}
-          </article>
-
-          <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              The core tension
-            </p>
-            <p className="mt-3 text-lg font-medium leading-relaxed text-white">{analysis.primary_gap}</p>
-          </div>
-
-          <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              Where we&apos;d focus first
-            </p>
-            <ul className="mt-4 grid gap-3">
-              {analysis.recommended_services.map((s) => (
-                <li key={s.service_id} className="anydoor-surface-card p-4 text-left text-sm">
-                  <span className="font-semibold text-white">{door3ServiceName(s.service_id)}</span>
-                  <span style={{ color: DIM }}> — {s.reason}</span>
+          <section className="space-y-4">
+            <h2 className="sr-only">Per-question reflections</h2>
+            <ul className="grid gap-4">
+              {(analysis.per_question_reflections && analysis.per_question_reflections.length > 0
+                ? analysis.per_question_reflections
+                : questions.map((q, i) => ({
+                    domain: q.domain,
+                    question: q.question,
+                    interpretation: FALLBACK_INTERPRETATIONS[i] ?? FALLBACK_INTERPRETATIONS[0],
+                  }))
+              ).map((row, i) => (
+                <li
+                  key={`${row.domain}-${i}`}
+                  className="anydoor-surface-card rounded-xl border border-white/[0.08] p-5 text-left sm:p-6"
+                >
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-[0.28em]"
+                    style={{ color: GOLD, fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
+                  >
+                    {domainLabel(row.domain)}
+                  </p>
+                  <p className="mt-2 text-[13px] leading-snug text-white/45" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+                    {row.question}
+                  </p>
+                  <p
+                    className="mt-4 text-[15px] leading-relaxed text-white/90"
+                    style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
+                  >
+                    {row.interpretation}
+                  </p>
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs text-white/40">Pricing isn&apos;t shown here — it unlocks when you&apos;re ready on the next step.</p>
-          </div>
+          </section>
 
-          <div className="anydoor-surface-card text-center">
-            <p className="text-sm" style={{ color: DIM }}>
-              Based on what you shared...
-            </p>
-            <p className="mt-2 font-medium text-white">{nextStepLabel(analysis.next_step as NextStepKey).title}</p>
-            <p className="mt-1 text-sm" style={{ color: DIM }}>
-              {nextStepLabel(analysis.next_step as NextStepKey).body}
-            </p>
-            <p className="mt-2 text-xs italic" style={{ color: DIM }}>
-              {analysis.next_step_reason}
-            </p>
-            <Link
-              to={nextStepHref(analysis.next_step as NextStepKey)}
-              className="mt-6 inline-block rounded-lg bg-[#c9973a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07080d] transition-colors hover:bg-[#c9973a]/90"
+          <section>
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.28em]"
+              style={{ color: GOLD, fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
             >
-              Continue →
-            </Link>
-          </div>
-
-          <div className="anydoor-surface-card">
-            <p className="text-center text-sm font-medium text-white">Talk to someone about this →</p>
-            <p className="mt-1 text-center text-xs" style={{ color: DIM }}>
-              Tap to talk with Jordan (Evaluation Specialist).
+              The core tension
             </p>
-            {vapiErr && <p className="mt-3 text-center text-sm text-amber-400">{vapiErr}</p>}
-            <div className="mt-4 flex justify-center gap-3">
-              {!callActive ? (
-                <button type="button" className="anydoor-btn-outline inline-flex items-center" onClick={() => void startJordan()}>
-                  <Mic className="mr-2 h-4 w-4" />
-                  Tap to Talk
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="rounded-lg border border-red-500/40 bg-transparent px-5 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
-                  onClick={endJordan}
-                >
-                  <PhoneOff className="mr-2 inline h-4 w-4" />
-                  End call
-                </button>
-              )}
+            <p className="mt-4 text-lg font-semibold leading-snug text-white" style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}>
+              {analysis.core_tension ?? analysis.primary_gap}
+            </p>
+          </section>
+
+          <section>
+            <h2
+              className="text-lg font-light text-white sm:text-xl"
+              style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
+            >
+              Where we&apos;d focus first
+            </h2>
+            <p className="mt-2 max-w-xl text-sm text-white/50" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+              Not a menu. A starting point built around what you just shared.
+            </p>
+            <ul className="mt-6 grid gap-4">
+              {analysis.recommended_services.map((s) => (
+                <li key={s.service_id} className="anydoor-surface-card rounded-xl border border-white/[0.08] p-5 text-left sm:p-6">
+                  <p className="font-semibold text-white" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+                    {door3ServiceName(s.service_id)}
+                  </p>
+                  {s.what_it_is ? (
+                    <p className="mt-2 text-sm leading-relaxed text-white/75" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+                      {s.what_it_is}
+                    </p>
+                  ) : null}
+                  <p className="mt-3 text-sm leading-relaxed text-white/60" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+                    {s.benefit_for_you ?? s.reason}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-xs text-white/35">Pricing isn&apos;t shown here — it unlocks when you&apos;re ready on the next step.</p>
+          </section>
+
+          {analysis.grace_note ? (
+            <article
+              className="rounded-xl border border-white/[0.08] bg-[#07090f]/80 p-6 text-[15px] leading-relaxed text-white/85 sm:p-8"
+              style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
+            >
+              {analysis.grace_note}
+            </article>
+          ) : null}
+
+          <section className="space-y-6">
+            <h2 className="sr-only">Next steps</h2>
+            <Link
+              to="/diagnostic"
+              className="door3-results-cta block w-full rounded-lg px-6 py-3.5 text-center text-sm font-semibold uppercase tracking-widest transition-colors"
+              style={{ backgroundColor: GOLD, color: "#07090f", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
+            >
+              Run your free URL diagnostic
+            </Link>
+
+            <div className="anydoor-surface-card rounded-xl border border-white/[0.08] p-6 text-center sm:p-8">
+              <p className="text-sm font-medium text-white" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+                Talk to Jordan
+              </p>
+              <p className="mt-1 text-xs text-white/45">Tap to Talk — Evaluation Specialist</p>
+              {vapiErr && <p className="mt-3 text-sm text-amber-400">{vapiErr}</p>}
+              <div className="mt-5 flex justify-center">
+                {!callActive ? (
+                  <button type="button" className="anydoor-btn-outline inline-flex items-center" onClick={() => void startJordan()}>
+                    <Mic className="mr-2 h-4 w-4" />
+                    Tap to Talk
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-red-500/40 bg-transparent px-5 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
+                    onClick={endJordan}
+                  >
+                    <PhoneOff className="mr-2 inline h-4 w-4" />
+                    End call
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          </section>
 
           <p className="text-center">
             <Link to="/" className="anydoor-exp-navlink">
@@ -717,5 +843,6 @@ export default function SelfDiscoveryPage() {
         </div>
       )}
     </AnyDoorPageShell>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import {
   PACKAGE_BUILDER_SERVICE_IDS,
   getPackageBuilderService,
@@ -16,12 +17,13 @@ function getCheckoutFunctionUrl(): string {
   return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
 }
 
-function staticCheckoutLinkForTier(tier: string): string {
+function staticCheckoutLinkForTier(tier: string, routeToDiscoveryCall: boolean): string {
   const key = tier.trim().toLowerCase();
+  if (key === "sovereign" && routeToDiscoveryCall) return "/contact";
   if (key === "momentum") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "/contact";
   if (key === "signature") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "/contact";
   if (key === "vanguard") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "/contact";
-  if (key === "sovereign") return "/contact";
+  if (key === "sovereign") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SOVEREIGN as string | undefined)?.trim() || "/contact";
   return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "/contact";
 }
 
@@ -71,6 +73,55 @@ export default function YourPackage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const prospectId = searchParams.get("prospect_id")?.trim() || "";
   const companySize = searchParams.get("business_size")?.trim() || "";
+  const sourceFromQuery = searchParams.get("source")?.trim() || "";
+  const callTypeFromQuery = searchParams.get("call_type")?.trim() || "";
+  const [prospectMeta, setProspectMeta] = useState<{ source: string; call_type: string } | null>(null);
+  const [prospectMetaLoading, setProspectMetaLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProspectMeta() {
+      if (!prospectId) {
+        setProspectMeta(null);
+        setProspectMetaLoading(false);
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      setProspectMetaLoading(true);
+      const { data, error } = await supabase
+        .from("layer5_prospects")
+        .select("source, call_type")
+        .eq("id", prospectId)
+        .maybeSingle<{ source: string | null; call_type: string | null }>();
+      if (!cancelled) {
+        if (!error && data) {
+          setProspectMeta({
+            source: data.source?.trim() ?? "",
+            call_type: data.call_type?.trim() ?? "",
+          });
+        }
+        setProspectMetaLoading(false);
+      }
+    }
+    void loadProspectMeta();
+    return () => {
+      cancelled = true;
+    };
+  }, [prospectId]);
+
+  const source = (prospectMeta?.source || sourceFromQuery).toLowerCase();
+  const callType = (prospectMeta?.call_type || callTypeFromQuery).toLowerCase();
+  const isSovereignTier = tierParam.trim().toLowerCase() === "sovereign";
+  const isAiIqEntry = source === "door9" || source === "door4-ai-iq" || callType === "ai_iq";
+  const routeToDiscoveryCall = isSovereignTier && isAiIqEntry;
+  const sovereignRoutingPending =
+    isSovereignTier &&
+    !!prospectId &&
+    !sourceFromQuery &&
+    !callTypeFromQuery &&
+    prospectMetaLoading &&
+    !prospectMeta;
 
   const toggle = useCallback((id: number) => {
     setSelected((prev) => {
@@ -103,8 +154,12 @@ export default function YourPackage() {
 
   async function startCheckout() {
     if (checkoutLoading) return;
+    if (sovereignRoutingPending) {
+      setCheckoutError("Preparing your checkout path. Please wait a moment and try again.");
+      return;
+    }
     setCheckoutError(null);
-    const fallbackLink = staticCheckoutLinkForTier(tierParam);
+    const fallbackLink = staticCheckoutLinkForTier(tierParam, routeToDiscoveryCall);
 
     if (!prospectId || selectedList.length === 0) {
       window.location.href = fallbackLink;
@@ -315,11 +370,11 @@ export default function YourPackage() {
           <div className="sm:ml-4">
             <button
               type="button"
-              disabled={checkoutLoading || selectedList.length === 0}
+              disabled={checkoutLoading || selectedList.length === 0 || sovereignRoutingPending}
               onClick={() => void startCheckout()}
               className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {checkoutLoading ? "Starting checkout…" : "Checkout"}
+              {sovereignRoutingPending ? "Loading route…" : checkoutLoading ? "Starting checkout…" : "Checkout"}
             </button>
             {checkoutError ? <p className="mt-2 text-xs text-amber-300">{checkoutError}</p> : null}
           </div>
