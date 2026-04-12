@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Vapi from "@vapi-ai/web";
 import { Mic, PhoneOff } from "lucide-react";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
+import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 
 /** DreamScape™ Amelia — set `VITE_DREAMSCAPE_ASSISTANT_ID` in env (Vapi dashboard assistant id). */
 const DREAMSCAPE_ASSISTANT_ID =
@@ -26,6 +27,7 @@ export default function DreamScapeEntry() {
   const hasAssistantId = DREAMSCAPE_ASSISTANT_ID.length > 0;
   const canStart = hasPublicKey && hasAssistantId && vapi !== null;
   const [isCallActive, setIsCallActive] = useState(false);
+  const [startLocked, setStartLocked] = useState(false);
   const [showThanks, setShowThanks] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +46,8 @@ export default function DreamScapeEntry() {
     const onErr = (e: unknown) => {
       setError(extractErr(e));
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
     client.on("call-start", onStart);
     client.on("call-end", onEnd);
@@ -68,6 +72,9 @@ export default function DreamScapeEntry() {
       );
       return;
     }
+    if (!acquireVapiTapLock()) return;
+    setStartLocked(true);
+    window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     setShowThanks(false);
     vapi.start(DREAMSCAPE_ASSISTANT_ID, {
@@ -123,8 +130,9 @@ export default function DreamScapeEntry() {
           {!isCallActive && !showThanks ? (
             <button
               type="button"
+              disabled={startLocked}
               onClick={start}
-              className="inline-flex min-w-[240px] items-center justify-center rounded-lg border border-[#c9973a]/60 bg-[#c9973a]/15 px-8 py-3.5 text-sm font-semibold uppercase tracking-[0.2em] text-[#c9973a] transition hover:border-[#c9973a] hover:bg-[#c9973a]/25"
+              className="inline-flex min-w-[240px] items-center justify-center rounded-lg border border-[#c9973a]/60 bg-[#c9973a]/15 px-8 py-3.5 text-sm font-semibold uppercase tracking-[0.2em] text-[#c9973a] transition hover:border-[#c9973a] hover:bg-[#c9973a]/25 disabled:pointer-events-none disabled:opacity-50"
             >
               <Mic className="mr-2 h-4 w-4" aria-hidden />
               Begin Your Vision Session

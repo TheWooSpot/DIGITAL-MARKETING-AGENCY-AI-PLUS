@@ -6,8 +6,8 @@ import { DiagnosticForm, type DiagnosticResult } from "./DiagnosticForm";
 import { DiagnosticResults } from "./DiagnosticResults";
 
 /**
- * AnyDoor Engine · Door b1 — URL diagnostic (Session B UI).
- * Served from the Vite app at `/doors/url-diagnostic`.
+ * D-2 · The Mirror — URL diagnostic (engineering id: Door B1 / Session B).
+ * Routes: `/diagnostic` and `/doors/url-diagnostic` (same UI).
  */
 export default function AnyDoorDoorB1Page() {
   const [searchParams] = useSearchParams();
@@ -31,10 +31,10 @@ export default function AnyDoorDoorB1Page() {
       <AnyDoorPageShell>
         <AnyDoorHero
           className={`mb-10 text-center sm:mb-14${result ? " no-print" : ""}`}
-          eyebrow="AnyDoor Engine · Door b1"
+          eyebrow="AnyDoor Engine · D-2 · The Mirror"
           titleAccent="URL diagnostic"
           titleRest="Socialutely | AI Marketing Platform"
-          subtitle="Enter your website URL for a free digital marketing diagnostic — powered by AnyDoor Engine v12."
+          subtitle="Paste your URL for a free digital marketing diagnostic — powered by AnyDoor Engine v12."
         />
 
         <section id="get-started" className="mx-auto w-full max-w-md">

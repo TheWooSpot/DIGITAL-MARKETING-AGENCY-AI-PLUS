@@ -122,7 +122,7 @@ async function main() {
           heading("Doors marked LIVE (Supabase anydoor_doors, experience layer)"),
           makeTable(
             ["Door", "Name", "Public URL"],
-            [["D-2", "The Mirror", `${ORIGIN}/diagnostic`]],
+            [["D-2", "The Mirror (Door B1)", `${ORIGIN}/diagnostic`]],
             2,
           ),
           p("Same screen (alias):"),

@@ -140,7 +140,7 @@ export default function Door5CalculatorPage() {
       visibility_score: 0,
       engagement_score: 0,
       conversion_score: 0,
-      prospect_summary: `Door 5 Calculator — projected ${fmtMoney(breakdown.total90Day)} / 90 days.`,
+      prospect_summary: `D-5 · The Calculator — projected ${fmtMoney(breakdown.total90Day)} / 90 days.`,
       estimated_value: 0,
       recommended_tier: "Essentials",
       recommended_services: [],
@@ -159,7 +159,7 @@ export default function Door5CalculatorPage() {
   return (
     <AnyDoorPageShell>
       <AnyDoorHero
-        eyebrow="AnyDoor Engine · Door 5"
+        eyebrow="AnyDoor Engine · D-5 · The Calculator"
         titleAccent="The Calculator"
         titleRest="Projected return"
         subtitle="Projected return based on a few inputs — not what services cost. Pricing stays behind Door 6 until you're ready."

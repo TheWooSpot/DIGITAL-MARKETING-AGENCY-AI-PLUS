@@ -3,6 +3,7 @@ import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
 import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
+import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 
 /**
  * Evaluation Specialist — Jordan (Tap to Talk on AnyDoor diagnostic / shared `/report/:token`).
@@ -69,6 +70,8 @@ export type DiagnosticVapiCall = {
   publicKey: string;
   hasPublicKey: boolean;
   isCallActive: boolean;
+  /** True for ~3s after a start attempt — use to disable Tap to Talk while connecting. */
+  startLocked: boolean;
   error: string | null;
   start: () => void;
   end: () => void;
@@ -82,6 +85,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
+  const [startLocked, setStartLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,6 +103,8 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       console.error("[Vapi diagnostic report / Evaluation Specialist]", e);
       setError(msg);
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
 
     const onCallStartFailed = (e: unknown) => {
@@ -106,6 +112,8 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       console.error("[Vapi diagnostic report / Evaluation Specialist] call-start-failed", e);
       setError(msg);
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
 
     client.on("call-start", onCallStart);
@@ -133,6 +141,9 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       setError("Voice assistant is not configured. Set VITE_VAPI_ASSISTANT_ID in .env / Vercel and rebuild.");
       return;
     }
+    if (!acquireVapiTapLock()) return;
+    setStartLocked(true);
+    window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     const variableValues = buildAssistantVariableValues(result);
     vapi?.start(assistantId, {
@@ -147,5 +158,5 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { publicKey, hasPublicKey, isCallActive, error, start, end, clearError };
+  return { publicKey, hasPublicKey, isCallActive, startLocked, error, start, end, clearError };
 }

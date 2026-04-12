@@ -22,8 +22,8 @@ const NOTION_VERSION = "2022-06-28";
 const ORIGIN = "https://socialutely-any-door-engine.vercel.app";
 
 const ROWS_LIVE = [
-  ["D-2", "The Mirror (/diagnostic)", `${ORIGIN}/diagnostic`],
-  ["D-2", "Same page (/doors/url-diagnostic)", `${ORIGIN}/doors/url-diagnostic`],
+  ["D-2", "The Mirror — URL diagnostic (engineering: Door B1)", `${ORIGIN}/diagnostic`],
+  ["D-2", "Alias route", `${ORIGIN}/doors/url-diagnostic`],
 ];
 
 const ROWS_OTHER = [
@@ -83,7 +83,7 @@ function buildChildren() {
   const blocks = [
     para(`Site origin: ${ORIGIN} (change in script if you use a custom domain).`),
     heading2("Doors marked LIVE (Supabase)"),
-    para("Official LIVE door in CMS: D-2 · The Mirror."),
+    para("Official LIVE door in CMS: D-2 · The Mirror (= Door B1 in engineering)."),
     ...ROWS_LIVE.map(([a, b, u]) => bulletPrefixUrl(`${a} — ${b}: `, u)),
     heading2("Other deployed routes"),
     para("Marked building/planned in CMS; URLs still resolve."),

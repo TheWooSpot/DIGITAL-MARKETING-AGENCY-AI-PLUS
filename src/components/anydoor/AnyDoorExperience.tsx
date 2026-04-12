@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-/** Matches AnyDoor Door B1 (URL diagnostic): centered nav, Cormorant hero, Archivo body — inherits global grid from `body`. */
+/** Matches D-2 · The Mirror / Door B1 URL diagnostic: centered nav, Cormorant hero — inherits global grid from `body`. */
 export function AnyDoorPageShell({
   children,
   backHref = "/",

@@ -9,7 +9,7 @@ interface ReportVapiTapToTalkProps {
  * Shared report header block: Discuss this report — uses parent `useDiagnosticVapiCall` instance.
  */
 export function ReportVapiTapToTalk({ vapi }: ReportVapiTapToTalkProps) {
-  const { hasPublicKey, isCallActive, error, start, end } = vapi;
+  const { hasPublicKey, isCallActive, startLocked, error, start, end } = vapi;
 
   if (!hasPublicKey) {
     return (
@@ -32,8 +32,9 @@ export function ReportVapiTapToTalk({ vapi }: ReportVapiTapToTalkProps) {
         {!isCallActive ? (
           <button
             type="button"
+            disabled={startLocked}
             onClick={start}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#c9973a] bg-[#c9973a]/15 px-4 py-2.5 text-sm font-semibold text-[#c9973a] transition hover:bg-[#c9973a]/25"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#c9973a] bg-[#c9973a]/15 px-4 py-2.5 text-sm font-semibold text-[#c9973a] transition hover:bg-[#c9973a]/25 disabled:pointer-events-none disabled:opacity-50"
           >
             <Mic className="h-4 w-4" aria-hidden />
             Tap to Talk

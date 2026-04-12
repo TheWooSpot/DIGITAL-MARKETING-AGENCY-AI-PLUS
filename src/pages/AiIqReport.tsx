@@ -5,6 +5,7 @@ import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExper
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
+import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 
 /** Evaluation Specialist (Jordan) — Door 9 AI IQ™ Talk to Jordan strip. */
 const AI_IQ_VAPI_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
@@ -144,6 +145,7 @@ function useAiIqVapi(submission: Door9Submission | null) {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
+  const [startLocked, setStartLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -157,10 +159,14 @@ function useAiIqVapi(submission: Door9Submission | null) {
     const onError = (e: unknown) => {
       setError(extractVapiErr(e));
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
     const onCallStartFailed = (e: unknown) => {
       setError(extractVapiErr(e));
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
     client.on("call-start", onCallStart);
     client.on("call-end", onCallEnd);
@@ -180,6 +186,9 @@ function useAiIqVapi(submission: Door9Submission | null) {
       setError("Add VITE_VAPI_PUBLIC_KEY to your environment and rebuild.");
       return;
     }
+    if (!acquireVapiTapLock()) return;
+    setStartLocked(true);
+    window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     const variableValues: Record<string, string> = {
       context: "AI_IQ_Door9_Report",
@@ -197,7 +206,7 @@ function useAiIqVapi(submission: Door9Submission | null) {
 
   const end = useCallback(() => vapi?.stop(), []);
 
-  return { hasPublicKey, isCallActive, error, start, end };
+  return { hasPublicKey, isCallActive, startLocked, error, start, end };
 }
 
 function ScoreDial({ score }: { score: number }) {
@@ -591,8 +600,9 @@ export default function AiIqReport() {
                 {!vapiHook.isCallActive ? (
                   <button
                     type="button"
+                    disabled={vapiHook.startLocked}
                     onClick={vapiHook.start}
-                    className="anydoor-btn-outline inline-flex items-center gap-2 border-[#c9973a]/50 bg-[#c9973a]/10 text-[#c9973a] hover:border-[#c9973a]"
+                    className="anydoor-btn-outline inline-flex items-center gap-2 border-[#c9973a]/50 bg-[#c9973a]/10 text-[#c9973a] hover:border-[#c9973a] disabled:pointer-events-none disabled:opacity-50"
                   >
                     <Mic className="h-4 w-4" aria-hidden />
                     Tap to Talk — Jordan

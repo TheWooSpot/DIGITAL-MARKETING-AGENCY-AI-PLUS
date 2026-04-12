@@ -12,7 +12,7 @@ export default function DreamDoorPage() {
     <AnyDoorPageShell backHref="/" backLabel="← Home">
       <header className="mb-8 text-center sm:mb-10">
         <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
-          AnyDoor Engine · D-7
+          AnyDoor Engine · D-7 · DreamScape™
         </p>
         <h1
           className="mt-3 text-2xl font-light text-white sm:text-3xl"

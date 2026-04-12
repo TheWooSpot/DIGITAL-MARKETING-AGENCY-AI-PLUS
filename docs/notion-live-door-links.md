@@ -7,9 +7,11 @@
 
 ## Doors marked LIVE (Supabase `anydoor_doors`, experience layer)
 
+**Naming:** **D-2 · The Mirror** is the product name for the free URL diagnostic; engineering and docs often call the same flow **Door B1**. Routes `/diagnostic` and `/doors/url-diagnostic` render the same page.
+
 | Door | Name | Public URL |
 |------|------|------------|
-| D-2 | The Mirror | https://socialutely-any-door-engine.vercel.app/diagnostic |
+| D-2 | The Mirror (Door B1) | https://socialutely-any-door-engine.vercel.app/diagnostic |
 
 **Same screen (alias):** https://socialutely-any-door-engine.vercel.app/doors/url-diagnostic
 

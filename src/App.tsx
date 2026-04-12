@@ -37,7 +37,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              {/* URL diagnostic (Mirror / Door b1). Legacy /views/Diagnostic.tsx was AI IQ questions — wrong route; use /ai-iq. */}
+              {/* D-2 · The Mirror = URL diagnostic; engineering id Door B1. Legacy /views/Diagnostic.tsx was AI IQ — use /ai-iq. */}
               <Route path="/doors/url-diagnostic" element={<DoorsUrlDiagnostic />} />
               <Route path="/diagnostic" element={<DoorsUrlDiagnostic />} />
               <Route path="/report/:token" element={<SharedReportPage />} />

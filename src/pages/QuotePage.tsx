@@ -6,8 +6,8 @@ const DIM = "rgba(232,238,245,0.55)";
 const WHITE = "#e8eef5";
 
 /**
- * Door 6 — Quote (placeholder).
- * Expects query: business_size, services (comma-separated catalog ids) from Door 5.
+ * D-6 · The Quote (placeholder).
+ * Expects query: business_size, services (comma-separated catalog ids) from D-5.
  */
 export default function QuotePage() {
   const [params] = useSearchParams();
@@ -24,14 +24,14 @@ export default function QuotePage() {
   return (
     <AnyDoorPageShell backHref="/calculator" backLabel="← Back to calculator">
       <AnyDoorHero
-        eyebrow="Door 6 · Quote"
+        eyebrow="AnyDoor Engine · D-6 · The Quote"
         titleAccent="Your personalized"
         titleRest="quote"
         subtitle="Line-item pricing unlocks here after we confirm your business email. This step is wired for selections from the calculator."
       />
 
       <div className="anydoor-surface-card mx-auto mt-10 max-w-lg">
-        <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Pre-selected from Door 5</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Pre-selected from D-5 · The Calculator</p>
         <ul className="mt-4 space-y-2 text-sm" style={{ color: DIM }}>
           <li>
             <span style={{ color: DIM }}>Business size: </span>

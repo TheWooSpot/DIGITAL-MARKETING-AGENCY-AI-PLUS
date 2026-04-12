@@ -627,10 +627,10 @@ export default function AiIqAssessmentPage() {
       {phase === "gate" && (
         <>
           <AnyDoorHero
-            eyebrow="Socialutely · AI Readiness Labs™"
+            eyebrow="AnyDoor Engine · D-4 · AI IQ™"
             titleAccent="AI IQ™"
             titleRest="Assessment"
-            subtitle="A few details, then one question at a time. Takes about 8–12 minutes."
+            subtitle="Socialutely · AI Readiness Labs™ — a few details, then one question at a time. About 8–12 minutes."
           />
           {loadError && (
             <p className="mx-auto mb-6 max-w-md rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-200">

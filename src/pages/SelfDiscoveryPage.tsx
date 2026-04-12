@@ -9,6 +9,7 @@ import type { DiscoveryQuestion, Door3Analysis } from "@/lib/door3/types";
 import { getEvaluationSpecialistAssistantId } from "@/anydoor/useDiagnosticVapiCall";
 import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
+import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 import { Mic, PhoneOff } from "lucide-react";
 
 /** Aligned with AiIqAssessmentPage / AnyDoor tokens */
@@ -139,6 +140,7 @@ export default function SelfDiscoveryPage() {
   const [analysis, setAnalysis] = useState<Door3Analysis | null>(null);
   const [vapiErr, setVapiErr] = useState<string | null>(null);
   const [callActive, setCallActive] = useState(false);
+  const [jordanStartLocked, setJordanStartLocked] = useState(false);
 
   const currentQ = questions[qIndex];
   const totalSteps = 7;
@@ -425,6 +427,9 @@ export default function SelfDiscoveryPage() {
       return;
     }
     if (!analysis) return;
+    if (!acquireVapiTapLock()) return;
+    setJordanStartLocked(true);
+    window.setTimeout(() => setJordanStartLocked(false), 3000);
     const gaps =
       analysis.top_gaps && analysis.top_gaps.length > 0
         ? analysis.top_gaps
@@ -450,6 +455,8 @@ export default function SelfDiscoveryPage() {
       });
       setCallActive(true);
     } catch (e) {
+      setJordanStartLocked(false);
+      releaseVapiTapLockEarly();
       setVapiErr(appendVapiAssistantKeyHint(extractVapiErrorMessage(e)));
     }
   }, [analysis, businessContext, firstName, industryCtx]);
@@ -468,7 +475,7 @@ export default function SelfDiscoveryPage() {
       {stage === "gate" && (
         <>
           <header className="mb-10 text-center sm:mb-14">
-            <p className="anydoor-exp-eyebrow">D-3 · The Self-Discovery</p>
+            <p className="anydoor-exp-eyebrow">AnyDoor Engine · D-3 · The Self-Discovery</p>
             <h1 className="mt-3 text-xl font-semibold leading-snug text-white sm:text-2xl" style={{ fontFamily: "var(--font-archivo)" }}>
               Seven questions — then we reflect what we heard
             </h1>
@@ -817,7 +824,12 @@ export default function SelfDiscoveryPage() {
               {vapiErr && <p className="mt-3 text-sm text-amber-400">{vapiErr}</p>}
               <div className="mt-5 flex justify-center">
                 {!callActive ? (
-                  <button type="button" className="anydoor-btn-outline inline-flex items-center" onClick={() => void startJordan()}>
+                  <button
+                    type="button"
+                    disabled={jordanStartLocked}
+                    className="anydoor-btn-outline inline-flex items-center disabled:pointer-events-none disabled:opacity-50"
+                    onClick={() => void startJordan()}
+                  >
                     <Mic className="mr-2 h-4 w-4" />
                     Tap to Talk
                   </button>

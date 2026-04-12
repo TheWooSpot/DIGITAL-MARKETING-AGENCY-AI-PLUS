@@ -814,7 +814,10 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
           ) : null}
           <button
             type="button"
-            disabled={!diagnosticVapi.hasPublicKey}
+            disabled={
+              !diagnosticVapi.hasPublicKey ||
+              (!diagnosticVapi.isCallActive && diagnosticVapi.startLocked)
+            }
             onClick={() => (diagnosticVapi.isCallActive ? diagnosticVapi.end() : diagnosticVapi.start())}
             title={
               diagnosticVapi.hasPublicKey

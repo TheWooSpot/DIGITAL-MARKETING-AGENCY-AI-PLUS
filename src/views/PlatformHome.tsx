@@ -12,7 +12,11 @@ import {
 
 const GOLD = "#c9973a";
 
-type DoorStatus = "live" | "building" | "planned";
+/**
+ * Five-stage readiness scale (homepage door cards + Supabase `anydoor_doors.status`):
+ * planned → discovery → building → beta → live
+ */
+type DoorStatus = "planned" | "discovery" | "building" | "beta" | "live";
 
 type DoorCta =
   | { kind: "link"; href: string; label: string; className?: string }
@@ -44,37 +48,42 @@ type AnyDoorDoorRow = {
 const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-1",
-    status: "building",
+    status: "discovery",
     title: "The Direct Reach",
-    description: "Call, text, or email us — we'll respond intelligently across all three.",
+    description:
+      "One conversation starter — call, text, or email — routed so nothing important slips through.",
     cta: { kind: "muted", label: "Coming soon" },
   },
   {
     label: "D-2",
     status: "live",
     title: "The Mirror",
-    description: "Paste a URL. Get a clear, objective picture of your digital presence.",
+    description:
+      "Paste your URL. See how visible, credible, and conversion-ready your digital presence really is.",
     cta: { kind: "link", href: "/diagnostic", label: "Run free diagnostic" },
   },
   {
     label: "D-3",
-    status: "building",
+    status: "beta",
     title: "The Self-Discovery",
-    description: "Seven questions that surface something true you hadn't said out loud.",
-    cta: { kind: "muted", label: "Coming soon" },
+    description:
+      "Seven open answers — then a reflection of what you actually said, not what you meant to say.",
+    cta: { kind: "link", href: "/self-discovery", label: "Start discovery" },
   },
   {
     label: "D-4",
     status: "live",
     title: "The AI IQ™",
-    description: "21 questions. 7 domains. One score that tells you exactly where you stand.",
+    description:
+      "Twenty-one questions across seven domains — one score that shows where your organization sits on the adoption curve.",
     cta: { kind: "link", href: "/ai-iq", label: "Take the AI IQ™" },
   },
   {
     label: "D-5",
-    status: "building",
+    status: "live",
     title: "The Calculator",
-    description: "What would a more automated, more visible version of your business be worth?",
+    description:
+      "A few inputs — a sober projection of what stronger visibility and automation could mean in dollars, before you talk price.",
     cta: {
       kind: "link",
       href: "/calculator",
@@ -86,37 +95,57 @@ const FALLBACK_DOORS: DoorDef[] = [
     label: "D-6",
     status: "building",
     title: "The Quote",
-    description: "You know what you want. Select your services and get an instant quote.",
+    description:
+      "Pick the outcomes you want — see a scoped quote that matches the work, not a generic menu.",
     cta: { kind: "muted", label: "Coming soon" },
   },
   {
     label: "D-7",
     status: "live",
     title: "The Dream",
-    description: "Tell us where you want to go. Amelia will help you see the path.",
+    description:
+      "A short voice session to say where you want the business to go — and hear it reflected back with warmth and precision.",
     cta: { kind: "link", href: "/dream", label: "Begin vision session" },
   },
   {
     label: "D-8",
     status: "planned",
     title: "The Referral Landing",
-    description: "Someone sent you here. That means something — and we treat it that way.",
+    description:
+      "You were sent here on purpose — this path honors that introduction and continues the right conversation.",
     cta: { kind: "planned", label: "Planned" },
   },
   {
     label: "D-9",
     status: "planned",
     title: "The Ad Response",
-    description: "You saw something specific. Let's continue that exact conversation.",
+    description: "Continue the exact promise you clicked — same offer, same framing, next step ready.",
     cta: { kind: "planned", label: "Planned" },
   },
 ];
 
+function normalizeDoorStatus(raw: string | null | undefined): DoorStatus {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (s === "planned" || s === "discovery" || s === "building" || s === "beta" || s === "live") {
+    return s;
+  }
+  if (s === "in_progress" || s === "dev" || s === "wip") return "building";
+  return "planned";
+}
+
 function statusBadge(status: DoorStatus): { label: string; className: string } {
-  if (status === "live") return { label: "LIVE", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
-  if (status === "building")
-    return { label: "BUILDING", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
-  return { label: "PLANNED", className: "bg-white/5 text-white/45 border-white/10" };
+  switch (status) {
+    case "live":
+      return { label: "LIVE", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
+    case "beta":
+      return { label: "BETA", className: "bg-sky-500/15 text-sky-300 border-sky-500/35" };
+    case "building":
+      return { label: "BUILDING", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
+    case "discovery":
+      return { label: "DISCOVERY", className: "bg-violet-500/12 text-violet-300 border-violet-500/30" };
+    default:
+      return { label: "PLANNED", className: "bg-white/5 text-white/45 border-white/10" };
+  }
 }
 
 const navLinkClass =
@@ -130,17 +159,20 @@ const PlatformHome = () => {
   const location = useLocation();
 
   const mapDbDoorToCard = useCallback((row: AnyDoorDoorRow): DoorDef => {
-    const rawStatus = (row.status ?? "").trim().toLowerCase();
-    const status: DoorStatus =
-      rawStatus === "live" || rawStatus === "building" || rawStatus === "planned" ? rawStatus : "planned";
+    const status = normalizeDoorStatus(row.status);
 
     const ctaLabelRaw = (row.cta_label ?? "").trim();
     const ctaRouteRaw = (row.cta_route ?? "").trim();
     const upperLabel = ctaLabelRaw.toUpperCase();
     const isPlannedLabel = upperLabel === "COMING SOON" || upperLabel === "PLANNED";
 
+    const canLink =
+      ctaRouteRaw &&
+      !isPlannedLabel &&
+      (status === "live" || status === "beta" || status === "building" || status === "discovery");
+
     let cta: DoorCta = { kind: "planned", label: "Planned" };
-    if ((status === "live" || status === "building") && ctaRouteRaw && !isPlannedLabel) {
+    if (canLink) {
       cta = { kind: "link", href: ctaRouteRaw, label: ctaLabelRaw || "Open" };
     } else if (isPlannedLabel || !ctaRouteRaw) {
       cta = { kind: "muted", label: ctaLabelRaw || "Coming soon" };
@@ -362,21 +394,25 @@ const PlatformHome = () => {
             </Link>
           </div>
 
-          {/* Door 3 — Self-Discovery (BUILDING: no link until launch) */}
+          {/* D-3 · The Self-Discovery — spotlight (same door as grid; status: beta) */}
           <div className="platform-fade platform-fade-4 mt-8 max-w-3xl">
             <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">D-3</span>
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest text-amber-400">
-                  BUILDING
+                <span className="rounded-full border border-sky-500/35 bg-sky-500/15 px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest text-sky-300">
+                  BETA
                 </span>
               </div>
               <h3 className="mt-4 text-lg font-semibold text-white">The Self-Discovery</h3>
               <p className="mt-2 text-sm leading-relaxed text-white/45">
-                Seven questions that surface something true you hadn&apos;t said out loud. No link yet — this card is a
-                preview of what&apos;s shipping next.
+                Seven open answers — then a reflection of what you actually said. Same door as the AnyDoor grid below.
               </p>
-              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">Coming soon</p>
+              <Link
+                to="/self-discovery"
+                className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.2em] text-[#c9973a] hover:text-[#c9973a]/90"
+              >
+                Start discovery →
+              </Link>
             </div>
           </div>
         </div>

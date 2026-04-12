@@ -4,6 +4,7 @@ import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { getEvaluationSpecialistAssistantId } from '@/anydoor/useDiagnosticVapiCall';
 import { vapi } from '@/lib/vapiClient';
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from '@/lib/vapiErrors';
+import { acquireVapiTapLock, releaseVapiTapLockEarly } from '@/lib/vapiTapLock';
 
 const WELCOME_GREETINGS = [
   "Thanks for calling Socialutely. I'm here to learn a bit about you and your business. How can I help you today?",
@@ -38,6 +39,7 @@ interface VapiVoiceChatProps {
 
 export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
   const [isCallActive, setIsCallActive] = useState(false);
+  const [startLocked, setStartLocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcript, setTranscript] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,8 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
       console.error('[Vapi] Error:', e);
       setError(msg);
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
 
     const onCallStartFailed = (e: unknown) => {
@@ -79,6 +83,8 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
       console.error('[Vapi] Call start failed:', e);
       setError(msg);
       setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
     };
 
     client.on('call-start', onCallStart);
@@ -106,6 +112,9 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
       setError('Add VITE_VAPI_ASSISTANT_ID to your .env file and restart the dev server.');
       return;
     }
+    if (!acquireVapiTapLock()) return;
+    setStartLocked(true);
+    window.setTimeout(() => setStartLocked(false), 3000);
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
     vapi?.start(assistantId, { firstMessage: greeting });
   };
@@ -150,6 +159,7 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
       <div className="flex gap-3 p-4 border-t">
         {!isCallActive ? (
           <Button
+            disabled={startLocked}
             onClick={handleStart}
             className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
           >
