@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
-import { AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { useSession } from "@/context/SessionContext";
 import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 import { door3ServiceName } from "@/lib/door3/serviceNames";
@@ -471,20 +471,17 @@ export default function SelfDiscoveryPage() {
 
   return (
     <div className="anydoor-door-page min-h-screen">
-      <AnyDoorPageShell backHref="/" backLabel="← Home">
+      <AnyDoorPageShell backHref="/" backLabel="← Home" narrow={false}>
       {stage === "gate" && (
-        <>
-          <header className="mb-10 text-center sm:mb-14">
-            <p className="anydoor-exp-eyebrow">AnyDoor Engine · D-3 · The Self-Discovery</p>
-            <h1 className="mt-3 text-xl font-semibold leading-snug text-white sm:text-2xl" style={{ fontFamily: "var(--font-archivo)" }}>
-              Seven questions — then we reflect what we heard
-            </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/50">
-              This isn&apos;t a lead form. It&apos;s a short discovery — open text, your words, no multiple choice.
-            </p>
-          </header>
+        <div className="mx-auto w-full max-w-[580px]">
+          <AnyDoorEntryScreen
+            eyebrow="ANYDOOR ENGINE · D-3 · THE SELF-DISCOVERY"
+            heading="Seven Questions That Surface Something True"
+            subtext1={"You sense something isn't working but can't quite name it."}
+            subtext2="Honest questions that surface what your business actually needs right now."
+          />
 
-          <section className="mx-auto w-full max-w-md space-y-4">
+          <section className="mx-auto w-full space-y-4">
             <div>
               <label htmlFor="d3-first" className="anydoor-field-label--primary">
                 First name
@@ -530,7 +527,7 @@ export default function SelfDiscoveryPage() {
               Start my discovery →
             </button>
           </section>
-        </>
+        </div>
       )}
 
       {stage === "rate_limited" && (

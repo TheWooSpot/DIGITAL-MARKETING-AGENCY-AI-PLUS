@@ -16,6 +16,7 @@ import AiIqReport from "./pages/AiIqReport";
 import AiIqAssessmentPage from "./pages/AiIqAssessmentPage";
 import Rung2AdaptationPage from "./pages/aiReadiness/Rung2AdaptationPage";
 import Rung3OptimizationPage from "./pages/aiReadiness/Rung3OptimizationPage";
+import Rung4Page from "./pages/aiReadiness/Rung4Page";
 import Door5CalculatorPage from "./pages/Door5CalculatorPage";
 import QuotePage from "./pages/QuotePage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -24,6 +25,9 @@ import SelfDiscoveryPage from "./pages/SelfDiscoveryPage";
 import DreamDoorPage from "./pages/DreamDoorPage";
 import PartnerBrief from "./pages/PartnerBrief";
 import ThankYou from "./pages/ThankYou";
+import DirectReachPage from "./pages/DirectReachPage";
+import ReferralPage from "./pages/ReferralPage";
+import AdResponsePage from "./pages/AdResponsePage";
 
 const queryClient = new QueryClient();
 
@@ -52,12 +56,16 @@ const App = () => (
               <Route path="/ai-readiness" element={<Navigate to="/ai-readiness/rung-2" replace />} />
               <Route path="/ai-readiness/rung-2" element={<Rung2AdaptationPage />} />
               <Route path="/ai-readiness/rung-3" element={<Rung3OptimizationPage />} />
+              <Route path="/ai-readiness/rung-4" element={<Rung4Page />} />
               <Route path="/partner-brief" element={<PartnerBrief />} />
               <Route path="/calculator" element={<Door5CalculatorPage />} />
               <Route path="/self-discovery" element={<SelfDiscoveryPage />} />
               <Route path="/dream" element={<DreamDoorPage />} />
               <Route path="/door-7" element={<Navigate to="/dream" replace />} />
               <Route path="/quote" element={<QuotePage />} />
+              <Route path="/direct-reach" element={<DirectReachPage />} />
+              <Route path="/referral" element={<ReferralPage />} />
+              <Route path="/ad-response" element={<AdResponsePage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

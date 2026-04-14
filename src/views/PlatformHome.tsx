@@ -31,6 +31,78 @@ type DoorDef = {
   cta: DoorCta;
 };
 
+/** Homepage AnyDoor cards — copy matches Door B1-style layout (see `AnyDoorEntryCard`). */
+const DOOR_HOME_CARD_COPY: Record<
+  string,
+  { eyebrow: string; header: string; challenge: string; benefit: string }
+> = {
+  "D-1": {
+    eyebrow: "D-1 · THE DIRECT REACH",
+    header: "Reach Out. We Respond Intelligently.",
+    challenge: "You reached out but weren't sure where to start.",
+    benefit: "We meet you where you are and route you to exactly the right conversation.",
+  },
+  "D-2": {
+    eyebrow: "D-2 · THE MIRROR",
+    header: "URL Multipoint Diagnostic",
+    challenge: "You don't know what your business looks like from the outside.",
+    benefit: "See your digital presence clearly — strengths, gaps, and what to do first.",
+  },
+  "D-3": {
+    eyebrow: "D-3 · THE SELF-DISCOVERY",
+    header: "Seven Questions That Surface Something True",
+    challenge: "You sense something isn't working but can't quite name it.",
+    benefit: "Honest questions that surface what your business actually needs right now.",
+  },
+  "D-4": {
+    eyebrow: "D-4 · THE AI IQ™",
+    header: "Find Out Exactly Where Your AI Stands",
+    challenge: "You don't know where your organization stands on AI readiness.",
+    benefit: "A real score across 7 dimensions and a clear path to where you go next.",
+  },
+  "D-5": {
+    eyebrow: "D-5 · THE CALCULATOR",
+    header: "What Would This Actually Be Worth?",
+    challenge: "You can't justify the investment without knowing the return.",
+    benefit: "See what smarter marketing could be worth to your business in real numbers.",
+  },
+  "D-6": {
+    eyebrow: "D-6 · THE QUOTE",
+    header: "You Know What You Want. Here's the Answer.",
+    challenge: "You know what you need — you just want a number.",
+    benefit: "A transparent, itemized quote built around your specific situation.",
+  },
+  "D-7": {
+    eyebrow: "D-7 · THE DREAM",
+    header: "Tell Us Where You Want to Go",
+    challenge: "You know where you want to go but haven't said it out loud yet.",
+    benefit: "A voice conversation that maps your vision and builds the path toward it.",
+  },
+  "D-8": {
+    eyebrow: "D-8 · THE REFERRAL",
+    header: "Someone Sent You Here. That Means Something.",
+    challenge: "You arrived through a trusted referral and want to know what's next.",
+    benefit: "Start with context — we already know a little about why you're here.",
+  },
+  "D-9": {
+    eyebrow: "D-9 · THE AD RESPONSE",
+    header: "You Saw Something. Let's Continue.",
+    challenge: "Something specific caught your attention and brought you here.",
+    benefit: "Pick up exactly where your interest began — no starting over.",
+  },
+};
+
+function doorCardCopyOrFallback(door: DoorDef) {
+  const fixed = DOOR_HOME_CARD_COPY[door.label];
+  if (fixed) return fixed;
+  return {
+    eyebrow: `${door.label} · ${door.title.toUpperCase()}`,
+    header: door.title,
+    challenge: door.description,
+    benefit: "",
+  };
+}
+
 type AnyDoorDoorRow = {
   door_id: string;
   layer: string;
@@ -52,7 +124,7 @@ const FALLBACK_DOORS: DoorDef[] = [
     title: "The Direct Reach",
     description:
       "One conversation starter — call, text, or email — routed so nothing important slips through.",
-    cta: { kind: "muted", label: "Coming soon" },
+    cta: { kind: "link", href: "/direct-reach", label: "Connect now →" },
   },
   {
     label: "D-2",
@@ -97,7 +169,7 @@ const FALLBACK_DOORS: DoorDef[] = [
     title: "The Quote",
     description:
       "Pick the outcomes you want — see a scoped quote that matches the work, not a generic menu.",
-    cta: { kind: "muted", label: "Coming soon" },
+    cta: { kind: "link", href: "/quote", label: "Get my quote →" },
   },
   {
     label: "D-7",
@@ -109,18 +181,18 @@ const FALLBACK_DOORS: DoorDef[] = [
   },
   {
     label: "D-8",
-    status: "planned",
+    status: "beta",
     title: "The Referral Landing",
     description:
       "You were sent here on purpose — this path honors that introduction and continues the right conversation.",
-    cta: { kind: "planned", label: "Planned" },
+    cta: { kind: "link", href: "/referral", label: "Continue →" },
   },
   {
     label: "D-9",
-    status: "planned",
+    status: "beta",
     title: "The Ad Response",
     description: "Continue the exact promise you clicked — same offer, same framing, next step ready.",
-    cta: { kind: "planned", label: "Planned" },
+    cta: { kind: "link", href: "/ad-response", label: "Continue →" },
   },
 ];
 
@@ -150,6 +222,50 @@ function statusBadge(status: DoorStatus): { label: string; className: string } {
 
 const navLinkClass =
   "text-[11px] font-medium uppercase tracking-[0.2em] text-white/55 transition-colors hover:text-white";
+
+function AnyDoorEntryCard({ door, pulseLoading }: { door: DoorDef; pulseLoading?: boolean }) {
+  const copy = doorCardCopyOrFallback(door);
+  const badge = statusBadge(door.status);
+  const ctaGoldClass =
+    "anydoor-btn-gold inline-flex w-full max-w-[580px] items-center justify-center text-center text-sm no-underline";
+
+  return (
+    <div className={`anydoor-home-door-card flex flex-col ${pulseLoading ? "animate-pulse opacity-75" : ""}`}>
+      <div className="anydoor-home-door-card-inner mx-auto flex w-full max-w-[580px] flex-col px-6 pb-10 pt-20">
+        <div className="flex flex-col gap-12">
+          <div className="flex items-start justify-between gap-3">
+            <p className="anydoor-home-door-eyebrow pr-2">{copy.eyebrow}</p>
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest ${badge.className}`}
+            >
+              {badge.label}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h3 className="anydoor-home-door-header">{copy.header}</h3>
+            <p className="anydoor-home-door-platform">Socialutely | AI Marketing Platform</p>
+            <p className="text-sm italic leading-relaxed text-white/50">{copy.challenge}</p>
+            {copy.benefit ? <p className="text-sm leading-relaxed text-white/[0.72]">{copy.benefit}</p> : null}
+          </div>
+
+          <div className="w-full">
+            {door.cta.kind === "link" && (
+              <Link
+                to={door.cta.href}
+                className={`${ctaGoldClass} ${door.cta.className?.includes("normal-case") ? "!normal-case !tracking-normal" : ""}`}
+              >
+                {door.cta.label}
+              </Link>
+            )}
+            {door.cta.kind === "muted" && <span className="anydoor-home-door-cta-muted">{door.cta.label}</span>}
+            {door.cta.kind === "planned" && <span className="anydoor-home-door-cta-muted">{door.cta.label}</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PlatformHome = () => {
   const [activeCategory, setActiveCategory] = useState(PLATFORM_CATEGORIES[0].slug);
@@ -274,6 +390,8 @@ const PlatformHome = () => {
     };
   }, []);
 
+  const doorD3Spotlight = (doorsLoading ? FALLBACK_DOORS : doors).find((d) => d.label === "D-3");
+
   return (
     <div
       className="platform-home min-h-screen text-[#e8eef5] selection:bg-[#c9973a]/30 selection:text-white"
@@ -394,26 +512,11 @@ const PlatformHome = () => {
             </Link>
           </div>
 
-          {/* D-3 · The Self-Discovery — spotlight (same door as grid; status: beta) */}
-          <div className="platform-fade platform-fade-4 mt-8 max-w-3xl">
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">D-3</span>
-                <span className="rounded-full border border-sky-500/35 bg-sky-500/15 px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest text-sky-300">
-                  BETA
-                </span>
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-white">The Self-Discovery</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/45">
-                Seven open answers — then a reflection of what you actually said. Same door as the AnyDoor grid below.
-              </p>
-              <Link
-                to="/self-discovery"
-                className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.2em] text-[#c9973a] hover:text-[#c9973a]/90"
-              >
-                Start discovery →
-              </Link>
-            </div>
+          {/* D-3 · The Self-Discovery — same card model as AnyDoor grid */}
+          <div className="platform-fade platform-fade-4 mt-8 max-w-[580px]">
+            {doorD3Spotlight ? (
+              <AnyDoorEntryCard door={doorD3Spotlight} pulseLoading={doorsLoading} />
+            ) : null}
           </div>
         </div>
       </section>
@@ -432,46 +535,10 @@ const PlatformHome = () => {
             Every door leads to rewarding outcomes.
           </p>
 
-          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(doorsLoading ? FALLBACK_DOORS : doors).map((door) => {
-              const badge = statusBadge(door.status);
-              const baseCard =
-                "group relative flex min-h-[220px] flex-col rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 transition-[border-color,box-shadow] duration-200 hover:border-[#c9973a]/40 hover:shadow-[0_0_0_1px_rgba(201,151,58,0.15)]";
-              return (
-                <div key={door.label} className={`${baseCard} ${doorsLoading ? "animate-pulse opacity-75" : ""}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{door.label}</span>
-                    <span
-                      className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-medium tracking-widest ${badge.className}`}
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
-                  <h3 className="mt-5 text-[15px] font-semibold leading-snug text-white">{door.title}</h3>
-                  <p className="mt-2 flex-1 text-xs leading-relaxed text-white/45">{door.description}</p>
-                  <div
-                    className={`mt-6 font-mono text-[10px] tracking-[0.2em] ${
-                      door.cta.kind === "link" && door.cta.className?.includes("normal-case") ? "" : "uppercase"
-                    }`}
-                  >
-                    {door.cta.kind === "link" && (
-                      <Link
-                        to={door.cta.href}
-                        className={door.cta.className ?? "text-white/70 hover:text-white"}
-                      >
-                        {door.cta.label}
-                      </Link>
-                    )}
-                    {door.cta.kind === "muted" && (
-                      <span className="uppercase text-white/40">{door.cta.label}</span>
-                    )}
-                    {door.cta.kind === "planned" && (
-                      <span className="uppercase text-white/35">{door.cta.label}</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {(doorsLoading ? FALLBACK_DOORS : doors).map((door) => (
+              <AnyDoorEntryCard key={door.label} door={door} pulseLoading={doorsLoading} />
+            ))}
           </div>
         </div>
       </section>

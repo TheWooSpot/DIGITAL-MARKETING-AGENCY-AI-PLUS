@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
-import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { DiagnosticForm, type DiagnosticResult } from "./DiagnosticForm";
 import { DiagnosticResults } from "./DiagnosticResults";
 
@@ -29,15 +29,16 @@ export default function AnyDoorDoorB1Page() {
   return (
     <div id="anydoor-door-b1" className="anydoor-door-page min-h-screen">
       <AnyDoorPageShell>
-        <AnyDoorHero
-          className={`mb-10 text-center sm:mb-14${result ? " no-print" : ""}`}
-          eyebrow="AnyDoor Engine · D-2 · The Mirror"
-          titleAccent="URL diagnostic"
-          titleRest="Socialutely | AI Marketing Platform"
-          subtitle="Paste your URL for a free digital marketing diagnostic — powered by AnyDoor Engine v12."
-        />
+        <div className={result ? "no-print" : ""}>
+          <AnyDoorEntryScreen
+            eyebrow="ANYDOOR ENGINE · D-2 · THE MIRROR"
+            heading="URL Multipoint Diagnostic"
+            subtext1="You don't know what your business looks like from the outside."
+            subtext2="See your digital presence clearly — strengths, gaps, and what to do first."
+          />
+        </div>
 
-        <section id="get-started" className="mx-auto w-full max-w-md">
+        <section id="get-started" className="mx-auto w-full">
           <DiagnosticForm
             key={urlParam || "default"}
             initialUrl={urlParam || sessionUrl}

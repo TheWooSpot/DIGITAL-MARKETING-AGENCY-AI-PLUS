@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
-import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -157,21 +157,20 @@ export default function Door5CalculatorPage() {
   }
 
   return (
-    <AnyDoorPageShell>
-      <AnyDoorHero
-        eyebrow="AnyDoor Engine · D-5 · The Calculator"
-        titleAccent="The Calculator"
-        titleRest="Projected return"
-        subtitle="Projected return based on a few inputs — not what services cost. Pricing stays behind Door 6 until you're ready."
-      />
-
-      <div className="relative z-10 mx-auto max-w-2xl px-0 pb-24 selection:bg-[#c9973a]/30 selection:text-white">
+    <div className="anydoor-door-page min-h-screen">
+    <AnyDoorPageShell narrow={false}>
+      <div className="relative z-10 pb-24 selection:bg-[#c9973a]/30 selection:text-white">
         {phase === "gate" && (
-          <section className="anydoor-surface-card mx-auto mt-10 max-w-md">
-            <h2 className="text-lg font-light text-white" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
-              Before we model uplift
-            </h2>
-            <div className="mt-6 space-y-4">
+          <div className="mx-auto w-full max-w-[580px]">
+            <AnyDoorEntryScreen
+              eyebrow="ANYDOOR ENGINE · D-5 · THE CALCULATOR"
+              heading="What Would This Actually Be Worth?"
+              subtext1={"You can't justify the investment without knowing the return."}
+              subtext2="See what smarter marketing could be worth to your business in real numbers."
+              bodyText="Projected return based on a few inputs — not what services cost."
+            />
+          <section className="mx-auto w-full space-y-4">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="d5-name" className="anydoor-field-label--primary">
                   Name
@@ -211,14 +210,15 @@ export default function Door5CalculatorPage() {
               </div>
               {gateError && <p className="text-sm text-red-400">{gateError}</p>}
               <button type="button" className="anydoor-btn-gold" onClick={continueFromGate}>
-                Continue
+                Model my uplift →
               </button>
             </div>
           </section>
+          </div>
         )}
 
         {phase === "inputs" && (
-          <section className="mt-10 space-y-8">
+          <section className="space-y-8">
             <p className="text-center font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
               Step 1 of 2 · Your inputs
             </p>
@@ -385,6 +385,7 @@ export default function Door5CalculatorPage() {
         )}
       </div>
     </AnyDoorPageShell>
+    </div>
   );
 }
 

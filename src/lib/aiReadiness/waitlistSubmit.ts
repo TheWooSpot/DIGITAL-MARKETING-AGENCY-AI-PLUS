@@ -4,9 +4,9 @@ export type WaitlistPayload = {
   name: string;
   email: string;
   url: string | null;
-  rung: 2 | 3;
+  rung: 2 | 3 | 4;
   package_preference: string | null;
-  source: "rung2-landing" | "rung3-landing";
+  source: "rung2-landing" | "rung3-landing" | "rung4-landing";
 };
 
 export async function submitAiReadinessWaitlist(payload: WaitlistPayload): Promise<{ ok: true } | { ok: false; message: string }> {

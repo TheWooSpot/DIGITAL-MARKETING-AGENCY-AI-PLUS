@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <!--
-  Static copy of partner brief HTML (same body as src/pages/partner-brief/AI_Readiness_Labs_Partner_Brief.html).
-  Replace with your full export when available.
+  Standalone HTML source for /partner-brief. PartnerBrief.tsx imports ?raw:
+  - Injects <head><style> + font links
+  - Loads Supabase UMD → ElevenLabs widget → replaces __PARTNER_BRIEF_CONFIG_JSON__ and runs <script> body
+  - dangerouslySetInnerHTML for <body> without <script> tags
 -->
 <html lang="en">
 <head>
@@ -219,8 +221,8 @@
           <h2>Talk with the brief (voice)</h2>
           <p>Use the widget below to speak with our conversational agent about this document. Allowed domains must include your deployment host in the ElevenLabs agent settings.</p>
           <div class="pb-widget-wrap">
-            <p class="hint">ElevenLabs ConvAI widget · agent id supplied by the host app (environment variable).</p>
-            <elevenlabs-convai id="pb-el-widget" agent-id=""></elevenlabs-convai>
+            <p class="hint">ElevenLabs ConvAI widget · fixed agent for this brief.</p>
+            <elevenlabs-convai id="pb-el-widget" agent-id="agent_7101knt9k0rkehmsy89j1thxsqzn"></elevenlabs-convai>
           </div>
         </section>
 
@@ -232,35 +234,174 @@
   </div>
 
   <script>
-    (function () {
-      var storageKey = "socialutely_partner_brief_ok";
-      var gate = document.getElementById("pb-gate");
-      var main = document.getElementById("pb-main");
-      var form = document.getElementById("pb-gate-form");
-      var input = document.getElementById("pb-access");
-      var err = document.getElementById("pb-gate-err");
-      var expected = "PARTNER";
+(function(){
+var CONFIG = __PARTNER_BRIEF_CONFIG_JSON__;
+var storageKey = "socialutely_partner_brief_ok";
+var gate = document.getElementById("pb-gate");
+var main = document.getElementById("pb-main");
+var form = document.getElementById("pb-gate-form");
+var input = document.getElementById("pb-access");
+var err = document.getElementById("pb-gate-err");
+var urlToken = (function(){ try { var t = new URLSearchParams(window.location.search).get("token"); return t ? String(t).trim() : null; } catch (e) { return null; } })();
 
-      function unlock() {
-        gate.style.display = "none";
-        main.classList.add("visible");
-        try { sessionStorage.setItem(storageKey, "1"); } catch (e) {}
+function ensureBadge() {
+  var badge = document.getElementById("pb-token-badge");
+  if (!badge) {
+    badge = document.createElement("p");
+    badge.id = "pb-token-badge";
+    badge.setAttribute("aria-live", "polite");
+    document.body.appendChild(badge);
+  }
+  return badge;
+}
+
+function setupWidgetAgent() {
+  var widget = document.querySelector("elevenlabs-convai#pb-el-widget");
+  if (widget && CONFIG.agentId) {
+    widget.setAttribute("agent-id", CONFIG.agentId);
+  }
+}
+
+function applyPartnerFirstName(data) {
+  if (data && data.partner_first_name) {
+    var widget = document.querySelector("elevenlabs-convai");
+    if (widget) {
+      widget.setAttribute(
+        "dynamic-variables",
+        JSON.stringify({ partner_name: data.partner_first_name })
+      );
+    }
+  }
+}
+
+function showMainAndExtras(data) {
+  if (gate) gate.style.display = "none";
+  if (main) main.classList.add("visible");
+  try { sessionStorage.setItem(storageKey, "1"); } catch (e) {}
+  setupWidgetAgent();
+  if (data) {
+    applyPartnerFirstName(data);
+    var badge = ensureBadge();
+    if (badge && typeof data.call_count === "number" && typeof data.max_calls === "number") {
+      var remaining = Math.max(0, data.max_calls - data.call_count);
+      badge.textContent =
+        remaining >= 9000
+          ? "unlimited access"
+          : remaining + " conversation" + (remaining === 1 ? "" : "s") + " remaining";
+      badge.removeAttribute("hidden");
+      badge.style.display = "block";
+    }
+  }
+}
+
+function fetchTokenRow(cb) {
+  if (!urlToken || !window.supabase || !CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) {
+    cb(null, null);
+    return;
+  }
+  var client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+  client
+    .from(CONFIG.tableName)
+    .select("id, call_count, max_calls, partner_name, partner_first_name, expires_at, is_active")
+    .eq(CONFIG.tokenColumn, urlToken)
+    .maybeSingle()
+    .then(function (res) {
+      cb(res.error, res.data);
+    })
+    .catch(function (e) {
+      cb(e, null);
+    });
+}
+
+function validateTokenThen(ok) {
+  if (!urlToken) {
+    ok(null);
+    return;
+  }
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) {
+    if (err) {
+      err.textContent = "Partner token access is not configured on this deployment.";
+      err.classList.add("visible");
+    }
+    return;
+  }
+  fetchTokenRow(function (error, data) {
+    if (error) {
+      console.error("Partner brief token check failed:", error);
+      if (err) {
+        err.textContent =
+          "We couldn't verify this link (connection or server issue). Try again, or contact Socialutely if it continues.";
+        err.classList.add("visible");
       }
-
-      if (sessionStorage.getItem(storageKey) === "1") {
-        unlock();
+      return;
+    }
+    if (!data) {
+      console.warn("Partner brief: no matching token row for this link.");
+      if (err) {
+        err.textContent =
+          "That access link is not valid or has expired. Copy the full URL you were sent, or ask Socialutely for a new link.";
+        err.classList.add("visible");
       }
+      return;
+    }
+    if (!data.is_active) {
+      if (err) {
+        err.textContent = "This access is no longer active.";
+        err.classList.add("visible");
+      }
+      return;
+    }
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      if (err) {
+        err.textContent = "This access link has expired.";
+        err.classList.add("visible");
+      }
+      return;
+    }
+    ok(data);
+  });
+}
 
-      form.addEventListener("submit", function (e) {
-        e.preventDefault();
-        err.classList.remove("visible");
-        if ((input.value || "").trim().toUpperCase() === expected) {
-          unlock();
-        } else {
-          err.classList.add("visible");
-        }
-      });
-    })();
+function unlockWithoutToken() {
+  showMainAndExtras(null);
+}
+
+if (!form || !input || !err || !gate || !main) return;
+
+if (sessionStorage.getItem(storageKey) === "1") {
+  if (urlToken) {
+    validateTokenThen(function (data) {
+      if (!data) return;
+      showMainAndExtras(data);
+    });
+  } else {
+    gate.style.display = "none";
+    main.classList.add("visible");
+    setupWidgetAgent();
+  }
+}
+
+var phraseErrText =
+  "That phrase doesn't match. Try again or contact your Socialutely liaison.";
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+  err.classList.remove("visible");
+  if ((input.value || "").trim().toUpperCase() !== CONFIG.accessPhrase.toUpperCase()) {
+    err.textContent = phraseErrText;
+    err.classList.add("visible");
+    return;
+  }
+  if (urlToken) {
+    validateTokenThen(function (data) {
+      if (!data) return;
+      showMainAndExtras(data);
+    });
+  } else {
+    unlockWithoutToken();
+  }
+});
+})();
   </script>
 </body>
 </html>

@@ -160,7 +160,7 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative mx-auto w-full max-w-md space-y-4">
+    <form onSubmit={handleSubmit} className="relative mx-auto w-full space-y-4">
       <DiagnosticLoadingOverlay active={loading} stageIndex={loadingStage} progress={loadingProgress} />
       <div>
         <label htmlFor="url" className="anydoor-field-label--primary">

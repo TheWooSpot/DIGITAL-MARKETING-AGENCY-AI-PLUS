@@ -1,20 +1,29 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-/** Matches D-2 · The Mirror / Door B1 URL diagnostic: centered nav, Cormorant hero — inherits global grid from `body`. */
+export { AnyDoorEntryScreen } from "./AnyDoorEntryScreen";
+
+/** AnyDoor inner pages: generous top padding, back link top-left. Use `narrow` for 580px door entries (default). */
 export function AnyDoorPageShell({
   children,
   backHref = "/",
-  backLabel = "← Platform home",
+  backLabel = "← Home",
+  narrow = true,
 }: {
   children: ReactNode;
   backHref?: string;
   backLabel?: string;
+  /** Default true — max 580px centered (nine doors). Set false for labs / long-form layouts. */
+  narrow?: boolean;
 }) {
   return (
     <div className="anydoor-exp-body min-h-screen selection:bg-[#c9973a]/25 selection:text-white">
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12 lg:max-w-6xl">
-        <nav className="no-print mb-8 text-center">
+      <main
+        className={`relative mx-auto w-full px-4 pb-16 pt-20 sm:px-6 ${
+          narrow ? "max-w-[580px]" : "max-w-5xl lg:max-w-6xl"
+        }`}
+      >
+        <nav className="no-print mb-10 text-left">
           <Link to={backHref} className="anydoor-exp-navlink">
             {backLabel}
           </Link>

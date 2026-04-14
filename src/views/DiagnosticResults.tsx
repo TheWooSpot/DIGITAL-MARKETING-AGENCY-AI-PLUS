@@ -14,7 +14,7 @@ const DiagnosticResults = () => {
 
   if (!result) {
     return (
-      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment" narrow={false}>
         <div className="mx-auto max-w-md py-16 text-center">
           <div className="anydoor-surface-card">
             <p className="text-white/60">No results found. Take the assessment first.</p>
@@ -28,7 +28,7 @@ const DiagnosticResults = () => {
   }
 
   return (
-    <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+    <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment" narrow={false}>
       <AnyDoorHero
         eyebrow="SOCIALUTELY · AI IQ™ RESULTS"
         titleAccent="Your assessment"

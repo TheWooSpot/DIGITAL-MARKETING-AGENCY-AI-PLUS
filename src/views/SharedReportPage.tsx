@@ -60,7 +60,7 @@ export default function SharedReportPage() {
 
   if (!routeToken) {
     return (
-      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
         <div className="mx-auto max-w-md py-16 text-center">
           <p className="text-white/60">Invalid link.</p>
           <Link to="/doors/url-diagnostic" className="anydoor-exp-navlink mt-8 inline-block">
@@ -73,7 +73,7 @@ export default function SharedReportPage() {
 
   if (error && !result) {
     return (
-      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
         <div className="mx-auto max-w-md py-16 text-center">
           <div className="anydoor-surface-card">
             <p className="text-white/70">{error}</p>
@@ -88,7 +88,7 @@ export default function SharedReportPage() {
 
   if (!result) {
     return (
-      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+      <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
         <div className="flex min-h-[40vh] items-center justify-center py-16">
           <div className="flex flex-col items-center gap-4">
             <div
@@ -103,7 +103,7 @@ export default function SharedReportPage() {
   }
 
   return (
-    <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+    <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
       <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={routeToken} />
     </AnyDoorPageShell>
   );

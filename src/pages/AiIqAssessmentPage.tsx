@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
-import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { getBusinessEmailError } from "@/lib/aiIq/door4Email";
 import { topGapDomains } from "@/lib/aiIq/door4GapServices";
 import {
@@ -86,7 +86,7 @@ const RUNG3_URL =
   (import.meta.env.VITE_AI_IQ_RUNG3_URL as string | undefined)?.trim() || "/ai-readiness/rung-3";
 const RUNG4_URL =
   (import.meta.env.VITE_AI_IQ_DISCOVERY_CALENDAR_URL as string | undefined)?.trim() ||
-  "https://cal.com/placeholder";
+  "/ai-readiness/rung-4";
 
 function domainBarColor(score: number, max: number): string {
   const r = max > 0 ? score / max : 0;
@@ -608,7 +608,7 @@ export default function AiIqAssessmentPage() {
   if (phase === "loading") {
     return (
       <div className="anydoor-door-page min-h-screen">
-        <AnyDoorPageShell>
+        <AnyDoorPageShell narrow={false}>
           <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
             <div
               className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
@@ -623,21 +623,22 @@ export default function AiIqAssessmentPage() {
 
   return (
     <div className="anydoor-door-page min-h-screen">
-    <AnyDoorPageShell>
+    <AnyDoorPageShell narrow={false}>
       {phase === "gate" && (
-        <>
-          <AnyDoorHero
-            eyebrow="AnyDoor Engine · D-4 · AI IQ™"
-            titleAccent="AI IQ™"
-            titleRest="Assessment"
-            subtitle="Socialutely · AI Readiness Labs™ — a few details, then one question at a time. About 8–12 minutes."
+        <div className="mx-auto w-full max-w-[580px]">
+          <AnyDoorEntryScreen
+            eyebrow="ANYDOOR ENGINE · D-4 · AI IQ™"
+            heading="Find Out Exactly Where Your AI Stands"
+            subtext1={"You don't know where your organization stands on AI readiness."}
+            subtext2="A real score across 7 dimensions and a clear path to where you go next."
+            bodyText="About 8–12 minutes. One question at a time."
           />
           {loadError && (
-            <p className="mx-auto mb-6 max-w-md rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-200">
+            <p className="mx-auto mb-6 w-full rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-200">
               {loadError}
             </p>
           )}
-          <section className="mx-auto w-full max-w-md space-y-4">
+          <section className="mx-auto w-full space-y-4">
             <div>
               <label htmlFor="aiq-name" className="anydoor-field-label--primary">
                 Name
@@ -685,10 +686,10 @@ export default function AiIqAssessmentPage() {
               onClick={() => void startQuiz()}
               disabled={questions.length === 0}
             >
-              Begin assessment
+              Begin assessment →
             </button>
           </section>
-        </>
+        </div>
       )}
 
       {phase === "personalized_intro" && (

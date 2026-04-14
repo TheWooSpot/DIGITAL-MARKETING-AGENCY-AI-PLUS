@@ -1,9 +1,53 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { usePartnerBriefVapiCall } from "@/lib/usePartnerBriefVapiCall";
 
-/** Spuds (Partner Brief) — ElevenLabs ConvAI agent id. Single source of truth (not env). */
-const PARTNER_BRIEF_CONVAI_AGENT_ID = "agent_7101knt9k0rkehmsy89j1thxsqzn";
+/** Partner Brief: Supabase gate (PB_INIT) + Vapi Tap to Talk (same stack as /diagnostic). */
+
+// ─── Spuds Voice Button ────────────────────────────────────
+function SpudsVoiceButton() {
+  const voice = usePartnerBriefVapiCall();
+
+  const handleClick = useCallback(() => {
+    if (voice.isCallActive) {
+      voice.end();
+    } else {
+      voice.clearError();
+      voice.start();
+    }
+  }, [voice]);
+
+  const disabled = !voice.hasPublicKey || (!voice.isCallActive && voice.startLocked);
+  const label = voice.isCallActive ? "END CALL" : voice.startLocked ? "CONNECTING..." : "TAP TO TALK";
+  const activeClass = voice.isCallActive ? " active" : "";
+
+  return (
+    <div className="spuds-voice-frame">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={handleClick}
+        className={`gold-ttt-btn${activeClass}`}
+        aria-label={label}
+      >
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      </button>
+      <div className="spuds-voice-label">{label}</div>
+      {voice.error && (
+        <div className="spuds-voice-error">{voice.error}</div>
+      )}
+    </div>
+  );
+}
 
 export default function PartnerBrief() {
+  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
+
   useEffect(() => {
     document.title = "Partner Brief — AI Readiness Labs";
     let cancelled = false;
@@ -26,36 +70,33 @@ export default function PartnerBrief() {
     s1.onerror = () => console.error("Partner Brief: Supabase failed to load.");
     s1.onload = () => {
       if (cancelled) return;
-      const sdk = document.createElement("script");
-      sdk.id = "pb-11labs-client";
-      sdk.src = "https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.1.2/dist/lib.iife.js";
-      sdk.onerror = () => console.error("Partner Brief: @elevenlabs/client failed to load.");
-      sdk.onload = () => {
-        if (cancelled) return;
-        const init = document.createElement("script");
-        init.id = "pb-init";
-        init.textContent = PB_INIT;
-        document.body.appendChild(init);
-
-        const conv = document.createElement("script");
-        conv.id = "pb-elevenlabs";
-        conv.src = "https://elevenlabs.io/convai-widget/index.js";
-        conv.async = true;
-        document.body.appendChild(conv);
+      const init = document.createElement("script");
+      init.id = "pb-init";
+      // Expose callback so PB_INIT can tell React when gate is passed
+      (window as Record<string, unknown>)._pbOnUnlock = () => {
+        const target = document.getElementById("pb-voice-mount");
+        if (target) setPortalTarget(target);
       };
-      document.body.appendChild(sdk);
+      init.textContent = PB_INIT;
+      document.body.appendChild(init);
     };
     document.body.appendChild(s1);
 
     return () => {
       cancelled = true;
-      ["pb-fonts", "pb-styles", "pb-supabase", "pb-11labs-client", "pb-init", "pb-elevenlabs", "pb-badge"].forEach((id) => {
+      delete (window as Record<string, unknown>)._pbOnUnlock;
+      ["pb-fonts", "pb-styles", "pb-supabase", "pb-init"].forEach((id) => {
         document.getElementById(id)?.remove();
       });
     };
   }, []);
 
-  return <div dangerouslySetInnerHTML={{ __html: PB_BODY }} />;
+  return (
+    <>
+      <div dangerouslySetInnerHTML={{ __html: PB_BODY }} />
+      {portalTarget && createPortal(<SpudsVoiceButton />, portalTarget)}
+    </>
+  );
 }
 
 // ─── STYLES ───────────────────────────────────────────────
@@ -153,28 +194,21 @@ h3{font-size:18px;font-weight:600;color:var(--gold);margin-bottom:10px;}
 .ag-n{font-size:14px;font-weight:600;color:var(--gold);min-width:26px;margin-top:2px;}
 .ag-t{font-size:15px;color:#8a9bb5;line-height:1.65;}
 .ag-t strong{color:var(--white);font-weight:500;}
-elevenlabs-convai {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-/* Tap to Talk — same dimensions as /diagnostic; ElevenLabs ConvAI only. */
-.pb-diag-voice-card{width:100%;margin-top:32px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:#07080d;padding:40px 24px;text-align:center;}
-@media(min-width:640px){.pb-diag-voice-card{padding-left:40px;padding-right:40px;}}
-.pb-diag-voice-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:0.35em;color:#c9973a;font-weight:500;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;}
-.pb-diag-voice-h3{margin-top:16px;font-family:'DM Serif Display',Georgia,serif;font-size:42px;font-weight:300;font-style:italic;line-height:1.15;color:#fff;}
-.pb-diag-voice-desc{max-width:36rem;margin:16px auto 0;font-size:14px;line-height:1.65;color:rgba(255,255,255,0.55);}
-.pb-diag-tt-btn,.ttt-btn{display:flex;margin:32px auto 0;width:140px;height:140px;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:50%;border:2px solid #c9973a;background:rgba(201,151,58,0.1);color:#c9973a;transition:background-color .15s,box-shadow .15s;cursor:pointer;padding:0;font:inherit;box-sizing:border-box;}
-.pb-diag-tt-btn:hover:not(:disabled),.ttt-btn:hover:not(:disabled){background:rgba(201,151,58,0.2);}
-.pb-diag-tt-btn:disabled,.ttt-btn:disabled{opacity:0.4;cursor:not-allowed;}
-.pb-diag-tt-mic{height:36px;width:36px;flex-shrink:0;}
-.pb-diag-tt-lbl{font-size:8px;font-weight:700;line-height:1.2;letter-spacing:0.2em;text-transform:uppercase;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;}
-.pb-diag-tt-btn.active,.ttt-btn.active{animation:none;box-shadow:0 0 0 2px rgba(201,151,58,0.6);}
-#pb-ttt-status{margin-top:12px;min-height:1.25em;font-size:13px;color:var(--muted);}
 .pb-footer{border-top:1px solid var(--border2);padding-top:28px;margin-top:80px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
 .ft-b{font-size:12px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
 .ft-n{font-size:12px;color:var(--dim);}
 @media(max-width:620px){.wrap{padding:0 20px 80px;}.two-col{grid-template-columns:1fr;}.pgrid{grid-template-columns:1fr 1fr;}.rung-card{padding:24px 20px;}}
+/* ── Spuds Vapi Tap to Talk ──────────────────────────────────────────────
+   React portal mounts SpudsVoiceButton into #pb-voice-mount after gate
+   passes. Uses @vapi-ai/web — same stack as /diagnostic. */
+.spuds-voice-frame{display:flex;flex-direction:column;align-items:center;margin:32px auto;gap:14px;}
+.gold-ttt-btn{width:140px;height:140px;border-radius:50%;background:transparent;border:2px solid #c9993a;color:#c9993a;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,box-shadow 0.2s;animation:spuds-pulse 2.5s ease-in-out infinite;}
+.gold-ttt-btn:hover:not(:disabled){background:rgba(201,153,58,0.08);}
+.gold-ttt-btn:disabled{opacity:0.5;cursor:not-allowed;animation:none;}
+.gold-ttt-btn.active{background:rgba(201,153,58,0.12);animation:none;box-shadow:0 0 0 8px rgba(201,153,58,0.08),0 0 0 18px rgba(201,153,58,0.04);}
+@keyframes spuds-pulse{0%{box-shadow:0 0 0 0 rgba(201,153,58,0.4);}70%{box-shadow:0 0 0 16px rgba(201,153,58,0);}100%{box-shadow:0 0 0 0 rgba(201,153,58,0);}}
+.spuds-voice-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#c9993a;font-family:'DM Sans',sans-serif;}
+.spuds-voice-error{font-size:13px;color:#e04040;margin-top:4px;max-width:320px;text-align:center;line-height:1.5;}
 `;
 
 // ─── INIT SCRIPT ──────────────────────────────────────────
@@ -183,116 +217,6 @@ const PB_INIT = `
   var ACCESS_PHRASE = 'PARTNER';
   var SUPA_URL = 'https://aagggflwhadxjjhcaohc.supabase.co';
   var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2dnZmx3aGFkeGpqaGNhb2hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NjIwMzMsImV4cCI6MjA4ODQzODAzM30.v4krDE31xAq9vt7Uq4eR2SmKvLLnkMk7MeGKT3SdGdA';
-  var AGENT_ID = '${PARTNER_BRIEF_CONVAI_AGENT_ID}';
-
-  window.pbPartnerFirstName = null;
-  window._pbPartnerName = null;
-  window._pbTokenBilling = null;
-
-  window.pbStartCall = async function () {
-    var btn = document.getElementById('pb-ttt-btn');
-    var status = document.getElementById('pb-ttt-status');
-    var lbl = document.getElementById('pb-ttt-lbl');
-
-    /* End-call first so hang-up is never blocked by _pbCallLock. */
-    if (window._pbConversation) {
-      try {
-        await window._pbConversation.endSession();
-      } catch (e) {}
-      window._pbConversation = null;
-      if (btn) {
-        btn.classList.remove('active');
-        btn.style.pointerEvents = 'auto';
-      }
-      if (status) status.textContent = '';
-      if (lbl) lbl.textContent = 'TAP TO TALK';
-      return;
-    }
-
-    if (window._pbCallLock) return;
-    window._pbCallLock = true;
-    setTimeout(function () {
-      window._pbCallLock = false;
-    }, 3000);
-
-    if (btn) btn.style.pointerEvents = 'none';
-
-    if (btn) btn.classList.add('active');
-    if (status) status.textContent = 'Requesting microphone...';
-    if (lbl) lbl.textContent = 'CONNECTING...';
-
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      window._pbCallLock = false;
-      if (btn) {
-        btn.classList.remove('active');
-        btn.style.pointerEvents = 'auto';
-      }
-      if (status) status.textContent = 'Microphone access is required to talk to Spuds.';
-      if (lbl) lbl.textContent = 'TAP TO TALK';
-      return;
-    }
-
-    if (status) status.textContent = 'Connecting to Spuds...';
-
-    try {
-      var dynamicVars = {};
-      if (window._pbPartnerName) {
-        dynamicVars.partner_name = window._pbPartnerName;
-      }
-
-      window._pbConversation = await ElevenLabsClient.Conversation.startSession({
-        agentId: AGENT_ID,
-        dynamicVariables: Object.keys(dynamicVars).length ? dynamicVars : undefined,
-        onConnect: function () {
-          var b = document.getElementById('pb-ttt-btn');
-          if (b) b.style.pointerEvents = 'auto';
-          var bill = window._pbTokenBilling;
-          if (bill) {
-            window._pbTokenBilling = null;
-            bill.sb
-              .from('partner_brief_tokens')
-              .update({ call_count: bill.prevCount + 1 })
-              .eq('id', bill.id)
-              .then(function () {}, function () {});
-          }
-          if (status) status.textContent = '';
-          if (lbl) lbl.textContent = 'END CALL';
-        },
-        onDisconnect: function () {
-          window._pbConversation = null;
-          var b2 = document.getElementById('pb-ttt-btn');
-          if (b2) {
-            b2.classList.remove('active');
-            b2.style.pointerEvents = 'auto';
-          }
-          if (status) status.textContent = '';
-          if (lbl) lbl.textContent = 'TAP TO TALK';
-        },
-        onError: function (err) {
-          console.error('Spuds error:', err);
-          window._pbConversation = null;
-          var b3 = document.getElementById('pb-ttt-btn');
-          if (b3) {
-            b3.classList.remove('active');
-            b3.style.pointerEvents = 'auto';
-          }
-          if (status) status.textContent = 'Could not connect — try again.';
-          if (lbl) lbl.textContent = 'TAP TO TALK';
-        }
-      });
-    } catch (e) {
-      console.error('Spuds start failed:', e);
-      window._pbCallLock = false;
-      if (btn) {
-        btn.classList.remove('active');
-        btn.style.pointerEvents = 'auto';
-      }
-      if (status) status.textContent = 'Connection failed — try again.';
-      if (lbl) lbl.textContent = 'TAP TO TALK';
-    }
-  };
 
   function showErr(msg) {
     var e = document.getElementById('pb-err');
@@ -307,11 +231,10 @@ const PB_INIT = `
     if (gate) gate.classList.add('hidden');
     if (main) main.style.display = 'block';
 
-    if (!data) {
-      window._pbTokenBilling = null;
-    }
-    window.pbPartnerFirstName = data && data.partner_first_name ? data.partner_first_name : null;
-    window._pbPartnerName = window.pbPartnerFirstName;
+    window._pbPartnerName = data && (data.partner_first_name || data.partner_name) ? String(data.partner_first_name || data.partner_name).trim() : '';
+
+    // Notify React to mount the Vapi voice button into #pb-voice-mount
+    if (typeof window._pbOnUnlock === 'function') window._pbOnUnlock();
 
     if (data) {
       var r = Math.max(0, data.max_calls - data.call_count);
@@ -356,7 +279,6 @@ const PB_INIT = `
         return;
       }
       unlockContent(data);
-      window._pbTokenBilling = { sb: sb, id: data.id, prevCount: data.call_count };
     } catch (e) {
       console.error('Token validation error:', e);
       showErr('Could not verify this link. Try again.');
@@ -549,21 +471,15 @@ const PB_BODY = `
 <hr class="rule"/>
 
 <div class="spuds-sec">
+  <span class="slbl">SPUDS · AI READINESS LABS ADVISOR</span>
+  <div class="stitle">Talk to Spuds</div>
+  <div class="ssub">Spuds knows the Labs well enough to talk through any of the four rungs honestly. Ask questions, share concerns, push back. That's what he's here for.</div>
   <ul class="ag">
     <li><div class="ag-n">01</div><div class="ag-t"><strong>What would make you enroll in Rung 2?</strong> As a business owner who just scored lower than expected — what would have to be true for you to say yes?</div></li>
     <li><div class="ag-n">02</div><div class="ag-t"><strong>What does a great Rung 3 session look like?</strong> An advisor with you for 90 minutes, building live — what makes that worth every dollar?</div></li>
     <li><div class="ag-n">03</div><div class="ag-t"><strong>What's the one friction point that stops someone cold?</strong> At any rung — pricing, trust, clarity. What needs solving before this goes to market?</div></li>
   </ul>
-  <div class="pb-diag-voice-card">
-    <p class="pb-diag-voice-eyebrow">Spuds · AI Readiness Labs Advisor</p>
-    <h3 class="pb-diag-voice-h3">Talk to Spuds</h3>
-    <p class="pb-diag-voice-desc">Spuds knows the Labs well enough to talk through any of the four rungs honestly. Ask questions, share concerns, push back. That's what he's here for.</p>
-    <button type="button" id="pb-ttt-btn" class="pb-diag-tt-btn ttt-btn anydoor-tap-pulse" onclick="window.pbStartCall()" title="Start or end ElevenLabs ConvAI voice session with Spuds">
-      <svg class="pb-diag-tt-mic" xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-      <span id="pb-ttt-lbl" class="pb-diag-tt-lbl">TAP TO TALK</span>
-    </button>
-    <p id="pb-ttt-status" class="pb-ttt-status"></p>
-  </div>
+  <div id="pb-voice-mount"></div>
 </div>
 
 <div class="pb-footer">

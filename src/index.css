@@ -471,9 +471,57 @@ All colors MUST be HSL.
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--anydoor-gold) 22%, transparent);
   }
 
+  /** AnyDoor entry screens — eyebrow / platform / heading / subtext (aligned with /diagnostic) */
+  .anydoor-entry-eyebrow {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--anydoor-gold);
+    line-height: 1.35;
+  }
+
+  .anydoor-entry-platform {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 11px;
+    color: #6a7d9a;
+    line-height: 1.4;
+  }
+
+  .anydoor-entry-heading {
+    font-family: var(--font-dm-serif-display), Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    line-height: 1.15;
+    color: var(--anydoor-gold);
+  }
+
+  .anydoor-entry-sub1 {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    font-style: italic;
+    color: rgba(232, 238, 245, 0.5);
+  }
+
+  .anydoor-entry-sub2 {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: rgba(232, 238, 245, 0.72);
+  }
+
+  .anydoor-entry-body {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: rgba(232, 238, 245, 0.55);
+  }
+
   .anydoor-btn-gold {
     font-family: var(--font-dm-sans), system-ui, sans-serif;
-    @apply w-full rounded-lg px-6 py-3 font-semibold text-[#07090f] transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-60;
+    @apply w-full rounded-lg px-6 py-3 text-base font-bold text-[#07090f] transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-60;
     background-color: var(--anydoor-gold);
   }
   .anydoor-btn-gold:hover {
@@ -543,6 +591,73 @@ All colors MUST be HSL.
   .door3-page-root > * {
     position: relative;
     z-index: 1;
+  }
+
+  /**
+   * Platform home — AnyDoor grid cards (D-1…D-9): same ink + gold grid as Door B1 entry.
+   */
+  .anydoor-home-door-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: #07090f;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .anydoor-home-door-card:hover {
+    border-color: rgba(201, 151, 58, 0.4);
+    box-shadow: 0 0 0 1px rgba(201, 151, 58, 0.15);
+  }
+
+  .anydoor-home-door-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(201, 153, 58, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201, 153, 58, 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: center top;
+  }
+
+  .anydoor-home-door-card-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .anydoor-home-door-eyebrow {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--anydoor-gold);
+    line-height: 1.35;
+  }
+
+  .anydoor-home-door-header {
+    font-family: var(--font-dm-serif-display), Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+    line-height: 1.2;
+    color: var(--anydoor-gold);
+  }
+
+  .anydoor-home-door-platform {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 11px;
+    color: #6a7d9a;
+  }
+
+  .anydoor-home-door-cta-muted {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    @apply w-full cursor-not-allowed rounded-lg border border-white/15 bg-white/[0.04] px-6 py-3 text-center text-sm font-semibold text-white/40;
   }
 
   /* AI Readiness Labs — Partner Brief (/partner-brief); matches standalone brief HTML tokens */
@@ -859,6 +974,49 @@ All colors MUST be HSL.
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  .dreamscape-generate-wrap {
+    transition: opacity 0.4s ease;
+  }
+  .dreamscape-generate-btn {
+    width: 100%;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  .dreamscape-report-loading-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: #c9973a;
+    animation: dreamscape-loading-pulse 1s ease-in-out infinite;
+  }
+  @keyframes dreamscape-loading-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.92);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .dreamscape-report-shell {
+    margin-left: auto;
+    margin-right: auto;
+    animation: dreamscape-report-fade 0.55s ease forwards;
+  }
+  @keyframes dreamscape-report-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 }

@@ -7,7 +7,8 @@ const DiagnosticUnlock = () => {
   const navigate = useNavigate();
 
   return (
-    <AnyDoorPageShell backHref="/" backLabel="← Platform home">
+    <div className="anydoor-door-page min-h-screen">
+    <AnyDoorPageShell backHref="/" backLabel="← Home" narrow={false}>
       <AnyDoorHero
         eyebrow="AI MATURITY · PHASE 2"
         titleAccent="Unlock your"
@@ -45,6 +46,7 @@ const DiagnosticUnlock = () => {
         </div>
       </motion.div>
     </AnyDoorPageShell>
+    </div>
   );
 };
 

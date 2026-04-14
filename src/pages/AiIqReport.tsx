@@ -386,7 +386,7 @@ export default function AiIqReport() {
 
   if (loading) {
     return (
-      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment" narrow={false}>
         <div className="flex min-h-[45vh] flex-col items-center justify-center gap-4 py-16">
           <div
             className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
@@ -400,7 +400,7 @@ export default function AiIqReport() {
 
   if (fetchError) {
     return (
-      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment" narrow={false}>
         <div className="mx-auto max-w-md text-center">
           <div className="anydoor-surface-card">
             <p className="text-lg font-medium text-white">Something went wrong</p>
@@ -416,7 +416,7 @@ export default function AiIqReport() {
 
   if (notFound || !row) {
     return (
-      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+      <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment" narrow={false}>
         <div className="mx-auto max-w-md text-center">
           <div className="anydoor-surface-card">
             <p className="text-lg font-medium text-white">Report not found</p>
@@ -434,7 +434,7 @@ export default function AiIqReport() {
   const biz = row.business_name?.trim() || row.full_name?.trim() || "your organization";
 
   return (
-    <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment">
+    <AnyDoorPageShell backHref="/ai-iq" backLabel="← AI IQ™ assessment" narrow={false}>
       <AnyDoorHero
         eyebrow="SOCIALUTELY · AI IQ™ REPORT"
         titleAccent="Your AI IQ™ Report"

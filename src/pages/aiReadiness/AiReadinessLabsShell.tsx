@@ -20,8 +20,10 @@ export function AiReadinessLabsShell({
 }) {
   void _eyebrow;
   return (
-    <AnyDoorPageShell>
-      <div className="mx-auto max-w-3xl pb-12 selection:bg-[#c9973a]/25 selection:text-white">{children}</div>
-    </AnyDoorPageShell>
+    <div className="anydoor-door-page min-h-screen">
+      <AnyDoorPageShell narrow={false}>
+        <div className="mx-auto max-w-3xl pb-12 selection:bg-[#c9973a]/25 selection:text-white">{children}</div>
+      </AnyDoorPageShell>
+    </div>
   );
 }

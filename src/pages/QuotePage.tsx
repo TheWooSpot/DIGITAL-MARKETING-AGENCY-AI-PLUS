@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router-dom";
-import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
+import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { BUSINESS_SIZE_LABEL, type BusinessSize } from "@/lib/calculator/door5Math";
 
 const DIM = "rgba(232,238,245,0.55)";
@@ -22,15 +22,16 @@ export default function QuotePage() {
     .filter(Boolean);
 
   return (
+    <div className="anydoor-door-page min-h-screen">
     <AnyDoorPageShell backHref="/calculator" backLabel="← Back to calculator">
-      <AnyDoorHero
-        eyebrow="AnyDoor Engine · D-6 · The Quote"
-        titleAccent="Your personalized"
-        titleRest="quote"
-        subtitle="Line-item pricing unlocks here after we confirm your business email. This step is wired for selections from the calculator."
+      <AnyDoorEntryScreen
+        eyebrow="ANYDOOR ENGINE · D-6 · THE QUOTE"
+        heading={"You Know What You Want. Here's the Answer."}
+        subtext1="You know what you need — you just want a number."
+        subtext2="A transparent, itemized quote built around your specific situation."
       />
 
-      <div className="anydoor-surface-card mx-auto mt-10 max-w-lg">
+      <div className="anydoor-surface-card mx-auto w-full">
         <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Pre-selected from D-5 · The Calculator</p>
         <ul className="mt-4 space-y-2 text-sm" style={{ color: DIM }}>
           <li>
@@ -44,9 +45,17 @@ export default function QuotePage() {
         </ul>
       </div>
 
-      <p className="mx-auto mt-8 max-w-lg text-xs" style={{ color: DIM }}>
+      <p className="mx-auto mt-8 text-xs" style={{ color: DIM }}>
         Full quote flow (email gate + pricing) can connect here next.
       </p>
+
+      <a
+        href="mailto:hello@socialutely.com?subject=Quote%20request%20(D-6)"
+        className="anydoor-btn-gold mt-8 inline-flex w-full items-center justify-center no-underline"
+      >
+        Get my quote →
+      </a>
     </AnyDoorPageShell>
+    </div>
   );
 }

@@ -195,7 +195,7 @@ export default function YourPackage() {
   }
 
   return (
-    <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic">
+    <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
       <AnyDoorHero
         eyebrow="ANYDOOR ENGINE · PACKAGE BUILDER"
         titleAccent={`${businessName}'s recommended`}
