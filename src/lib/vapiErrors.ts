@@ -3,9 +3,9 @@
  * Flatten to a string for UI + logging.
  */
 export function extractVapiErrorMessage(e: unknown): string {
-  if (e == null) return "Something went wrong";
-  if (typeof e === "string") return e;
-  if (e instanceof Error) return e.message;
+  if (e == null || e === undefined) return "Voice connection unavailable. Please try again in a moment.";
+  if (typeof e === "string") return e.trim() || "Voice connection unavailable. Please try again in a moment.";
+  if (e instanceof Error) return e.message || "Voice connection unavailable. Please try again in a moment.";
 
   const walk = (obj: unknown, depth: number): string | null => {
     if (depth > 6 || obj == null) return null;
@@ -40,11 +40,15 @@ export function extractVapiErrorMessage(e: unknown): string {
   };
 
   const found = walk(e, 0);
-  if (found) return found;
+  if (found && found.trim()) return found;
   try {
-    return JSON.stringify(e).slice(0, 500);
+    const s = JSON.stringify(e);
+    if (!s || s === "undefined" || s === "null" || s === "{}") {
+      return "Voice connection unavailable. Please try again in a moment.";
+    }
+    return s.slice(0, 500);
   } catch {
-    return "Something went wrong";
+    return "Voice connection unavailable. Please try again in a moment.";
   }
 }
 

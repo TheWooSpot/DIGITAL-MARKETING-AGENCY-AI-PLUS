@@ -25,12 +25,15 @@ function toUserFriendlyMessage(msg: unknown): string {
     return 'Microphone access denied. Please allow microphone permission in your browser and try again.';
   }
   if (lower.includes('invalid') && lower.includes('key')) {
-    return 'Invalid API key. Check your VITE_VAPI_PUBLIC_KEY in .env and restart the dev server.';
+    return 'Voice connection unavailable. Please try again in a moment.';
   }
   if (lower.includes('assistant') && (lower.includes('not found') || lower.includes('invalid'))) {
-    return 'Assistant not found. The assistant may have been removed or the ID changed.';
+    return 'Voice connection unavailable. Please try again in a moment.';
   }
-  return appendVapiAssistantKeyHint(str);
+  if (!str || str === 'undefined' || str === 'null') {
+    return 'Voice connection unavailable. Please try again in a moment.';
+  }
+  return 'Voice connection unavailable. Please try again in a moment.';
 }
 
 interface VapiVoiceChatProps {
@@ -107,16 +110,29 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
   const handleStart = () => {
     setError(null);
     setTranscript([]);
+
+    if (!vapi) {
+      setError('Voice connection unavailable. Please try again in a moment.');
+      return;
+    }
     const assistantId = getEvaluationSpecialistAssistantId();
+    console.log('[VapiVoiceChat] assistantId:', assistantId ? assistantId.slice(0, 8) + '...' : '(empty)');
     if (!assistantId) {
-      setError('Add VITE_VAPI_ASSISTANT_ID to your .env file and restart the dev server.');
+      setError('Voice connection unavailable. Please try again in a moment.');
       return;
     }
     if (!acquireVapiTapLock()) return;
     setStartLocked(true);
     window.setTimeout(() => setStartLocked(false), 3000);
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
-    vapi?.start(assistantId, { firstMessage: greeting });
+    try {
+      vapi.start(assistantId, { firstMessage: greeting });
+    } catch (e) {
+      console.error('[VapiVoiceChat] vapi.start() threw:', e);
+      setError('Voice connection unavailable. Please try again in a moment.');
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
+    }
   };
 
   const handleEnd = () => {

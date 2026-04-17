@@ -57,13 +57,16 @@ function toUserFriendlyMessage(msg: unknown): string {
   if (lower.includes("microphone") || lower.includes("permission") || lower.includes("not-allowed")) {
     return "Microphone access denied. Please allow microphone permission in your browser and try again.";
   }
+  if (!str || str === "undefined" || str === "null") {
+    return "Voice connection unavailable. Please try again in a moment.";
+  }
   if (lower.includes("invalid") && lower.includes("key")) {
-    return "Invalid API key. Set VITE_VAPI_PUBLIC_KEY in .env.local / Vercel and rebuild.";
+    return "Voice connection unavailable. Please try again in a moment.";
   }
   if (lower.includes("assistant") && (lower.includes("not found") || lower.includes("invalid"))) {
-    return "Assistant not found. The assistant may have been removed or the ID changed.";
+    return "Voice connection unavailable. Please try again in a moment.";
   }
-  return appendVapiAssistantKeyHint(str);
+  return "Voice connection unavailable. Please try again in a moment.";
 }
 
 export type DiagnosticVapiCall = {
@@ -146,10 +149,18 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
     window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     const variableValues = buildAssistantVariableValues(result);
-    vapi?.start(assistantId, {
-      maxDurationSeconds: 420,
-      variableValues,
-    });
+    console.log("[useDiagnosticVapiCall] starting assistantId:", assistantId.slice(0, 8) + "...");
+    try {
+      vapi?.start(assistantId, {
+        maxDurationSeconds: 420,
+        variableValues,
+      });
+    } catch (e) {
+      console.error("[useDiagnosticVapiCall] vapi.start() threw:", e);
+      setError("Voice connection unavailable. Please try again in a moment.");
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
+    }
   }, [hasPublicKey, result]);
 
   const end = useCallback(() => {
