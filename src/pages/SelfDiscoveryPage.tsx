@@ -558,9 +558,10 @@ export default function SelfDiscoveryPage() {
 
       {stage === "welcome" && (
         <section
-          className="door3-splash mx-auto flex w-full max-w-[580px] flex-col items-center px-5 pb-16 text-center"
-          style={{ paddingTop: "80px", gap: "48px" }}
+          className="door3-splash mx-auto flex w-full flex-col items-center px-5 pb-16 text-center"
+          style={{ paddingTop: "80px", gap: "32px", maxWidth: "820px" }}
         >
+          {/* Zone 1 — label + name headline */}
           <p
             className="text-[11px] font-medium uppercase tracking-[0.28em]"
             style={{ color: GOLD, fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
@@ -573,27 +574,72 @@ export default function SelfDiscoveryPage() {
           >
             {intro?.address ?? `${firstName.trim() || "Friend"} — thanks for being here.`}
           </h1>
-          <div className="w-full space-y-3">
-            {(intro?.nuggets ?? FALLBACK_INTRO.nuggets).slice(0, 2).map((n, i) => (
-              <p
-                key={`nug-${i}`}
-                className="text-lg italic leading-relaxed"
-                style={{ color: "rgba(201, 153, 58, 0.92)", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
-              >
-                {n}
-              </p>
-            ))}
-          </div>
-          <div className="h-px w-[80px] shrink-0" style={{ backgroundColor: GOLD, opacity: 0.85 }} aria-hidden />
-          <p
-            className="text-lg italic leading-snug text-white"
-            style={{ fontFamily: "var(--font-dm-serif-display), var(--font-cormorant), Georgia, serif" }}
+
+          {/* Zone 2 — dual glow boxes */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              gap: "20px",
+              margin: "0 auto",
+              width: "100%",
+            }}
+            className="welcome-boxes"
           >
-            Honest answers beat polished answers. Clarity here makes every next step easier.
+            <div
+              style={{
+                flex: 1,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(201, 153, 58, 0.3)",
+                boxShadow: "0 0 20px rgba(201, 153, 58, 0.15), inset 0 0 40px rgba(201, 153, 58, 0.03)",
+                borderRadius: "12px",
+                padding: "28px 32px",
+                fontStyle: "italic",
+                fontSize: "15px",
+                lineHeight: 1.75,
+                color: "rgba(255, 255, 255, 0.85)",
+                textAlign: "left",
+              }}
+            >
+              {(intro?.nuggets ?? FALLBACK_INTRO.nuggets)[0]}
+            </div>
+            <div
+              style={{
+                flex: 1,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(201, 153, 58, 0.3)",
+                boxShadow: "0 0 20px rgba(201, 153, 58, 0.15), inset 0 0 40px rgba(201, 153, 58, 0.03)",
+                borderRadius: "12px",
+                padding: "28px 32px",
+                fontStyle: "italic",
+                fontSize: "15px",
+                lineHeight: 1.75,
+                color: "rgba(255, 255, 255, 0.85)",
+                textAlign: "left",
+              }}
+            >
+              Honest answers beat polished ones. Clarity here makes every next step easier.
+            </div>
+          </div>
+
+          {/* Zone 3 — closing promise line */}
+          <p
+            style={{
+              fontSize: "13px",
+              color: "rgba(255, 255, 255, 0.4)",
+              textAlign: "center",
+              letterSpacing: "0.04em",
+              marginTop: "4px",
+              marginBottom: "32px",
+              fontStyle: "normal",
+              fontWeight: 300,
+              fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
+            }}
+          >
+            Seven questions. Open text. We&apos;ll reflect back exactly what we heard — nothing more.
           </p>
-          <p className="text-sm leading-relaxed text-white/50" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
-            Seven questions. Honest answers. We&apos;ll reflect back exactly what we hear.
-          </p>
+
+          {/* Zone 4 — status + CTA button */}
           {questionsReady ? (
             <p className="door3-status-ready text-sm" style={{ color: GOLD }}>
               Questions ready.

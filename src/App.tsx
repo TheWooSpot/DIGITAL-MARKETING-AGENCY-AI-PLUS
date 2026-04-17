@@ -28,8 +28,11 @@ import ThankYou from "./pages/ThankYou";
 import DirectReachPage from "./pages/DirectReachPage";
 import ReferralPage from "./pages/ReferralPage";
 import AdResponsePage from "./pages/AdResponsePage";
+import ComingSoonPage from "./pages/ComingSoonPage";
+import PortalPage from "./pages/PortalPage";
 
 const queryClient = new QueryClient();
+const isProduction = import.meta.env.VITE_SITE_ENV === 'production';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -40,7 +43,11 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
+              {isProduction
+                ? <Route path="/" element={<Navigate to="/coming-soon" replace />} />
+                : <Route path="/" element={<Index />} />
+              }
+              <Route path="/coming-soon" element={<ComingSoonPage />} />
               {/* D-2 · The Mirror = URL diagnostic; engineering id Door B1. Legacy /views/Diagnostic.tsx was AI IQ — use /ai-iq. */}
               <Route path="/doors/url-diagnostic" element={<DoorsUrlDiagnostic />} />
               <Route path="/diagnostic" element={<DoorsUrlDiagnostic />} />
@@ -68,6 +75,7 @@ const App = () => (
               <Route path="/ad-response" element={<AdResponsePage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/portal/:token" element={<PortalPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

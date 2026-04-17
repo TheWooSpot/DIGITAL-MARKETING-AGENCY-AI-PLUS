@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+  <style>
+    body { margin: 0; background: #07090f; }
+    .vr-page { position: relative; font-family: "DM Sans", system-ui, sans-serif; background: #07090f; color: #e8eef5; min-height: 100vh; }
+    .vr-page::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(201,153,58,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,153,58,0.07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .vr-inner { position: relative; z-index: 1; padding: 40px 24px 56px; max-width: 820px; margin: 0 auto; }
+    .vr-eyebrow { font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase; color: #c9993a; margin: 0 0 16px; font-weight: 500; }
+    .vr-client-name { font-family: "DM Serif Display", Georgia, serif; font-size: 42px; font-weight: 400; color: #ffffff; line-height: 1.1; margin: 0 0 12px; }
+    .vr-meta { font-size: 12px; color: rgba(232,238,245,0.45); margin: 0 0 28px; }
+    .vr-rule { height: 1px; background: linear-gradient(90deg, transparent, rgba(201,153,58,0.55), transparent); margin: 0 0 32px; }
+    .vr-sec-label { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: #c9993a; margin: 36px 0 14px; font-weight: 600; }
+    .vr-what { font-family: "DM Serif Display", Georgia, serif; font-size: 17px; font-style: italic; line-height: 1.65; color: rgba(232,238,245,0.92); margin: 0 0 20px; }
+    .vr-vision-wrap { margin: 0 0 24px; padding-left: 18px; border-left: 3px solid rgba(201,153,58,0.85); }
+    .vr-vision { font-family: "DM Serif Display", Georgia, serif; font-size: 22px; font-style: italic; line-height: 1.45; color: #e8eef5; margin: 0; }
+    .vr-tension { font-size: 17px; font-weight: 700; color: #07090f; background: linear-gradient(135deg, rgba(201,153,58,0.95), rgba(201,153,58,0.75)); padding: 16px 18px; border-radius: 8px; line-height: 1.5; margin: 0 0 20px; }
+    .vr-where-intro { font-size: 15px; line-height: 1.65; color: rgba(232,238,245,0.88); margin: 0 0 20px; }
+    .vr-card { border: 1px solid rgba(201,153,58,0.22); border-left: 4px solid #c9993a; border-radius: 10px; padding: 18px; margin-bottom: 14px; background: rgba(10,12,18,0.95); }
+    .vr-card-name { font-weight: 700; color: #c9993a; margin: 0 0 10px; font-size: 16px; }
+    .vr-card-line { font-size: 14px; color: rgba(232,238,245,0.85); margin: 0 0 8px; line-height: 1.55; }
+    .vr-card-why { font-size: 14px; color: rgba(232,238,245,0.65); margin: 0; line-height: 1.55; font-style: italic; }
+    .vr-next-box { border: 1px solid rgba(201,153,58,0.35); border-radius: 12px; padding: 24px; background: rgba(201,153,58,0.06); margin-top: 8px; }
+    .vr-next-text { font-size: 15px; line-height: 1.7; color: rgba(232,238,245,0.9); margin: 0 0 20px; }
+    .vr-cta {
+      display: inline-block;
+      background: linear-gradient(180deg, #d4a84a, #c9993a);
+      color: #07090f !important;
+      font-family: "DM Sans", sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 999px;
+      text-decoration: none;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(201,153,58,0.25);
+    }
+    .vr-cta:hover { filter: brightness(1.05); }
+    .vr-footer { margin-top: 44px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: #6a7d9a; text-align: center; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="vr-page">
+    <article class="vr-inner">
+      <p class="vr-eyebrow">Vision Report™</p>
+      <h1 class="vr-client-name">Woo</h1>
+      <p class="vr-meta">April 14, 2026</p>
+      <div class="vr-rule" role="presentation"></div>
+
+      <p class="vr-sec-label">What We Heard</p>
+      <p class="vr-what">You're doing powerful work with domestic abuse survivors, but you're overwhelmed by daily business operations. When asked about your 18-month vision, you said 'business operations is so busy right now' — you can't see the forest for the trees.</p>
+
+      <p class="vr-sec-label">Your 18-Month Vision</p>
+      <div class="vr-vision-wrap">
+        <p class="vr-vision">Your vision is still forming. You know you want to transform and take your organization 'to the next level,' but the daily grind of operations has you too buried to see clearly where you're headed. That's exactly where most impact-driven leaders get stuck.</p>
+      </div>
+
+      <p class="vr-sec-label">The Core Tension</p>
+      <p class="vr-tension">You're so busy running the organization that you can't step back to envision where it should go.</p>
+
+      <p class="vr-sec-label">Where We'd Start</p>
+      <p class="vr-where-intro">Before you can transform your organization, you need to transform how you spend your time. We'd start by creating operational breathing room so you can think strategically, then build the clear 18-month vision that will guide everything else.</p>
+      
+    <div class="vr-card">
+      <p class="vr-card-name">Strategic Planning &amp; Vision Development</p>
+      <p class="vr-card-line">Helps overwhelmed leaders step back from daily operations to create clear 18-month strategic direction</p>
+      <p class="vr-card-why">Jackson needs space to think beyond the 'busy' and develop the transformational vision he knows his organization needs</p>
+    </div>
+    <div class="vr-card">
+      <p class="vr-card-name">Operational Systems Design</p>
+      <p class="vr-card-line">Streamlines daily operations so leaders can focus on growth instead of getting buried in the details</p>
+      <p class="vr-card-why">Jackson is drowning in business operations — he needs systems that run without him so he can lead transformation</p>
+    </div>
+
+      <p class="vr-sec-label">Your Next Step</p>
+      <div class="vr-next-box">
+        <p class="vr-next-text">Jackson, the work you're doing matters too much for you to stay stuck in operational overwhelm. Let's schedule a deeper conversation about creating the systems and strategic clarity you need to truly serve those survivors at the level they deserve.</p>
+        <a class="vr-cta" href="https://socialutely.com" target="_blank" rel="noopener noreferrer">Continue the Conversation</a>
+      </div>
+
+      <footer class="vr-footer">Socialutely · AI Readiness Labs™ · DreamScape™</footer>
+    </article>
+  </div>
+</body>
+</html>

@@ -48,6 +48,16 @@ function SpudsVoiceButton() {
 export default function PartnerBrief() {
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
 
+  // Trap the browser back button so recipients stay on /partner-brief
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     document.title = "Partner Brief — AI Readiness Labs";
     let cancelled = false;
@@ -103,9 +113,9 @@ export default function PartnerBrief() {
 const PB_STYLES = `
 :root{--bg:#07090f;--bg2:#0c0f1a;--bg4:#080b12;--gold:#c9993a;--gold2:#e8b84b;--white:#f0f4ff;--text:#cdd3de;--muted:#6a7d9a;--dim:#3a4a60;--border:rgba(201,153,58,0.18);--border2:rgba(255,255,255,0.06);--green:#34c05a;--blue:#4a8fd4;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.7;min-height:100vh;}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(201,153,58,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(201,153,58,0.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;}
-#pb-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;}
+body{background:#07090f;background-image:linear-gradient(rgba(201,153,58,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(201,153,58,0.07) 1px,transparent 1px);background-size:48px 48px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.7;min-height:100vh;}
+#pb-gate{position:fixed;inset:0;background:#07090f;background-image:linear-gradient(rgba(201,153,58,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(201,153,58,0.07) 1px,transparent 1px);background-size:48px 48px;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;}
+#pb-gate>*{max-width:480px;width:100%;}
 #pb-gate.hidden{display:none;}
 .gate-logo{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:48px;}
 .gate-title{font-family:'DM Serif Display',serif;font-size:clamp(38px,6vw,56px);color:var(--white);line-height:1.1;margin-bottom:12px;}
@@ -471,9 +481,9 @@ const PB_BODY = `
 <hr class="rule"/>
 
 <div class="spuds-sec">
-  <span class="slbl">SPUDS · AI READINESS LABS ADVISOR</span>
-  <div class="stitle">Talk to Spuds</div>
-  <div class="ssub">Spuds knows the Labs well enough to talk through any of the four rungs honestly. Ask questions, share concerns, push back. That's what he's here for.</div>
+  <span class="slbl">MR. MACKLEBERRY · AI READINESS LABS ADVISOR</span>
+  <div class="stitle">Talk to Mr. Mackleberry</div>
+  <div class="ssub">Mr. Mackleberry knows the Labs well enough to talk through any of the four rungs honestly. Ask questions, share concerns, push back. That's what he's here for.</div>
   <ul class="ag">
     <li><div class="ag-n">01</div><div class="ag-t"><strong>What would make you enroll in Rung 2?</strong> As a business owner who just scored lower than expected — what would have to be true for you to say yes?</div></li>
     <li><div class="ag-n">02</div><div class="ag-t"><strong>What does a great Rung 3 session look like?</strong> An advisor with you for 90 minutes, building live — what makes that worth every dollar?</div></li>

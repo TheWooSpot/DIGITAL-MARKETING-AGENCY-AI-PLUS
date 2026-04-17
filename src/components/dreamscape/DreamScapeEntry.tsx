@@ -18,14 +18,7 @@ export default function DreamScapeEntry() {
   const hasAgentId = DREAMSCAPE_AGENT_ID.length > 0;
 
   const [firstName, setFirstName] = useState(() => sessionName.split(/\s+/)[0] || sessionName || "");
-  const [lastPart, setLastPart] = useState(() => {
-    const parts = sessionName.trim().split(/\s+/);
-    return parts.length > 1 ? parts.slice(1).join(" ") : "";
-  });
   const [email, setEmail] = useState(sessionEmail);
-  const [businessName, setBusinessName] = useState("");
-  const [organizationType, setOrganizationType] = useState("");
-  const [industry, setIndustry] = useState("");
   const [gateError, setGateError] = useState<string | null>(null);
 
   const [sessionReady, setSessionReady] = useState(false);
@@ -41,10 +34,9 @@ export default function DreamScapeEntry() {
 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportHtml, setReportHtml] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [reportNotice, setReportNotice] = useState<string | null>(null);
   const [reportNoticeKind, setReportNoticeKind] = useState<"success" | "info">("info");
-
-  const fullName = [firstName.trim(), lastPart.trim()].filter(Boolean).join(" ") || firstName.trim();
 
   const showGenerateReportButton = useCallback(() => {
     setIsCallActive(false);
@@ -53,10 +45,7 @@ export default function DreamScapeEntry() {
 
   const buildFallbackConversationSummary = useCallback((): string => {
     const parts: string[] = [
-      `Participant: ${fullName} (${email.trim()})`,
-      businessName.trim() ? `Business name: ${businessName.trim()}` : null,
-      organizationType.trim() ? `Organization type: ${organizationType.trim()}` : null,
-      industry.trim() ? `Industry: ${industry.trim()}` : null,
+      `Participant: ${firstName.trim()} (${email.trim()})`,
       sessionUrl.trim() ? `Website: ${sessionUrl.trim()}` : null,
     ].filter(Boolean) as string[];
 
@@ -67,7 +56,7 @@ export default function DreamScapeEntry() {
       parts.push("The user completed a DreamScape vision session with Amelia.");
     }
     return parts.join("\n\n");
-  }, [businessName, email, fullName, industry, organizationType, sessionUrl]);
+  }, [email, firstName, sessionUrl]);
 
   const prepareSession = useCallback(() => {
     setGateError(null);
@@ -80,7 +69,7 @@ export default function DreamScapeEntry() {
       return false;
     }
     mergeSession({
-      name: fullName,
+      name: firstName.trim(),
       email: email.trim(),
       url: sessionUrl,
     });
@@ -89,19 +78,12 @@ export default function DreamScapeEntry() {
     setDreamConversationId(null);
     setSessionReady(true);
     return true;
-  }, [email, firstName, fullName, mergeSession, sessionUrl]);
+  }, [email, firstName, mergeSession, sessionUrl]);
 
   const start = useCallback(async () => {
     if (!prepareSession()) return;
     if (!hasAgentId) {
       setError("Add VITE_DREAMSCAPE_ELEVENLABS_AGENT_ID to your environment and rebuild.");
-      return;
-    }
-
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("Microphone access is required to talk with Amelia.");
       return;
     }
 
@@ -112,55 +94,101 @@ export default function DreamScapeEntry() {
     setError(null);
     setShowPostCall(false);
     setReportHtml(null);
+    setReportError(null);
     setReportNotice(null);
     setReportNoticeKind("info");
     fallbackTranscriptRef.current = [];
     dreamConvIdRef.current = null;
     setDreamConversationId(null);
 
-    try {
-      const conv = await Conversation.startSession({
-        agentId: DREAMSCAPE_AGENT_ID,
-        onConnect: ({ conversationId }) => {
-          const id = conversationId ?? null;
-          dreamConvIdRef.current = id;
-          setDreamConversationId(id);
-        },
-        onMessage: (msg: { source?: string; message?: string }) => {
-          if (typeof msg.message === "string" && msg.message.trim()) {
-            const role = msg.source === "ai" ? "Amelia" : "Client";
-            fallbackTranscriptRef.current.push(`${role}: ${msg.message.trim()}`);
-          }
-        },
-        onDisconnect: () => {
-          conversationRef.current = null;
-          showGenerateReportButton();
-        },
-        onError: (err: unknown) => {
-          console.error("Amelia error:", err);
-          conversationRef.current = null;
-          showGenerateReportButton();
-        },
-      });
+    console.log("[DreamScape] Starting Amelia session...");
+    console.log("[DreamScape] Agent ID:", DREAMSCAPE_AGENT_ID);
+    console.log("[DreamScape] Agent ID length:", DREAMSCAPE_AGENT_ID.length);
 
-      conversationRef.current = conv;
-      setIsCallActive(true);
-
-      window.setTimeout(() => {
-        if (!dreamConvIdRef.current && typeof conv.getId === "function") {
-          const id = conv.getId();
-          if (id) {
-            dreamConvIdRef.current = id;
-            setDreamConversationId(id);
-          }
+    const sessionOptions = {
+      agentId: DREAMSCAPE_AGENT_ID,
+      connectionType: "websocket" as const,
+      onConnect: ({ conversationId }: { conversationId?: string }) => {
+        console.log("[DreamScape] Amelia connected, conversationId:", conversationId);
+        const id = conversationId ?? null;
+        dreamConvIdRef.current = id;
+        setDreamConversationId(id);
+      },
+      onMessage: (msg: { source: "user" | "ai"; message: string }) => {
+        console.log("[DreamScape] Message:", msg);
+        if (msg.message.trim()) {
+          const role = msg.source === "ai" ? "Amelia" : "Client";
+          fallbackTranscriptRef.current.push(`${role}: ${msg.message.trim()}`);
         }
-      }, 3000);
-    } catch (e) {
-      console.error("DreamScape start failed:", e);
-      setError("Could not start the voice session. Try again.");
-      setStartLocked(false);
-      releaseDreamTapLockEarly();
-    }
+      },
+      onDisconnect: () => {
+        console.log("[DreamScape] Amelia disconnected");
+        conversationRef.current = null;
+        showGenerateReportButton();
+      },
+      onError: (err: unknown) => {
+        const msg = typeof err === "string" ? err : (err as Error)?.message ?? "Unknown error";
+        console.error("[DreamScape] Amelia session error:", err);
+        console.error("[DreamScape] Error name:", (err as Error)?.name);
+        console.error("[DreamScape] Error closeCode:", (err as { closeCode?: unknown })?.closeCode);
+        console.error("[DreamScape] Error closeReason:", (err as { closeReason?: unknown })?.closeReason);
+        try { console.error("[DreamScape] Error JSON:", JSON.stringify(err)); } catch { /* not serialisable */ }
+        conversationRef.current = null;
+        setIsCallActive(false);
+        setError(`Voice session error: ${msg}`);
+      },
+    };
+
+    const attemptStart = async (isRetry = false): Promise<void> => {
+      try {
+        const conv = await Conversation.startSession(sessionOptions);
+        console.log("[DreamScape] startSession resolved, conv:", conv);
+        conversationRef.current = conv;
+        setIsCallActive(true);
+
+        window.setTimeout(() => {
+          if (!dreamConvIdRef.current && typeof (conv as { getId?: () => string }).getId === "function") {
+            const id = (conv as { getId: () => string }).getId();
+            if (id) {
+              dreamConvIdRef.current = id;
+              setDreamConversationId(id);
+            }
+          }
+        }, 3000);
+      } catch (e) {
+        const err = e as Error & { closeCode?: number; closeReason?: string };
+        console.error("[DreamScape] startSession threw:", e);
+        console.error("[DreamScape] Error name:", err?.name);
+        console.error("[DreamScape] Error message:", err?.message);
+        console.error("[DreamScape] Error closeCode:", err?.closeCode);
+        console.error("[DreamScape] Error closeReason:", err?.closeReason);
+        try { console.error("[DreamScape] Error JSON:", JSON.stringify(e)); } catch { /* not serialisable */ }
+
+        // Retry once on transient WebSocket close errors (e.g. first-connection failures)
+        const isTransient =
+          err?.name === "SessionConnectionError" &&
+          typeof err?.closeCode === "number" &&
+          err.closeCode !== 1000 &&
+          err.closeCode !== 4000 &&  // 4000 = bad agent ID / auth — not retryable
+          err.closeCode !== 4001 &&
+          err.closeCode !== 4003;
+
+        if (!isRetry && isTransient) {
+          console.warn("[DreamScape] Transient connection error (closeCode:", err?.closeCode, ") — retrying in 2s...");
+          setError("Connecting...");
+          await new Promise<void>(res => window.setTimeout(res, 2000));
+          setError(null);
+          return attemptStart(true);
+        }
+
+        const msg = err?.message ?? String(e);
+        setError(`Could not start the voice session. ${msg}`);
+        setStartLocked(false);
+        releaseDreamTapLockEarly();
+      }
+    };
+
+    await attemptStart();
   }, [hasAgentId, prepareSession, showGenerateReportButton]);
 
   const end = useCallback(async () => {
@@ -177,17 +205,15 @@ export default function DreamScapeEntry() {
 
   const generateReport = useCallback(async () => {
     setReportLoading(true);
+    setReportError(null);
     setReportNotice(null);
     setReportNoticeKind("info");
 
     const id = dreamConvIdRef.current || dreamConversationId || undefined;
     const summary = buildFallbackConversationSummary();
     const payload = {
-      name: fullName,
+      name: firstName.trim(),
       email: email.trim(),
-      business_name: businessName.trim() || undefined,
-      organization_type: organizationType.trim() || undefined,
-      industry: industry.trim() || undefined,
       conversation_id: id,
       conversation_summary: summary,
     };
@@ -202,13 +228,39 @@ export default function DreamScapeEntry() {
       return;
     }
     console.warn("Vision Report generation failed:", res.error);
-    setReportNotice(
-      `We're finalizing your Vision Report. It will arrive at ${email.trim()} shortly.`,
-    );
-    setReportNoticeKind("info");
-  }, [buildFallbackConversationSummary, businessName, dreamConversationId, email, fullName, industry, organizationType]);
+    setReportError(res.error ?? "Something went wrong generating your report.");
+  }, [buildFallbackConversationSummary, dreamConversationId, email, firstName]);
 
   const canStart = hasAgentId;
+
+  if (reportHtml) {
+    return (
+      <div style={{ background: "#07090f", width: "100%" }}>
+        <div className="flex items-center justify-between gap-4 px-6 py-4" style={{ borderBottom: "1px solid rgba(201,153,58,0.15)" }}>
+          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]/80">
+            Vision Report™ — {firstName.trim()}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const blob = new Blob([reportHtml], { type: "text/html" });
+              const url = URL.createObjectURL(blob);
+              window.open(url, "_blank", "noopener,noreferrer");
+            }}
+            className="inline-flex items-center gap-2 rounded-full border border-[#c9993a]/60 bg-[#c9993a]/10 px-4 py-1.5 text-xs font-semibold text-[#c9993a] transition hover:bg-[#c9993a]/20"
+          >
+            ↗ Open in new tab
+          </button>
+        </div>
+        <iframe
+          title="Vision Report™"
+          srcDoc={reportHtml}
+          style={{ width: "100%", minHeight: "100vh", border: "none", display: "block" }}
+          sandbox="allow-same-origin allow-popups"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="dreamscape-entry-card relative mx-auto w-full max-w-[580px] overflow-hidden rounded-xl border border-[#c9973a]/45 bg-[#07080d] px-6 py-10 shadow-[0_0_48px_rgba(201,151,58,0.12)] sm:px-10">
@@ -240,18 +292,6 @@ export default function DreamScapeEntry() {
               />
             </div>
             <div>
-              <label htmlFor="ds-last" className="anydoor-field-label--muted">
-                Last name <span className="text-white/35">(optional)</span>
-              </label>
-              <input
-                id="ds-last"
-                value={lastPart}
-                onChange={(e) => setLastPart(e.target.value)}
-                className="anydoor-field-input"
-                autoComplete="family-name"
-              />
-            </div>
-            <div>
               <label htmlFor="ds-email" className="anydoor-field-label--primary">
                 Business email
               </label>
@@ -264,44 +304,11 @@ export default function DreamScapeEntry() {
                 autoComplete="email"
               />
             </div>
-            <div>
-              <label htmlFor="ds-business" className="anydoor-field-label--muted">
-                Business name <span className="text-white/35">(optional)</span>
-              </label>
-              <input
-                id="ds-business"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className="anydoor-field-input"
-              />
-            </div>
-            <div>
-              <label htmlFor="ds-org" className="anydoor-field-label--muted">
-                Organization type <span className="text-white/35">(optional)</span>
-              </label>
-              <input
-                id="ds-org"
-                value={organizationType}
-                onChange={(e) => setOrganizationType(e.target.value)}
-                className="anydoor-field-input"
-                placeholder="e.g. SaaS, agency, local services"
-              />
-            </div>
-            <div>
-              <label htmlFor="ds-industry" className="anydoor-field-label--muted">
-                Industry <span className="text-white/35">(optional)</span>
-              </label>
-              <input
-                id="ds-industry"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                className="anydoor-field-input"
-              />
-            </div>
             {gateError ? <p className="text-sm text-red-400">{gateError}</p> : null}
             <button
               type="button"
-              className="anydoor-btn-gold"
+              disabled={!firstName.trim() || !email.trim() || !email.includes("@")}
+              className="anydoor-btn-gold disabled:opacity-50 disabled:pointer-events-none"
               onClick={() => {
                 if (prepareSession()) {
                   /* sessionReady shows voice UI */
@@ -366,17 +373,20 @@ export default function DreamScapeEntry() {
           </p>
         ) : null}
 
-        {showPostCall ? (
-          <div className="dreamscape-thanks-fade dreamscape-generate-wrap mt-8 space-y-6 text-left">
+        {showPostCall && !reportHtml ? (
+          <div className="dreamscape-thanks-fade dreamscape-generate-wrap mt-8 space-y-5 text-center">
             <p
-              className="text-base font-light leading-relaxed text-[#e8eef5]/95"
+              className="text-xl font-light text-[#e8eef5]"
               style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
             >
-              Your vision has been captured. When you&apos;re ready, generate your personalized Vision Report™ below.
+              Your vision session is complete{firstName.trim() ? `, ${firstName.trim()}` : ""}.
+            </p>
+            <p className="text-sm leading-relaxed text-white/55">
+              Amelia captured everything. Your Vision Report™ is ready to generate.
             </p>
             <button
               type="button"
-              disabled={reportLoading || Boolean(reportHtml)}
+              disabled={reportLoading}
               onClick={() => void generateReport()}
               className="dreamscape-generate-btn anydoor-btn-gold disabled:opacity-60"
             >
@@ -386,31 +396,32 @@ export default function DreamScapeEntry() {
                   Building your Vision Report...
                 </span>
               ) : (
-                "Generate My Vision Report →"
+                "✦ Generate My Vision Report"
               )}
             </button>
             {reportNotice ? (
               <p
                 className={
                   reportNoticeKind === "success"
-                    ? "text-center text-sm text-emerald-400/90"
-                    : "text-center text-sm text-amber-200/90"
+                    ? "text-sm text-emerald-400/90"
+                    : "text-sm text-amber-200/90"
                 }
               >
                 {reportNotice}
               </p>
             ) : null}
-          </div>
-        ) : null}
-
-        {reportHtml ? (
-          <div className="dreamscape-report-shell mt-8 w-full max-w-[820px] overflow-hidden rounded-lg border border-white/10 bg-[#05060a]">
-            <iframe
-              title="Vision Report"
-              srcDoc={reportHtml}
-              className="h-[min(80vh,720px)] w-full border-0"
-              sandbox="allow-same-origin allow-popups"
-            />
+            {reportError ? (
+              <div className="space-y-3">
+                <p className="text-sm text-red-400/90">{reportError}</p>
+                <button
+                  type="button"
+                  onClick={() => void generateReport()}
+                  className="text-xs font-medium text-[#c9993a] underline underline-offset-2 hover:text-[#e8b84b]"
+                >
+                  Try again →
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

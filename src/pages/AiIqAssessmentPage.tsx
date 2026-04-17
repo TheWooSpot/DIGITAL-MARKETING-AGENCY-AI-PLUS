@@ -14,6 +14,9 @@ import {
   parseAiqNumber,
   rungFromTotalScore,
 } from "@/lib/aiIq/door4Scoring";
+import { vapi } from "@/lib/vapiClient";
+import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
+import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 
 /** Door B1–aligned chrome (AnyDoor tokens: #07090f, #c9993a, DM Sans / DM Serif Display) */
 const BG = "#07090f";
@@ -21,6 +24,83 @@ const GOLD = "#c9993a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+
+/** Jordan — Evaluation Specialist (hardcoded per spec, same as AiIqReport.tsx) */
+const JORDAN_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
+
+function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
+  const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
+  const hasPublicKey = publicKey.length > 0;
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [startLocked, setStartLocked] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasPublicKey || !vapi) return;
+    const onStart = () => { setIsCallActive(true); setError(null); };
+    const onEnd = () => setIsCallActive(false);
+    const onErr = (e: unknown) => {
+      const raw = typeof e === "string" ? e : String((e as Record<string, unknown>)?.message ?? e ?? "");
+      setError(appendVapiAssistantKeyHint(extractVapiErrorMessage(raw)));
+      setIsCallActive(false);
+      setStartLocked(false);
+      releaseVapiTapLockEarly();
+    };
+    vapi.on("call-start", onStart);
+    vapi.on("call-end", onEnd);
+    vapi.on("error", onErr);
+    vapi.on("call-start-failed", onErr);
+    return () => {
+      vapi.removeListener("call-start", onStart);
+      vapi.removeListener("call-end", onEnd);
+      vapi.removeListener("error", onErr);
+      vapi.removeListener("call-start-failed", onErr);
+      vapi.stop();
+    };
+  }, [hasPublicKey]);
+
+  const start = useCallback(() => {
+    if (!hasPublicKey) { setError("Voice not configured — add VITE_VAPI_PUBLIC_KEY."); return; }
+    if (!acquireVapiTapLock()) return;
+    setStartLocked(true);
+    window.setTimeout(() => setStartLocked(false), 3000);
+    setError(null);
+    vapi?.start(JORDAN_ASSISTANT_ID, {
+      variableValues: {
+        ai_iq_score: String(score),
+        recommended_rung: String(rung),
+        ai_iq_band: band,
+      },
+    });
+  }, [hasPublicKey, score, rung, band]);
+
+  const end = useCallback(() => { vapi?.stop(); }, []);
+
+  return { hasPublicKey, isCallActive, startLocked, error, start, end };
+}
+
+const AI_IQ_CONTEXT_URL =
+  "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-context";
+
+const THINKING_MESSAGES = [
+  "Reviewing your organization...",
+  "Analyzing your digital presence...",
+  "Calibrating your assessment...",
+  "Personalizing your AI IQ...",
+];
+
+type AiIqContextResponse = {
+  industry?: string;
+  business_type?: string;
+  size_signal?: string;
+  tech_maturity?: string;
+  ai_signals?: string[];
+  primary_value_proposition?: string;
+  likely_pain_points?: string[];
+  domain_max_adjustments?: Record<string, number>;
+  synopsis?: string;
+  industry_options?: Array<{ label: string; primary?: boolean }>;
+};
 
 type AiIqBusinessContext = {
   industry: string;
@@ -153,7 +233,15 @@ function fallbackBusinessContext(name: string): AiIqBusinessContext {
 export default function AiIqAssessmentPage() {
   const { mergeSession, ...sessionSnapshot } = useSession();
   const [phase, setPhase] = useState<
-    "loading" | "gate" | "personalized_intro" | "quiz" | "domain_bridge" | "results"
+    | "loading"
+    | "gate"
+    | "thinking"
+    | "industry_confirm"
+    | "adaptive_loading"
+    | "personalized_intro"
+    | "quiz"
+    | "domain_bridge"
+    | "results"
   >("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<GroupedQuestion[]>([]);
@@ -182,6 +270,15 @@ export default function AiIqAssessmentPage() {
   const [pendingStepAfterBridge, setPendingStepAfterBridge] = useState<number | null>(null);
   const [bridgeCache, setBridgeCache] = useState<Record<string, string>>({});
   const [personalizedSummary, setPersonalizedSummary] = useState<string>("");
+
+  // Screen 2 — thinking animation
+  const [thinkingMsgIdx, setThinkingMsgIdx] = useState(0);
+  // Screen 3 — industry confirmation
+  const [aiIqContextData, setAiIqContextData] = useState<AiIqContextResponse | null>(null);
+  const [contextFallback, setContextFallback] = useState(false);
+  const [selectedIndustry, setSelectedIndustry] = useState<string>("");
+  const [customIndustry, setCustomIndustry] = useState<string>("");
+  const confirmedIndustry = selectedIndustry === "Other" ? customIndustry.trim() : selectedIndustry;
 
   useEffect(() => {
     let cancelled = false;
@@ -398,6 +495,16 @@ export default function AiIqAssessmentPage() {
     []
   );
 
+  // Cycle thinking messages every 1.5 s while on the thinking screen
+  useEffect(() => {
+    if (phase !== "thinking") return;
+    setThinkingMsgIdx(0);
+    const id = window.setInterval(() => {
+      setThinkingMsgIdx((i) => (i + 1) % THINKING_MESSAGES.length);
+    }, 1500);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
   const startQuiz = useCallback(async () => {
     setGateError(null);
     const em = getBusinessEmailError(email);
@@ -424,15 +531,58 @@ export default function AiIqAssessmentPage() {
     setPersonalizedSummary("");
     setBridgeText("");
     setPendingStepAfterBridge(null);
+    setSelectedIndustry("");
+    setCustomIndustry("");
+    setAiIqContextData(null);
+
+    // Go to thinking screen immediately
+    setPhase("thinking");
+
+    const minDisplayTimer = new Promise<void>((res) => window.setTimeout(res, 2500));
+
+    // Fetch ai-iq-context in parallel with the minimum display time
+    const contextFetch = fetch(AI_IQ_CONTEXT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url.trim() || "" }),
+    })
+      .then(async (r) => {
+        const j = (await r.json()) as { business_context?: AiIqContextResponse; fallback?: boolean };
+        return { data: j.business_context ?? null, fallback: j.fallback ?? true };
+      })
+      .catch(() => ({ data: null as AiIqContextResponse | null, fallback: true }));
+
+    const [, { data: ctxData, fallback: isFallback }] = await Promise.all([minDisplayTimer, contextFetch]);
+
+    setAiIqContextData(ctxData);
+    setContextFallback(isFallback);
+
+    // Pre-select the primary industry option
+    const options = ctxData?.industry_options ?? [];
+    const primary = options.find((o) => o.primary);
+    if (primary) setSelectedIndustry(primary.label);
+
+    setPhase("industry_confirm");
+  }, [email, mergeSession, name, questions.length, url, loadBusinessContext]);
+
+  const confirmIndustryAndProceed = useCallback(async () => {
+    const industry = confirmedIndustry || aiIqContextData?.industry || "general business";
+
+    // Show brief adaptive loading
+    setPhase("adaptive_loading");
+
+    await new Promise<void>((res) => window.setTimeout(res, 2000));
 
     const supabase = getSupabaseBrowserClient();
     const ctx = await loadBusinessContext(name.trim(), url.trim(), supabase);
-    setBusinessContext(ctx);
+    // Merge confirmed industry into ctx
+    const merged: AiIqBusinessContext = { ...ctx, industry };
+    setBusinessContext(merged);
     setPhase("personalized_intro");
     window.setTimeout(() => {
       setPhase("quiz");
     }, 2300);
-  }, [email, mergeSession, name, questions.length, url, loadBusinessContext]);
+  }, [confirmedIndustry, aiIqContextData, name, url, loadBusinessContext]);
 
   const selectOption = useCallback((qid: string, optionLabel: string, score: number) => {
     setSelectedOptionByQuestion((prev) => {
@@ -522,6 +672,30 @@ export default function AiIqAssessmentPage() {
     if (parts.length > 0) setPersistError(parts.join(" · "));
 
     setSubmitting(false);
+
+    // Fire-and-forget — never blocks UX
+    void fetch(
+      "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-notify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          score: total,
+          band: bandLabelFromScore(total),
+          rung,
+          rung_label: rung === 2 ? "Adaptation" : rung === 3 ? "Optimization" : "Stewardship",
+          rung_description:
+            rung === 2
+              ? "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."
+              : rung === 3
+                ? "Workshop-style facilitation so adoption matches how your business actually runs."
+                : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
+          domain_scores: domains,
+        }),
+      }
+    );
   }, [answers, email, mergeSession, name, questions, selectedOptionByQuestion, url, businessContext]);
 
   const goBack = useCallback(() => {
@@ -597,13 +771,15 @@ export default function AiIqAssessmentPage() {
 
   const cta = useMemo(() => {
     if (resultRung === 2)
-      return { href: RUNG2_URL, label: "Enroll in Rung 2 — Adaptation" };
+      return { href: RUNG2_URL, label: "Enroll in Rung 2 — Adaptation →" };
     if (resultRung === 3)
-      return { href: RUNG3_URL, label: "Enroll in Rung 3 — Optimization" };
-    return { href: RUNG4_URL, label: "Book a discovery call" };
+      return { href: RUNG3_URL, label: "Enroll in Rung 3 — Optimization →" };
+    return { href: RUNG4_URL, label: "Book a discovery call →" };
   }, [resultRung]);
 
   const headline = BAND_HEADLINES[resultBand] ?? BAND_HEADLINES["AI Absent"];
+
+  const jordan = useAiIqJordanVapi(resultTotal, resultRung, resultBand);
 
   if (phase === "loading") {
     return (
@@ -692,6 +868,195 @@ export default function AiIqAssessmentPage() {
         </div>
       )}
 
+      {/* ─── SCREEN 2: Thinking animation ─── */}
+      {phase === "thinking" && (
+        <div className="flex min-h-[56vh] flex-col items-center justify-center text-center">
+          <div className="w-full max-w-[580px] px-4">
+            {/* Gold pulsing dot — matches Door B1 loading overlay */}
+            <div className="mb-8 flex justify-center">
+              <span
+                className="block h-4 w-4 rounded-full"
+                style={{
+                  backgroundColor: GOLD,
+                  boxShadow: `0 0 0 0 ${GOLD}`,
+                  animation: "aiiq-pulse 1.6s ease-in-out infinite",
+                }}
+              />
+            </div>
+            <p
+              className="text-lg font-light italic leading-snug text-white/90 transition-opacity duration-500"
+              style={{ fontFamily: "var(--font-cormorant, var(--font-dm-serif-display)), Georgia, serif" }}
+            >
+              {THINKING_MESSAGES[thinkingMsgIdx]}
+            </p>
+            <div className="mt-8 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: "100%",
+                  backgroundColor: GOLD,
+                  animation: "aiiq-bar-slide 2.5s linear forwards",
+                }}
+              />
+            </div>
+          </div>
+          {/* Keyframes injected inline once */}
+          <style>{`
+            @keyframes aiiq-pulse {
+              0%   { box-shadow: 0 0 0 0 rgba(201,153,58,0.55); }
+              70%  { box-shadow: 0 0 0 14px rgba(201,153,58,0); }
+              100% { box-shadow: 0 0 0 0 rgba(201,153,58,0); }
+            }
+            @keyframes aiiq-bar-slide {
+              from { transform: translateX(-100%); }
+              to   { transform: translateX(0); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* ─── SCREEN 3: Industry confirmation ─── */}
+      {phase === "industry_confirm" && (
+        <div className="mx-auto w-full max-w-[580px]">
+          <p
+            className="mb-4 text-center font-mono text-[11px] uppercase tracking-[0.3em]"
+            style={{ color: GOLD }}
+          >
+            AI IQ™ · Calibration
+          </p>
+          <h2
+            className="mb-5 text-center text-3xl font-light leading-snug text-white"
+            style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+          >
+            Here's what we found
+          </h2>
+
+          {/* Synopsis */}
+          <div className="mb-8 rounded-xl border border-white/[0.08] bg-white/[0.03] px-6 py-5">
+            <p className="text-sm leading-relaxed" style={{ color: WHITE }}>
+              {contextFallback || !aiIqContextData?.synopsis
+                ? "Tell us a bit about your organization so we can calibrate your assessment."
+                : aiIqContextData.synopsis}
+            </p>
+            {aiIqContextData?.primary_value_proposition && !contextFallback && (
+              <p className="mt-3 text-xs italic" style={{ color: DIM }}>
+                {aiIqContextData.primary_value_proposition}
+              </p>
+            )}
+          </div>
+
+          {/* Industry selection */}
+          <p className="mb-3 text-sm font-medium" style={{ color: WHITE }}>
+            Confirm your industry — tap the one that fits best:
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {(
+              aiIqContextData?.industry_options?.length
+                ? aiIqContextData.industry_options
+                : [
+                    { label: "Professional Services", primary: true },
+                    { label: "SaaS / Tech" },
+                    { label: "Healthcare" },
+                    { label: "Retail / E-commerce" },
+                    { label: "Nonprofit" },
+                    { label: "Finance / Legal" },
+                    { label: "Education" },
+                    { label: "Real Estate" },
+                    { label: "Other" },
+                  ]
+            ).map((opt) => {
+              const isSelected = selectedIndustry === opt.label;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setSelectedIndustry(opt.label)}
+                  style={{
+                    background: isSelected ? "rgba(201,153,58,0.12)" : "rgba(255,255,255,0.04)",
+                    border: isSelected ? `2px solid ${GOLD}` : "1px solid rgba(201,153,58,0.25)",
+                    borderRadius: 8,
+                    padding: "12px 16px",
+                    fontFamily: "var(--font-dm-sans), DM Sans, sans-serif",
+                    fontSize: 14,
+                    color: isSelected ? GOLD : "rgba(232,238,245,0.85)",
+                    fontWeight: isSelected ? 600 : 400,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.18s",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom industry input when "Other" selected */}
+          {selectedIndustry === "Other" && (
+            <input
+              type="text"
+              className="anydoor-field-input mt-4"
+              placeholder="Describe your industry or business type"
+              value={customIndustry}
+              onChange={(e) => setCustomIndustry(e.target.value)}
+              autoFocus
+            />
+          )}
+
+          {/* Confirm button */}
+          <button
+            type="button"
+            className="anydoor-btn-gold mt-8"
+            disabled={!selectedIndustry || (selectedIndustry === "Other" && !customIndustry.trim())}
+            onClick={() => void confirmIndustryAndProceed()}
+          >
+            Begin My AI IQ™ →
+          </button>
+
+          {aiIqContextData?.likely_pain_points?.length ? (
+            <div className="mt-6 flex flex-wrap gap-2">
+              {aiIqContextData.likely_pain_points.map((p) => (
+                <span
+                  key={p}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs"
+                  style={{ color: DIM }}
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* ─── SCREEN 4: Adaptive loading ─── */}
+      {phase === "adaptive_loading" && (
+        <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+          <div className="w-full max-w-[580px] px-4">
+            <div className="mb-6 flex justify-center">
+              <div
+                className="h-8 w-8 animate-spin rounded-full border-2 border-transparent"
+                style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+              />
+            </div>
+            <p
+              className="text-xl font-light leading-snug text-white"
+              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+            >
+              Building your personalized assessment...
+            </p>
+            <p className="mt-3 text-sm" style={{ color: DIM }}>
+              Based on your{" "}
+              <span style={{ color: GOLD }}>
+                {confirmedIndustry || aiIqContextData?.industry || "industry"}
+              </span>{" "}
+              profile, we've calibrated this assessment to reflect what AI readiness means for an
+              organization like yours.
+            </p>
+          </div>
+        </div>
+      )}
+
       {phase === "personalized_intro" && (
         <div className="flex min-h-[42vh] flex-col items-center justify-center text-center">
           <div className="anydoor-surface-card max-w-2xl">
@@ -777,65 +1142,94 @@ export default function AiIqAssessmentPage() {
       )}
 
       {phase === "results" && resultDomains && (
-        <div className="mx-auto max-w-3xl">
-          <div className="anydoor-surface-card">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              Your score
+        <div
+          className="mx-auto w-full max-w-[620px] animate-[fadeIn_0.4s_ease-out]"
+          style={{ animationFillMode: "both" }}
+        >
+          <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }`}</style>
+
+          {/* ── SECTION 1 · Score header ── */}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-6 py-8 text-center">
+            <p
+              className="mb-5 font-mono text-[11px] uppercase tracking-[0.3em]"
+              style={{ color: GOLD }}
+            >
+              AI IQ™ · Rung 1 Complete
             </p>
-            <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-end">
+
+            {/* Score ring */}
+            <div className="relative mx-auto mb-5 flex h-36 w-36 items-center justify-center rounded-full border-2"
+              style={{ borderColor: `${GOLD}55`, boxShadow: `0 0 40px ${GOLD}22` }}
+            >
               <div>
                 <span
-                  className="text-5xl font-light tabular-nums text-white"
-                  style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+                  className="block text-5xl font-light tabular-nums leading-none"
+                  style={{ color: GOLD, fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
                 >
                   {resultTotal}
                 </span>
-                <span className="text-lg text-white/50"> / 100</span>
-              </div>
-              <div>
-                <p className="text-lg font-semibold" style={{ color: WHITE }}>
-                  {resultBand}
-                </p>
-                <p className="mt-1 text-sm" style={{ color: DIM }}>
-                  {headline}
-                </p>
+                <span className="block text-sm text-white/40">/ 100</span>
               </div>
             </div>
+
+            <p
+              className="text-2xl font-light text-white"
+              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+            >
+              {resultBand}
+            </p>
+            <p className="mt-2 text-sm" style={{ color: DIM }}>
+              {headline}
+            </p>
+            <p className="mt-3 text-xs" style={{ color: `${GOLD}99` }}>
+              Across {Object.keys(DOMAIN_MAX).length} dimensions of AI readiness
+            </p>
+
+            {/* Personalized summary — appears async */}
+            {personalizedSummary && (
+              <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed" style={{ color: DIM }}>
+                {personalizedSummary}
+              </p>
+            )}
           </div>
 
-          <div className="mt-6 bg-[var(--anydoor-gold)] py-3 text-center font-[family-name:var(--font-dm-mono)] text-xs font-bold uppercase tracking-[0.25em] text-[#07090f]">
-            ✓ Rung 1: Awareness — complete
-          </div>
-
-          {personalizedSummary ? (
-            <div className="anydoor-surface-card mt-6 border border-white/10 text-sm leading-relaxed text-white/70">
-              {personalizedSummary}
-            </div>
-          ) : null}
-
-          <section className="mt-10">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
+          {/* ── SECTION 2 · Domain score bars ── */}
+          <section className="mt-8">
+            <p
+              className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]"
+              style={{ color: GOLD }}
+            >
               Score by domain
             </p>
-            <div className="mt-4 grid gap-4">
+            <div className="grid gap-3">
               {(Object.keys(DOMAIN_MAX) as DomainKey[]).map((key) => {
                 const max = DOMAIN_MAX[key];
                 const score = resultDomains[key];
                 const pct = max > 0 ? (score / max) * 100 : 0;
-                const chip = domainBarColor(score, max);
                 return (
-                  <div key={key} className="anydoor-surface-card p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span style={{ color: WHITE }}>{DOMAIN_LABEL[key]}</span>
+                  <div
+                    key={key}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4"
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-sm" style={{ color: WHITE }}>
+                        {DOMAIN_LABEL[key]}
+                      </span>
                       <span
-                        className="rounded px-2 py-0.5 text-xs font-semibold tabular-nums"
-                        style={{ backgroundColor: `${chip}22`, color: chip }}
+                        className="font-mono text-xs tabular-nums"
+                        style={{ color: `${GOLD}cc` }}
                       >
                         {score}/{max}
                       </span>
                     </div>
-                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(240,242,248,0.08)" }}>
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: chip }} />
+                    <div
+                      className="h-1.5 w-full overflow-hidden rounded-full"
+                      style={{ background: "rgba(255,255,255,0.06)" }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, backgroundColor: GOLD }}
+                      />
                     </div>
                   </div>
                 );
@@ -843,81 +1237,127 @@ export default function AiIqAssessmentPage() {
             </div>
           </section>
 
-          <section className="mt-12">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              Recommended next rung
+          {/* ── SECTION 3 · Rung recommendation card ── */}
+          <section className="mt-10">
+            <p
+              className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]"
+              style={{ color: GOLD }}
+            >
+              Your recommended path
             </p>
             <div
-              className="mt-4 rounded-xl border-2 border-[#c9993a]/50 bg-[#07090f]/90 p-6 shadow-[0_0_40px_rgba(201,153,58,0.12)]"
+              className="rounded-2xl border-2 p-7"
+              style={{
+                borderColor: `${GOLD}55`,
+                background: `linear-gradient(135deg, rgba(201,153,58,0.07) 0%, rgba(7,9,15,0.95) 100%)`,
+                boxShadow: `0 0 48px rgba(201,153,58,0.10)`,
+              }}
             >
               <p
-                className="text-3xl font-light tabular-nums text-[#c9993a]"
-                style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+                className="text-4xl font-light"
+                style={{ color: GOLD, fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
               >
                 Rung {resultRung}
               </p>
-              <p className="mt-2 text-lg font-semibold">
+              <p className="mt-1 text-xl font-semibold text-white">
                 {resultRung === 2 ? "Adaptation™" : resultRung === 3 ? "Optimization™" : "Stewardship™"}
               </p>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: DIM }}>
+              <p className="mt-4 text-sm leading-relaxed" style={{ color: DIM }}>
                 {resultRung === 2 &&
-                  "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."}
+                  `With a score of ${resultTotal}, your organization is at the start of a real AI journey. Rung 2 gives you a structured, practical roadmap — no jargon, no wasted effort. You'll leave with a clear implementation plan and the confidence to execute it.`}
                 {resultRung === 3 &&
-                  "Workshop-style facilitation so adoption matches how your business actually runs."}
+                  `Your score of ${resultTotal} shows AI is active in your organization, but adoption is uneven. Rung 3 closes the gap between departments, aligning AI initiatives to the way your business actually operates — through facilitated workshops with your team.`}
                 {resultRung === 4 &&
-                  "Strategic sequencing and done-with-you implementation as AI becomes infrastructure."}
+                  `A score of ${resultTotal} places you in the top tier of AI readiness. Rung 4 is strategic: done-with-you implementation, governance architecture, and AI embedded as true infrastructure — not a tool, but a business layer.`}
               </p>
+
+              <div className="mt-7">
+                {cta.href.startsWith("/") ? (
+                  <Link
+                    to={cta.href}
+                    className="inline-block w-full rounded-xl px-6 py-4 text-center text-sm font-bold uppercase tracking-wide transition-all hover:brightness-110"
+                    style={{ background: GOLD, color: "#07090f" }}
+                  >
+                    {cta.label}
+                  </Link>
+                ) : (
+                  <a
+                    href={cta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block w-full rounded-xl px-6 py-4 text-center text-sm font-bold uppercase tracking-wide transition-all hover:brightness-110"
+                    style={{ background: GOLD, color: "#07090f" }}
+                  >
+                    {cta.label}
+                  </a>
+                )}
+              </div>
             </div>
           </section>
 
-          {gapBlocks.length > 0 && (
-            <section className="mt-10">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-                Infrastructure focus areas
-              </p>
-              <p className="mt-2 text-sm" style={{ color: DIM }}>
-                Where scores are relatively lowest, these Socialutely services close the gap:
-              </p>
-              <div className="mt-4 grid gap-3">
-                {gapBlocks.map((block) => (
-                  <div key={block.domain} className="anydoor-surface-card p-4">
-                    <p className="text-sm font-semibold text-white">{block.domain}</p>
-                    <p className="mt-1 text-sm" style={{ color: DIM }}>
-                      {block.services.map((s) => s.label).join(" · ")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <div className="mt-10 flex flex-col items-start gap-3">
-            {cta.href.startsWith("/") ? (
-              <Link
-                to={cta.href}
-                className="inline-block rounded-lg bg-[#c9993a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07090f] transition-colors hover:brightness-105"
-              >
-                {cta.label}
-              </Link>
-            ) : (
-              <a
-                href={cta.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block rounded-lg bg-[#c9993a] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-[#07090f] transition-colors hover:brightness-105"
-              >
-                {cta.label}
-              </a>
-            )}
-            {submitting && <p className="text-xs" style={{ color: DIM }}>Saving results…</p>}
-            {persistError && <p className="text-xs text-amber-400">{persistError}</p>}
-          </div>
-
-          {orgContext && (
-            <p className="mt-8 text-xs" style={{ color: DIM }}>
-              Context captured for your report: {orgContext.option}
+          {/* ── SECTION 4 · Jordan Tap to Talk ── */}
+          <section className="mt-10 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-8 text-center">
+            <p
+              className="mb-3 font-mono text-[11px] uppercase tracking-[0.3em]"
+              style={{ color: GOLD }}
+            >
+              Jordan · Evaluation Specialist
             </p>
-          )}
+            <h3
+              className="text-2xl font-light text-white"
+              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
+            >
+              Talk Through Your Results
+            </h3>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed" style={{ color: DIM }}>
+              Jordan has your score. Ask anything about what it means or what to do next.
+            </p>
+
+            {jordan.error && (
+              <p className="mx-auto mt-4 max-w-sm rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
+                {jordan.error}
+              </p>
+            )}
+
+            <button
+              type="button"
+              disabled={!jordan.hasPublicKey || (!jordan.isCallActive && jordan.startLocked)}
+              onClick={() => (jordan.isCallActive ? jordan.end() : jordan.start())}
+              className="mx-auto mt-6 flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border-2 transition-all disabled:cursor-not-allowed disabled:opacity-40"
+              style={{
+                borderColor: GOLD,
+                background: jordan.isCallActive ? `${GOLD}22` : "rgba(255,255,255,0.03)",
+                boxShadow: jordan.isCallActive ? `0 0 24px ${GOLD}44` : "none",
+                animation: !jordan.isCallActive && jordan.hasPublicKey ? "aiiq-pulse 1.6s ease-in-out infinite" : "none",
+                color: GOLD,
+              }}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                {jordan.isCallActive ? "End" : "Tap"}
+              </span>
+            </button>
+
+            <p className="mt-3 text-[10px] uppercase tracking-widest" style={{ color: `${GOLD}88` }}>
+              {jordan.isCallActive ? "Connected — speak freely" : "Microphone required"}
+            </p>
+          </section>
+
+          {/* Save status */}
+          <div className="mt-6 text-center">
+            {submitting && (
+              <p className="text-xs" style={{ color: DIM }}>
+                Saving results…
+              </p>
+            )}
+            {persistError && (
+              <p className="text-xs text-amber-400">{persistError}</p>
+            )}
+            {orgContext && (
+              <p className="mt-2 text-xs" style={{ color: `${GOLD}66` }}>
+                Context captured: {orgContext.option}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </AnyDoorPageShell>

@@ -169,26 +169,35 @@ business_name, industry, business_descriptor, scores (object with visibility, en
   return parsed;
 }
 
-/** Insert and return created row. */
+/** Upsert (on email conflict) and return the created/updated row. */
 async function insertProspect(
   row: Record<string, unknown>,
   supabaseUrl: string,
   serviceKey: string
 ): Promise<Record<string, unknown> | null> {
-  const res = await fetch(`${supabaseUrl}/rest/v1/layer5_prospects`, {
+  // When email is present upsert on conflict so returning visitors don't 409.
+  const hasEmail = typeof row.email === "string" && row.email.trim().length > 0;
+  const url = hasEmail
+    ? `${supabaseUrl}/rest/v1/layer5_prospects?on_conflict=email`
+    : `${supabaseUrl}/rest/v1/layer5_prospects`;
+  const prefer = hasEmail
+    ? "return=representation,resolution=merge-duplicates"
+    : "return=representation";
+
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
       "Content-Type": "application/json",
-      Prefer: "return=representation",
+      Prefer: prefer,
     },
     body: JSON.stringify(row),
   });
 
   const bodyText = await res.text();
   if (!res.ok) {
-    throw new Error(`Supabase insert failed: ${res.status} ${bodyText}`);
+    throw new Error(`Supabase upsert failed: ${res.status} ${bodyText}`);
   }
   try {
     const data = JSON.parse(bodyText) as unknown;

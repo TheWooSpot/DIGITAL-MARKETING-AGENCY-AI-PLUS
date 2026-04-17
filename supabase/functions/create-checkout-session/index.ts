@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return json({ error: "Missing Supabase secrets" }, 500);
   if (!STRIPE_SECRET_KEY) return json({ error: "Missing STRIPE_SECRET_KEY" }, 500);
 
+  try {
+
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;
@@ -132,12 +134,18 @@ Deno.serve(async (req) => {
   const successUrl = `${SITE_URL.replace(/\/$/, "")}/thank-you?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${SITE_URL.replace(/\/$/, "")}/your-package?checkout=cancelled`;
 
+  // One-time setup fees go in line_items alongside recurring items.
+  // subscription_data.add_invoice_items was removed in newer Stripe API versions.
+  const allLineItems = [
+    ...monthlyLineItems,
+    ...setupInvoiceItems,
+  ];
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    line_items: monthlyLineItems,
+    line_items: allLineItems,
+    ...(discounts ? { discounts } : {}),
     subscription_data: {
-      ...(setupInvoiceItems.length ? { add_invoice_items: setupInvoiceItems } : {}),
-      ...(discounts ? { discounts } : {}),
       metadata: {
         prospect_id: prospectId,
         company_size: companySize || "unknown",
@@ -171,5 +179,18 @@ Deno.serve(async (req) => {
   }
 
   return json({ session_url: session.url });
+} catch (err: unknown) {
+  console.error("create-checkout-session error:", err);
+  const stripeErr = err as { type?: string; code?: string; message?: string };
+  if (stripeErr?.type?.startsWith("Stripe")) {
+    return json({
+      error: "Stripe checkout session failed",
+      stripe_error: stripeErr.message ?? "Unknown Stripe error",
+      stripe_type: stripeErr.type,
+      stripe_code: stripeErr.code,
+    }, 500);
+  }
+  return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+}
 });
 

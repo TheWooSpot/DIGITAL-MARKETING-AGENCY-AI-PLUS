@@ -28,7 +28,7 @@ export default function AnyDoorDoorB1Page() {
 
   return (
     <div id="anydoor-door-b1" className="anydoor-door-page min-h-screen">
-      <AnyDoorPageShell>
+      <AnyDoorPageShell narrow={!result}>
         <div className={result ? "no-print" : ""}>
           <AnyDoorEntryScreen
             eyebrow="ANYDOOR ENGINE · D-2 · THE MIRROR"

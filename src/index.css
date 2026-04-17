@@ -877,6 +877,12 @@ All colors MUST be HSL.
     animation: door3-status-ready-in 0.3s ease forwards;
   }
 
+  @media (max-width: 768px) {
+    .welcome-boxes {
+      flex-direction: column !important;
+    }
+  }
+
   @keyframes door3-enc-line {
     from {
       opacity: 0;
@@ -926,12 +932,12 @@ All colors MUST be HSL.
       105deg,
       transparent 0%,
       rgba(201, 151, 58, 0.06) 40%,
-      rgba(201, 151, 58, 0.14) 50%,
+      rgba(201, 151, 58, 0.08) 50%,
       rgba(201, 151, 58, 0.06) 60%,
       transparent 100%
     );
     background-size: 220% 100%;
-    animation: dreamscape-shimmer 3.2s ease-in-out infinite;
+    animation: dreamscape-shimmer 45s ease-in-out infinite;
   }
   @keyframes dreamscape-shimmer {
     0% {
@@ -950,7 +956,7 @@ All colors MUST be HSL.
       0 0 40px rgba(201, 151, 58, 0.45),
       0 0 80px rgba(201, 151, 58, 0.2),
       inset 0 0 24px rgba(255, 255, 255, 0.08);
-    animation: dreamscape-orb-pulse 2s ease-in-out infinite;
+    animation: dreamscape-orb-pulse 45s ease-in-out infinite;
   }
   @keyframes dreamscape-orb-pulse {
     0%,

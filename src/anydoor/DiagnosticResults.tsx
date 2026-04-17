@@ -400,6 +400,12 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
         window.location.href = fallbackLink;
         return;
       }
+      // Missing Stripe price IDs means checkout isn't configured yet — fall back
+      // to static payment link silently rather than showing a confusing error.
+      if (json.error?.includes("Missing Stripe IDs") || json.missing_service_ids) {
+        window.location.href = fallbackLink;
+        return;
+      }
       setCheckoutError(json.error || "Unable to start checkout right now.");
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Checkout request failed.");
@@ -646,6 +652,75 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
         </ScrollSection>
       )}
 
+      {/* Checkout CTA — after service list, before packages and Jordan */}
+      <ScrollSection className="no-print">
+        {sovereignRoutingPending ? (
+          <div
+            data-slot="checkout-cta"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Routing</p>
+            <p className="mt-3 text-sm text-white/60">Finalizing your checkout path…</p>
+          </div>
+        ) : showSovereignDiscoveryCta ? (
+          <div
+            data-slot="checkout-cta"
+            className="sovereign-cta"
+          >
+            <p className="sovereign-label">Sovereign</p>
+            <p className="sovereign-descriptor">Custom engagement</p>
+            <p className="sovereign-description">
+              Your organization&apos;s scale and complexity warrants a dedicated discovery conversation — not a
+              checkout form. Let&apos;s talk about what a strategic engagement looks like for you.
+            </p>
+            <a href="/contact" className="sovereign-button">
+              Schedule a discovery call →
+            </a>
+            <p className="sovereign-note">No commitment required. We&apos;ll scope your engagement together.</p>
+          </div>
+        ) : (
+          <div
+            data-slot="checkout-cta"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
+            <h3
+              className="mt-3 text-xl font-light text-white sm:text-2xl"
+              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+            >
+              Continue when you&apos;re ready
+            </h3>
+            <p className="mt-2 text-sm text-white/55">
+              You&apos;ll complete checkout securely on Stripe. After payment, you&apos;ll land on a confirmation page
+              and we&apos;ll follow up to get things moving.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              {checkoutVariant === "A" ? (
+                <button
+                  type="button"
+                  disabled={checkoutLoading || sovereignRoutingPending}
+                  onClick={() => void beginCheckout()}
+                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+                >
+                  {checkoutLoading ? "Starting checkout…" : "Checkout"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
+                  }}
+                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+                >
+                  Go to payment link
+                </button>
+              )}
+            </div>
+            {checkoutError ? <p className="mt-3 text-center text-sm text-amber-300">{checkoutError}</p> : null}
+          </div>
+        )}
+      </ScrollSection>
+
       {/* SECTION 4 — Packages */}
       <ScrollSection id="section-packages" className="scroll-mt-28">
         <div>
@@ -703,88 +778,6 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
             ))}
           </div>
         </div>
-      </ScrollSection>
-
-      {/* Checkout CTA slot — variant from Supabase checkout_config or env override; never hardcode Stripe IDs/URLs here */}
-      <ScrollSection className="no-print">
-        {sovereignRoutingPending ? (
-          <div
-            data-slot="checkout-cta"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Routing</p>
-            <p className="mt-3 text-sm text-white/60">Finalizing your checkout path…</p>
-          </div>
-        ) : showSovereignDiscoveryCta ? (
-          <div
-            data-slot="checkout-cta"
-            className="sovereign-cta"
-          >
-            <p
-              className="sovereign-label"
-            >
-              Sovereign
-            </p>
-            <p
-              className="sovereign-descriptor"
-            >
-              Custom engagement
-            </p>
-            <p className="sovereign-description">
-              Your organization&apos;s scale and complexity warrants a dedicated discovery conversation — not a
-              checkout form. Let&apos;s talk about what a strategic engagement looks like for you.
-            </p>
-            <a
-              href="/contact"
-              className="sovereign-button"
-            >
-              Schedule a discovery call →
-            </a>
-            <p className="sovereign-note">
-              No commitment required. We&apos;ll scope your engagement together.
-            </p>
-          </div>
-        ) : (
-          <div
-            data-slot="checkout-cta"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
-            <h3
-              className="mt-3 text-xl font-light text-white sm:text-2xl"
-              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-            >
-              Continue when you&apos;re ready
-            </h3>
-            <p className="mt-2 text-sm text-white/55">
-              You&apos;ll complete checkout securely on Stripe. After payment, you&apos;ll land on a confirmation page
-              and we&apos;ll follow up to get things moving.
-            </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              {checkoutVariant === "A" ? (
-                <button
-                  type="button"
-                  disabled={checkoutLoading || sovereignRoutingPending}
-                  onClick={() => void beginCheckout()}
-                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-                >
-                  {checkoutLoading ? "Starting checkout…" : "Checkout"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.href = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
-                  }}
-                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-                >
-                  Go to payment link
-                </button>
-              )}
-            </div>
-            {checkoutError ? <p className="mt-3 text-center text-sm text-amber-300">{checkoutError}</p> : null}
-          </div>
-        )}
       </ScrollSection>
 
       {/* SECTION 5 — Tap to talk (fade in 0.5s after packages enter view) */}
