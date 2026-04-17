@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
@@ -141,6 +141,23 @@ export default function SelfDiscoveryPage() {
   const [vapiErr, setVapiErr] = useState<string | null>(null);
   const [callActive, setCallActive] = useState(false);
   const [jordanStartLocked, setJordanStartLocked] = useState(false);
+
+  // Processing phrase rotation
+  const LOADING_PHRASES = [
+    "Reading between the lines...",
+    "Taking it all in.",
+    "Processing what you shared.",
+    "Finding the thread.",
+    "What you said is being heard.",
+    "Patterns are surfacing.",
+    "Almost there.",
+    "Your picture is forming.",
+    "Something true is emerging.",
+    "Here\u2019s what we heard.",
+  ] as const;
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [phraseVisible, setPhraseVisible] = useState(true);
+  const analysisReadyRef = useRef<Door3Analysis | null>(null);
 
   const currentQ = questions[qIndex];
   const totalSteps = 7;
@@ -346,6 +363,11 @@ export default function SelfDiscoveryPage() {
   useEffect(() => {
     if (stage !== "processing" || questions.length !== 7) return;
 
+    // Reset phrase state each time processing begins
+    analysisReadyRef.current = null;
+    setPhraseIndex(0);
+    setPhraseVisible(true);
+
     const payload = {
       name: firstName.trim(),
       email: email.trim(),
@@ -379,7 +401,7 @@ export default function SelfDiscoveryPage() {
       if (cancelled) return;
       const json = (await res.json().catch(() => ({}))) as Door3Analysis & { error?: string };
       if (!res.ok) {
-        setAnalysis({
+        const fallbackAnalysis: Door3Analysis = {
           discovery_narrative:
             "We couldn't finish your personalized readout just now. Your answers were saved — try again in a moment or start a diagnostic instead.",
           primary_gap: "We need a moment to reconnect to analysis.",
@@ -387,8 +409,10 @@ export default function SelfDiscoveryPage() {
           recommended_tier: "Essentials",
           next_step: "diagnostic",
           next_step_reason: "A quick diagnostic is the fastest way to get objective next steps.",
-        });
-        setStage("results");
+        };
+        setAnalysis(fallbackAnalysis);
+        // Store in ref so the phrase loop can pick it up
+        analysisReadyRef.current = fallbackAnalysis;
         return;
       }
       setAnalysis(json);
@@ -399,7 +423,8 @@ export default function SelfDiscoveryPage() {
         recommended_tier: json.recommended_tier ?? "",
         diagnostic_score: null,
       });
-      setStage("results");
+      // Store in ref so the phrase loop can pick it up
+      analysisReadyRef.current = json;
     }, 4000);
 
     return () => {
@@ -407,6 +432,54 @@ export default function SelfDiscoveryPage() {
       window.clearTimeout(t);
     };
   }, [stage, questions, firstName, email, url, industryCtx, businessDescriptorCtx, answers, mergeSession, generatedQuestionTexts, businessContext]);
+
+  // Phrase rotation during processing
+  useEffect(() => {
+    if (stage !== "processing") return;
+    const LAST_PHRASE = LOADING_PHRASES.length - 1;
+
+    const cycle = () => {
+      // Fade out
+      setPhraseVisible(false);
+      const fadeOut = window.setTimeout(() => {
+        setPhraseIndex((prev) => {
+          const atLast = prev >= LAST_PHRASE;
+          // If analysis is ready and we haven't reached the last phrase, jump to it
+          if (analysisReadyRef.current && !atLast) return LAST_PHRASE;
+          // Stay at last phrase once reached
+          if (atLast) return LAST_PHRASE;
+          return prev + 1;
+        });
+        // Fade in
+        setPhraseVisible(true);
+      }, 600);
+      return fadeOut;
+    };
+
+    // Interval: 2200ms per phrase (display) + 600ms fade = 2800ms total cycle
+    // But we handle fade manually, so interval drives the fade-out trigger
+    const interval = window.setInterval(() => {
+      setPhraseIndex((current) => {
+        if (current >= LAST_PHRASE) {
+          // At last phrase — check if analysis is ready, then transition after 800ms
+          if (analysisReadyRef.current) {
+            window.clearInterval(interval);
+            window.setTimeout(() => {
+              setStage("results");
+            }, 800);
+          }
+          return current;
+        }
+        return current; // actual increment happens in cycle()
+      });
+      cycle();
+    }, 2800);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
   const onKeyDownArea = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -742,9 +815,36 @@ export default function SelfDiscoveryPage() {
 
       {stage === "processing" && (
         <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center" aria-live="polite">
-          <p className="text-sm text-white/35" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
-            One moment.
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant), Georgia, serif",
+              fontStyle: "italic",
+              fontSize: "17px",
+              letterSpacing: "0.04em",
+              color: "rgba(255, 255, 255, 0.55)",
+              opacity: phraseVisible ? 1 : 0,
+              transition: "opacity 600ms ease-in-out",
+              minHeight: "28px",
+              marginBottom: "32px",
+            }}
+          >
+            {LOADING_PHRASES[phraseIndex]}
           </p>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(201, 153, 58, 0.6)",
+                  animation: `door3-dot-pulse 1.4s ease-in-out ${i * 0.22}s infinite`,
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 
