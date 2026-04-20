@@ -62,21 +62,7 @@ export default function AnyDoorDoorB1Page() {
         </section>
 
         {result && (
-          <>
-            <DiagnosticResults result={result} submittedUrl={submittedUrl} />
-            <div className="no-print mt-12 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setResult(null);
-                  setSubmittedUrl("");
-                }}
-                className="text-sm text-white/45 underline decoration-[#c9973a]/50 hover:text-[#c9973a]"
-              >
-                Analyze another URL
-              </button>
-            </div>
-          </>
+          <DiagnosticResults result={result} submittedUrl={submittedUrl} />
         )}
       </AnyDoorPageShell>
     </div>

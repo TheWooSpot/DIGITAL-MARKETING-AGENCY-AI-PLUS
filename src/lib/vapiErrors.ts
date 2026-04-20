@@ -60,13 +60,29 @@ export function appendVapi403Hint(message: string): string {
 }
 
 /**
- * Public key + assistant must belong to the same Vapi org; otherwise Vapi returns e.g.
- * "Key doesn't allow assistantId '…'."
+ * Public key + assistant must belong to the same Vapi org, and the key's allowed-origins
+ * list must include the current host. Vapi returns distinct messages for each case:
+ *   - Origin not allowed:    "Key doesn't allow origin '<url>'"
+ *   - Assistant not allowed: "Key doesn't allow assistantId '<uuid>'"
  */
 export function appendVapiAssistantKeyHint(message: string): string {
   const lower = message.toLowerCase();
-  if (!lower.includes("doesn't allow assistantid") && !lower.includes("key doesn't allow")) {
-    return appendVapi403Hint(message);
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "this host";
+
+  /** Origin allowlist violation — most common during local dev. */
+  if (lower.includes("doesn't allow origin") || lower.includes("does not allow origin")) {
+    return `${message} — Fix: Your Vapi public key has an **allowed-origins list** that doesn't include \`${currentOrigin}\`. In Vapi Dashboard → API Keys, edit the public key and add \`${currentOrigin}\` to its allowed origins. Or use a separate key for local dev.`;
   }
-  return `${message} — Fix: Your VITE_VAPI_PUBLIC_KEY and the assistant UUID must be from the **same Vapi organization**. Either copy the **Public** key from the org that owns this assistant into Vercel, or change VITE_VAPI_ASSISTANT_ID (and redeploy) to an assistant that exists under the org for your current key.`;
+
+  /** Assistant/org mismatch — key and assistant UUID belong to different Vapi orgs. */
+  if (lower.includes("doesn't allow assistantid") || lower.includes("does not allow assistantid")) {
+    return `${message} — Fix: Your VITE_VAPI_PUBLIC_KEY and the assistant UUID must be from the **same Vapi organization**. Either copy the **Public** key from the org that owns this assistant into Vercel, or change VITE_VAPI_ASSISTANT_ID (and redeploy) to an assistant that exists under the org for your current key.`;
+  }
+
+  /** Other "key doesn't allow …" variants — keep a generic helpful hint. */
+  if (lower.includes("key doesn't allow") || lower.includes("key does not allow")) {
+    return `${message} — Check your Vapi key permissions: origin allowlist, allowed assistants, and that the key belongs to the correct org.`;
+  }
+
+  return appendVapi403Hint(message);
 }

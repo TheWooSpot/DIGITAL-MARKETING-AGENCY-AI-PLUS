@@ -321,6 +321,60 @@ export default function PortalPage() {
           </div>
         </div>
 
+        {/* ══ SECTION 3 — PACKAGES ══ */}
+        <div style={{ marginTop: 56 }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#c9993a", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(201,153,58,0.15)" }}>Your Recommended Path</div>
+          <h2 style={{ fontSize: 24, fontWeight: 400, color: "#f9fafb", fontFamily: "Georgia, serif", marginBottom: 6 }}>Five Ways to Execute</h2>
+          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 28, fontFamily: "Georgia, serif" }}>Based on your diagnostic score of {score}/100, your recommended tier is <span style={{ color: tier.color, fontWeight: 600 }}>{tier.label}</span>.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, overflowX: "auto" }}>
+            {[
+              { key: "essentials", label: "Essentials", price: "$1,800–$3,500", color: "#6b7280", max: 20, tagline: "Foundation-first. Get found, get reviewed, get moving.", services: ["AutoRank™ Search Box Optimizer","uRANK™ Reputation Engine","InboxIgnite™ Email Marketing","SpotLight Direct™ Basic"] },
+              { key: "momentum",   label: "Momentum",   price: "$3,500–$6,500", color: "#3b82f6", max: 40, tagline: "Multi-channel presence with AI-powered lead capture.", services: ["VoiceBridge™ AI ChatLabs","ConvoFlow™ AI Live Chat","PayNamic™ Email Engine","AutoRank™ + uRANK™ Bundle","TextPulse™ SMS Automation"] },
+              { key: "signature",  label: "Signature",  price: "$6,500–$12,000", color: "#8b5cf6", max: 60, tagline: "Full-funnel execution with authority and automation.", services: ["SpotLight Direct™ Full Stack","AuthorityBoost™ PR Engine","CloseCraft™ Funnel Builder","InsightLoop™ Dashboard","Voice & Vibe™ Production","BookStream™ Scheduling"] },
+              { key: "vanguard",   label: "Vanguard",   price: "$12,000–$22,000", color: "#c9993a", max: 80, tagline: "Enterprise-grade infrastructure for scaling brands.", services: ["AllianceOS™ Partnership Engine","SpotlightStream™ OTT/CTV","TrustGuard™ Reputation Shield","CommandDesk™ Client Portal","Signal Surge™ Paid Media","Onboardly™ Activation"] },
+              { key: "sovereign",  label: "Sovereign",  price: "$15,000+", color: "#e5c97e", max: 100, tagline: "Command-level execution for market leaders.", services: ["Full 22-service deployment","Dedicated Growth Manager","Fractional CMO (20 hrs/mo)","Custom AI Integrations","Multi-brand Management"] },
+            ].map((t) => {
+              const active = tier.label === t.label;
+              return (
+                <div key={t.key} style={{ background: active ? `${t.color}12` : "#0d1117", border: `1px solid ${active ? t.color : "rgba(255,255,255,0.06)"}`, borderRadius: 12, padding: "20px 16px 24px", position: "relative" }}>
+                  {active && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: t.color, borderRadius: 99, padding: "3px 10px", fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#07090f", fontWeight: 700, whiteSpace: "nowrap" }}>★ RECOMMENDED</div>}
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: t.color, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>{t.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#f9fafb", marginBottom: 4 }}>{t.price}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#4b5563", marginBottom: 16 }}>/month</div>
+                  <p style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.6, fontFamily: "Georgia, serif", marginBottom: 16, minHeight: 40 }}>{t.tagline}</p>
+                  <div style={{ marginBottom: 20 }}>{t.services.map((s,i) => <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}><span style={{ color: t.color, fontSize: 10, flexShrink: 0 }}>✦</span><span style={{ fontSize: 10, color: "#9ca3af", fontFamily: "'DM Mono', monospace", lineHeight: 1.5 }}>{s}</span></div>)}</div>
+                  <a href="#" style={{ display: "block", textAlign: "center", padding: "10px 12px", borderRadius: 8, background: active ? t.color : "transparent", border: `1px solid ${t.color}`, color: active ? "#07090f" : t.color, fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textDecoration: "none", textTransform: "uppercase" }}>{active ? "Get Started →" : "Learn More"}</a>
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#374151", marginTop: 16, letterSpacing: "0.06em" }}>* Services are modular. Bundle discounts: 8% at 3+ services · 15% at 5+ services.</p>
+        </div>
+
+        {/* ══ CTA STRIP ══ */}
+        <div style={{ marginTop: 40, background: "linear-gradient(135deg, #0d1117, #111827)", border: "1px solid rgba(201,153,58,0.25)", borderRadius: 16, padding: "40px 32px", textAlign: "center" }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#c9993a", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Ready to Move Forward?</div>
+          <h3 style={{ fontSize: 22, fontWeight: 400, color: "#f9fafb", fontFamily: "Georgia, serif", marginBottom: 8 }}>Three ways to take the next step</h3>
+          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 32, fontFamily: "Georgia, serif", maxWidth: 480, margin: "0 auto 32px" }}>Your {tier.label} diagnostic is ready. Choose how you want to proceed.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, maxWidth: 680, margin: "0 auto" }}>
+            <a href="https://calendly.com/socialutely" target="_blank" rel="noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "20px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, textDecoration: "none" }}>
+              <span style={{ fontSize: 24 }}>📅</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#f9fafb", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>Book a Strategy Call</span>
+              <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "Georgia, serif" }}>30 min · No obligation</span>
+            </a>
+            <a href="#jordan" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "20px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, textDecoration: "none" }}>
+              <span style={{ fontSize: 24 }}>🎙️</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#f9fafb", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>Chat with Jordan</span>
+              <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "Georgia, serif" }}>AI specialist · Available now</span>
+            </a>
+            <a href="#" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "20px 16px", background: `${tier.color}22`, border: `1px solid ${tier.color}`, borderRadius: 12, textDecoration: "none" }}>
+              <span style={{ fontSize: 24 }}>⚡</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: tier.color, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>Start Now →</span>
+              <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "Georgia, serif" }}>{tier.label} · {tier.price}/mo</span>
+            </a>
+          </div>
+        </div>
+
         {/* ══ FAQ SECTION ══ */}
         {faq.length > 0 && (
           <div style={styles.section}>

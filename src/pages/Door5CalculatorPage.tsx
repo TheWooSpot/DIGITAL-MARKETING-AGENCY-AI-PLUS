@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
@@ -41,7 +41,7 @@ function validEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 }
 
-type Phase = "gate" | "inputs" | "results";
+type Phase = "gate" | "inputs" | "calculating" | "results";
 
 export default function Door5CalculatorPage() {
   const navigate = useNavigate();
@@ -64,8 +64,8 @@ export default function Door5CalculatorPage() {
 
   const breakdown = useMemo(
     () =>
-      computeMonthlyBreakdown(monthlyRevenue, avgCustomerValue, customersPerMonth, businessSize),
-    [monthlyRevenue, avgCustomerValue, customersPerMonth, businessSize]
+      computeMonthlyBreakdown(monthlyRevenue, avgCustomerValue, customersPerMonth, businessSize, monthlySpend),
+    [monthlyRevenue, avgCustomerValue, customersPerMonth, businessSize, monthlySpend]
   );
 
   const lowDim = useMemo(() => lowestDimension(breakdown), [breakdown]);
@@ -91,7 +91,8 @@ export default function Door5CalculatorPage() {
   }
 
   function runResults() {
-    setPhase("results");
+    setPhase("calculating");
+    setTimeout(() => setPhase("results"), 1300);
   }
 
   async function goToQuote() {
@@ -293,6 +294,27 @@ export default function Door5CalculatorPage() {
           </section>
         )}
 
+        {phase === "calculating" && (
+          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 py-24">
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="inline-block h-2 w-2 rounded-full animate-pulse"
+                  style={{
+                    background: GOLD,
+                    animationDelay: `${i * 0.2}s`,
+                    animationDuration: "0.9s",
+                  }}
+                />
+              ))}
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
+              Modelling your uplift…
+            </p>
+          </div>
+        )}
+
         {phase === "results" && (
           <section className="mt-8 space-y-10">
             <p className="text-center font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
@@ -306,15 +328,15 @@ export default function Door5CalculatorPage() {
               <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
                 Projected 90-day uplift
               </p>
-              <p
-                className="mt-4 text-4xl font-light tabular-nums leading-none sm:text-5xl md:text-6xl"
-                style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: WHITE }}
-              >
-                {fmtMoney(breakdown.total90Day)}
-              </p>
+              <CountUpNumber target={breakdown.total90Day} />
               <p className="mt-3 text-sm sm:text-base" style={{ color: DIM }}>
                 additional revenue potential over 90 days
               </p>
+              {breakdown.roiMultiple !== null && (
+                <div className="mt-5 inline-block rounded-full border px-4 py-1.5 text-xs font-mono" style={{ borderColor: GOLD, color: GOLD }}>
+                  {breakdown.roiMultiple}× return on your {fmtMoney(monthlySpend)}/mo spend
+                </div>
+              )}
             </div>
 
             <div className="anydoor-surface-card p-6">
@@ -335,9 +357,6 @@ export default function Door5CalculatorPage() {
                   <span className="shrink-0 font-mono tabular-nums text-white">{fmtMoney(breakdown.retention * 3)}</span>
                 </li>
               </ul>
-              <p className="mt-6 text-xs leading-relaxed" style={{ color: DIM }}>
-                Projected based on industry benchmarks for businesses your size. Actual results vary.
-              </p>
             </div>
 
             <div>
@@ -373,7 +392,7 @@ export default function Door5CalculatorPage() {
                 {saving ? "Saving…" : "See what this investment looks like →"}
               </button>
               <Link className="anydoor-btn-outline inline-block text-center" to="/diagnostic">
-                Get your full diagnostic first →
+                Not ready? See where you stand first →
               </Link>
             </div>
             {saveError && <p className="text-sm text-amber-400">Couldn&apos;t save your session: {saveError}</p>}
@@ -381,11 +400,50 @@ export default function Door5CalculatorPage() {
             <button type="button" className="text-sm underline" style={{ color: DIM }} onClick={() => setPhase("inputs")}>
               ← Adjust inputs
             </button>
+
+            <p className="text-center text-[11px] leading-relaxed" style={{ color: "rgba(232,238,245,0.28)" }}>
+              Conservative estimates based on industry benchmarks for your business size. Actual results vary.
+            </p>
           </section>
         )}
       </div>
     </AnyDoorPageShell>
     </div>
+  );
+}
+
+function CountUpNumber({ target }: { target: number }) {
+  const [displayed, setDisplayed] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef<number | null>(null);
+  const duration = 900;
+
+  useEffect(() => {
+    startRef.current = null;
+    const animate = (ts: number) => {
+      if (startRef.current === null) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayed(Math.round(eased * target));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [target]);
+
+  return (
+    <p
+      className="mt-4 text-4xl font-light tabular-nums leading-none sm:text-5xl md:text-6xl"
+      style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: WHITE }}
+    >
+      {fmtMoney(displayed)}
+    </p>
   );
 }
 
@@ -412,6 +470,7 @@ function SliderField({
         <Label className="text-base text-white">{label}</Label>
         <Input
           type="number"
+          inputMode="numeric"
           value={value}
           min={min}
           max={max}

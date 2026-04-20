@@ -931,14 +931,6 @@ function PackageColumn({
           ))}
         </ul>
       </div>
-      <div className="mt-auto pt-6">
-        <a
-          href="#get-started"
-          className={`block w-full rounded border py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-white/90 hover:bg-white/5 print:text-black ${tier.border}`}
-        >
-          Get Started →
-        </a>
-      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ========== AGENT-SPECIFIC CONSTANTS ==========
-const AGENT_NAME = "amelia";
-const SECRET_ENV_VAR = "VAPI_DREAMSCAPE_SECRET";
+const AGENT_NAME = "aria";
+const SECRET_ENV_VAR = "VAPI_RECEPTION_SECRET";
 // ===============================================
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

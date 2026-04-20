@@ -30,14 +30,15 @@ export type MonthlyBreakdown = {
   retention: number;
   totalMonthly: number;
   total90Day: number;
+  roiMultiple: number | null; // uplift90Day / (monthlySpend * 3), null if spend is 0
 };
 
-/** monthly_spend collected for notes / analytics — not used in uplift formula per product spec. */
 export function computeMonthlyBreakdown(
   monthlyRevenue: number,
   avgCustomerValue: number,
   customersPerMonth: number,
-  businessSize: BusinessSize
+  businessSize: BusinessSize,
+  monthlySpend = 0
 ): MonthlyBreakdown {
   const sm = sizeMultiplier(businessSize);
   const visibility = monthlyRevenue * 0.15 * sm;
@@ -45,12 +46,15 @@ export function computeMonthlyBreakdown(
   const retention = monthlyRevenue * 0.05;
   const totalMonthly = visibility + automation + retention;
   const total90Day = totalMonthly * 3;
+  const spend90Day = monthlySpend * 3;
+  const roiMultiple = spend90Day > 0 ? Math.round((total90Day / spend90Day) * 10) / 10 : null;
   return {
     visibility,
     automation,
     retention,
     totalMonthly,
     total90Day,
+    roiMultiple,
   };
 }
 

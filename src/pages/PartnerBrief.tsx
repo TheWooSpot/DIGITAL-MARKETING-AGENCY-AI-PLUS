@@ -4,8 +4,8 @@ import { usePartnerBriefVapiCall } from "@/lib/usePartnerBriefVapiCall";
 
 /** Partner Brief: Supabase gate (PB_INIT) + Vapi Tap to Talk (same stack as /diagnostic). */
 
-// ─── Spuds Voice Button ────────────────────────────────────
-function SpudsVoiceButton() {
+// ─── Mackleberry Voice Button ──────────────────────────────
+function MackleberryVoiceButton() {
   const voice = usePartnerBriefVapiCall();
 
   const handleClick = useCallback(() => {
@@ -22,7 +22,7 @@ function SpudsVoiceButton() {
   const activeClass = voice.isCallActive ? " active" : "";
 
   return (
-    <div className="spuds-voice-frame">
+    <div className="mackleberry-voice-frame">
       <button
         type="button"
         disabled={disabled}
@@ -37,9 +37,9 @@ function SpudsVoiceButton() {
           <line x1="8" y1="23" x2="16" y2="23" />
         </svg>
       </button>
-      <div className="spuds-voice-label">{label}</div>
+      <div className="mackleberry-voice-label">{label}</div>
       {voice.error && (
-        <div className="spuds-voice-error">{voice.error}</div>
+        <div className="mackleberry-voice-error">{voice.error}</div>
       )}
     </div>
   );
@@ -104,7 +104,7 @@ export default function PartnerBrief() {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: PB_BODY }} />
-      {portalTarget && createPortal(<SpudsVoiceButton />, portalTarget)}
+      {portalTarget && createPortal(<MackleberryVoiceButton />, portalTarget)}
     </>
   );
 }
@@ -196,7 +196,7 @@ h3{font-size:18px;font-weight:600;color:var(--gold);margin-bottom:10px;}
 .wc::before{content:'"';position:absolute;top:-16px;left:28px;font-family:'DM Serif Display',serif;font-size:72px;color:var(--gold);line-height:1;opacity:0.45;}
 .wt{font-family:'DM Serif Display',serif;font-size:20px;font-style:italic;color:#b0c0d4;line-height:1.7;margin-bottom:18px;}
 .ws{font-size:12px;color:var(--dim);font-weight:500;text-transform:uppercase;letter-spacing:1.5px;}
-.spuds-sec{margin:64px 0;text-align:center;padding:48px 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);}
+.mackleberry-sec{margin:64px 0;text-align:center;padding:48px 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);}
 .shint{font-size:13px;color:var(--dim);margin-top:16px;max-width:360px;margin-left:auto;margin-right:auto;line-height:1.6;}
 .ag{list-style:none;margin:0 auto 32px;max-width:540px;text-align:left;}
 .ag li{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border2);}
@@ -208,17 +208,17 @@ h3{font-size:18px;font-weight:600;color:var(--gold);margin-bottom:10px;}
 .ft-b{font-size:12px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
 .ft-n{font-size:12px;color:var(--dim);}
 @media(max-width:620px){.wrap{padding:0 20px 80px;}.two-col{grid-template-columns:1fr;}.pgrid{grid-template-columns:1fr 1fr;}.rung-card{padding:24px 20px;}}
-/* ── Spuds Vapi Tap to Talk ──────────────────────────────────────────────
-   React portal mounts SpudsVoiceButton into #pb-voice-mount after gate
+/* ── Mackleberry Vapi Tap to Talk ────────────────────────────────────────
+   React portal mounts MackleberryVoiceButton into #pb-voice-mount after gate
    passes. Uses @vapi-ai/web — same stack as /diagnostic. */
-.spuds-voice-frame{display:flex;flex-direction:column;align-items:center;margin:32px auto;gap:14px;}
-.gold-ttt-btn{width:140px;height:140px;border-radius:50%;background:transparent;border:2px solid #c9993a;color:#c9993a;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,box-shadow 0.2s;animation:spuds-pulse 2.5s ease-in-out infinite;}
+.mackleberry-voice-frame{display:flex;flex-direction:column;align-items:center;margin:32px auto;gap:14px;}
+.gold-ttt-btn{width:140px;height:140px;border-radius:50%;background:transparent;border:2px solid #c9993a;color:#c9993a;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,box-shadow 0.2s;animation:mackleberry-pulse 2.5s ease-in-out infinite;}
 .gold-ttt-btn:hover:not(:disabled){background:rgba(201,153,58,0.08);}
 .gold-ttt-btn:disabled{opacity:0.5;cursor:not-allowed;animation:none;}
 .gold-ttt-btn.active{background:rgba(201,153,58,0.12);animation:none;box-shadow:0 0 0 8px rgba(201,153,58,0.08),0 0 0 18px rgba(201,153,58,0.04);}
-@keyframes spuds-pulse{0%{box-shadow:0 0 0 0 rgba(201,153,58,0.4);}70%{box-shadow:0 0 0 16px rgba(201,153,58,0);}100%{box-shadow:0 0 0 0 rgba(201,153,58,0);}}
-.spuds-voice-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#c9993a;font-family:'DM Sans',sans-serif;}
-.spuds-voice-error{font-size:13px;color:#e04040;margin-top:4px;max-width:320px;text-align:center;line-height:1.5;}
+@keyframes mackleberry-pulse{0%{box-shadow:0 0 0 0 rgba(201,153,58,0.4);}70%{box-shadow:0 0 0 16px rgba(201,153,58,0);}100%{box-shadow:0 0 0 0 rgba(201,153,58,0);}}
+.mackleberry-voice-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#c9993a;font-family:'DM Sans',sans-serif;}
+.mackleberry-voice-error{font-size:13px;color:#e04040;margin-top:4px;max-width:320px;text-align:center;line-height:1.5;}
 `;
 
 // ─── INIT SCRIPT ──────────────────────────────────────────
@@ -366,17 +366,29 @@ const PB_BODY = `
   <p class="note">AI Readiness Labs is a separately priced, deliverable service product — not a backend diagnostic system. A prospect takes the AI IQ™ assessment free and is placed into the rung that matches their score. What they purchase is the rung experience itself.</p>
   <div class="ibox">
     <h3>The Scoring Mathematics — AI IQ™</h3>
+    <p style="font-size:13px;color:var(--dim);margin-bottom:14px;font-style:italic;">Domain structure and exact weightings are still being refined. What's shown below is what we know we're measuring.</p>
     <table class="dtbl">
-      <thead><tr><th>Domain</th><th>Weight</th><th>What It Measures</th></tr></thead>
+      <thead><tr><th>Core Domain · all prospects</th><th>What It Measures</th></tr></thead>
       <tbody>
-        <tr><td>Revenue Alignment</td><td class="gd">25%</td><td>Does AI measurably drive revenue outcomes?</td></tr>
-        <tr><td>Deployment Depth</td><td class="gd">20%</td><td>Breadth and depth of AI tools in active use</td></tr>
-        <tr><td>Integration Maturity</td><td class="gd">20%</td><td>How connected and coordinated are AI systems?</td></tr>
-        <tr><td>Automation Orchestration</td><td class="gd">20%</td><td>Complexity and chaining of automated workflows</td></tr>
-        <tr><td>Oversight Awareness</td><td class="gd">15%</td><td>Governance literacy and risk management posture</td></tr>
+        <tr><td>Deployment Depth</td><td>How embedded AI is in daily work and customer experience</td></tr>
+        <tr><td>Integration Maturity</td><td>How well AI connects to CRM, operations, data, workflows</td></tr>
+        <tr><td>Revenue Alignment</td><td>Whether AI is moving real business outcomes and KPIs</td></tr>
+        <tr><td>Automation Orchestration</td><td>How much runs without manual triggers · end-to-end chaining</td></tr>
+        <tr><td>Oversight Awareness</td><td>AI-use policies, human review, incident response</td></tr>
+        <tr><td>Team &amp; Human Readiness</td><td>Team competency and structural investment in AI skills</td></tr>
+        <tr><td>Strategic Leadership</td><td>Clear POV on AI · deliberate adoption · compelling narrative</td></tr>
+        <tr><td>Organizational Context</td><td>Unscored · captures org size (solo, small, mid, large)</td></tr>
       </tbody>
     </table>
-    <p style="font-size:13px;color:var(--dim);margin-top:8px;">Score 0–40 → Rung 2 &nbsp;·&nbsp; Score 41–70 → Rung 3 &nbsp;·&nbsp; Score 71–100 → Rung 4</p>
+    <table class="dtbl" style="margin-top:12px;">
+      <thead><tr><th>Additional Domain · scorers 61+ only</th><th>What It Measures</th></tr></thead>
+      <tbody>
+        <tr><td>Data Foundation</td><td>Whether underlying data is accessible, clean, and trustworthy</td></tr>
+        <tr><td>Customer Intelligence</td><td>Clarity on ideal customer's actual decision triggers</td></tr>
+        <tr><td>Investment Posture</td><td>Budget capacity and decision velocity for AI initiatives</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--dim);margin-top:12px;">Score 0–40 → Rung 2 &nbsp;·&nbsp; Score 41–70 → Rung 3 &nbsp;·&nbsp; Score 71–100 → Rung 4</p>
   </div>
 </div>
 
@@ -403,12 +415,12 @@ const PB_BODY = `
   <div class="rung-card r2">
     <div class="rung-number">Rung 02 · Adaptation</div>
     <div class="rung-name">SkillSprint™ Academy</div>
-    <span class="rung-tag tb">DIY Self-Guided · 15% Built</span>
-    <div class="rung-score">Score range: <strong>0–40 · Absent / Experimental</strong> · 90-day program · $297 one-time</div>
-    <div class="rung-desc">The promise is not theory — it's a live, operational AI workflow running in their business by day 90. Five modules. Fifteen sessions. Optional advisor upgrade at module 3 and exit.</div>
+    <span class="rung-tag tb">Self-Paced · 15% Built</span>
+    <div class="rung-score">Score range: <strong>0–40 · Absent / Experimental</strong> · 90-day self-paced · <strong>$297–$497</strong> <em style="color:var(--dim);font-style:normal;">(TBD · one-time or monthly)</em></div>
+    <div class="rung-desc">The promise is not theory — it's a live, operational AI workflow running in their business by day 90. Five modules, self-paced. Three package options: base course, base + one live onboarding session, or base + three check-ins at 30/60/90 days.</div>
     <div class="two-col">
-      <div><div class="col-label">5 Modules · 15 Sessions</div>
-      <ul class="cl"><li class="ok">M1: AI Foundations &amp; Business Diagnosis</li><li class="ok">M2: Tool Selection &amp; Stack Design</li><li class="ok">M3: First Automation — Workflows That Work</li><li class="ok">M4: Customer-Facing AI Deployment</li><li class="ok">M5: Measure, Iterate &amp; Ascend</li></ul></div>
+      <div><div class="col-label">5 Modules · 90 Days</div>
+      <ul class="cl"><li class="ok">M1: AI Activation Baseline</li><li class="ok">M2: Your First Automated Workflow</li><li class="ok">M3: Connecting AI to Your Systems</li><li class="ok">M4: Revenue Alignment</li><li class="ok">M5: Review, Measure, Sustain</li></ul></div>
       <div><div class="col-label">What's Needed</div>
       <ul class="cl"><li class="no">SkillSprint™ LMS — delivery mechanism</li><li class="no">Module content: video + written + exercises</li><li class="no">What makes a self-guided learner finish?</li></ul></div>
     </div>
@@ -418,7 +430,7 @@ const PB_BODY = `
     <div class="rung-number">Rung 03 · Optimization</div>
     <div class="rung-name">AI Optimization Workshop</div>
     <span class="rung-tag tg">Done-With-You · 15% Built</span>
-    <div class="rung-score">Score range: <strong>41–70 · Emerging / Integrated</strong> · 3–10 sessions · $897–$2,997</div>
+    <div class="rung-score">Score range: <strong>41–70 · Emerging / Integrated</strong> · 3–10 sessions · <em style="color:var(--dim);font-style:normal;">pricing TBD</em></div>
     <div class="rung-desc">An advisor in the room, building live, holding the client accountable to a number. Rung 2 teaches adaptation. Rung 3 drives optimization for competitive advantage and measurable revenue impact.</div>
     <table class="stbl">
       <thead><tr><th>#</th><th>Session Title</th><th>Client Deliverable</th></tr></thead>
@@ -432,10 +444,10 @@ const PB_BODY = `
       </tbody>
     </table>
     <div class="pgrid">
-      <div class="pc"><div class="plbl">Starter</div><div class="pamt">$897</div><div class="punt">3 sessions</div><div class="pfeat">Roadmap + 1 live automation</div></div>
-      <div class="pc ft"><div class="plbl">Core</div><div class="pamt">$1,497</div><div class="punt">5 sessions</div><div class="pfeat">Full sprint · Revenue KPIs set</div></div>
-      <div class="pc"><div class="plbl">Deep</div><div class="pamt">$1,997</div><div class="punt">7 sessions</div><div class="pfeat">CRM integration + advanced auto</div></div>
-      <div class="pc"><div class="plbl">Full</div><div class="pamt">$2,997</div><div class="punt">10 sessions</div><div class="pfeat">Governance + Rung 4 readiness</div></div>
+      <div class="pc"><div class="plbl">Starter 3</div><div class="pamt" style="font-size:18px;">TBD</div><div class="punt">3 sessions</div><div class="pfeat">One focused use case</div></div>
+      <div class="pc ft"><div class="plbl">Core 5</div><div class="pamt" style="font-size:18px;">TBD</div><div class="punt">5 sessions · recommended</div><div class="pfeat">2–3 workflows · full sprint</div></div>
+      <div class="pc"><div class="plbl">Growth 7</div><div class="pamt" style="font-size:18px;">TBD</div><div class="punt">7 sessions</div><div class="pfeat">Full revenue alignment sprint</div></div>
+      <div class="pc"><div class="plbl">Intensive 10</div><div class="pamt" style="font-size:18px;">TBD</div><div class="punt">10 sessions</div><div class="pfeat">Multi-team · complex integration</div></div>
     </div>
   </div>
 
@@ -470,7 +482,7 @@ const PB_BODY = `
 <div class="section">
   <div class="sec-label">Revenue Architecture</div>
   <h2>What a Client Journey Looks Like</h2>
-  <div class="ibox"><h3>Client Lifetime Value — Example Path</h3><p>Rung 2 ($297) → Rung 3 seven-session workshop ($1,997) → Rung 4 Operations retainer ($4,500/mo) = <strong style="color:var(--gold)">$56,294 Year 1</strong> — before cross-sell.</p></div>
+  <div class="ibox"><h3>Client Lifetime Value — Example Path</h3><p>Rung 2 → Rung 3 seven-session workshop (Growth 7) → Rung 4 Operations retainer ($3,500–$5,500/mo). <em style="color:var(--dim);">Rung 2 and Rung 3 pricing still being finalized — example total intentionally omitted until pricing locks.</em></p></div>
   <div class="ibox" style="border-left-color:#4a8fd4;"><h3>Conservative Revenue Projection</h3><p>50 assessments/month · 20% Rung 2 · 8% Rung 3 · 2% Rung 4 → <strong style="color:var(--gold)">~$12,470/month · ~$150K/year</strong>. Moderate (150/month) → ~$449K/year.</p></div>
 </div>
 
@@ -480,7 +492,7 @@ const PB_BODY = `
 
 <hr class="rule"/>
 
-<div class="spuds-sec">
+<div class="mackleberry-sec">
   <span class="slbl">MR. MACKLEBERRY · AI READINESS LABS ADVISOR</span>
   <div class="stitle">Talk to Mr. Mackleberry</div>
   <div class="ssub">Mr. Mackleberry knows the Labs well enough to talk through any of the four rungs honestly. Ask questions, share concerns, push back. That's what he's here for.</div>
