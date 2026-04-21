@@ -71,11 +71,14 @@ export default function YourPackage() {
   const [view, setView] = useState<"carte" | "bundle">("bundle");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [priceMap, setPriceMap] = useState<Record<number, number>>({});
+  const [pricesLoading, setPricesLoading] = useState(true);
   const prospectId = searchParams.get("prospect_id")?.trim() || "";
   const companySize = searchParams.get("business_size")?.trim() || "";
   const sourceFromQuery = searchParams.get("source")?.trim() || "";
   const callTypeFromQuery = searchParams.get("call_type")?.trim() || "";
-  const [prospectMeta, setProspectMeta] = useState<{ source: string; call_type: string } | null>(null);
+  const assignedRungFromQuery = Number(searchParams.get("assigned_rung") ?? "");
+  const [prospectMeta, setProspectMeta] = useState<{ source: string; call_type: string; assigned_rung: number | null } | null>(null);
   const [prospectMetaLoading, setProspectMetaLoading] = useState(false);
 
   useEffect(() => {
@@ -91,14 +94,15 @@ export default function YourPackage() {
       setProspectMetaLoading(true);
       const { data, error } = await supabase
         .from("layer5_prospects")
-        .select("source, call_type")
+        .select("source, call_type, assigned_rung")
         .eq("id", prospectId)
-        .maybeSingle<{ source: string | null; call_type: string | null }>();
+        .maybeSingle<{ source: string | null; call_type: string | null; assigned_rung: number | null }>();
       if (!cancelled) {
         if (!error && data) {
           setProspectMeta({
             source: data.source?.trim() ?? "",
             call_type: data.call_type?.trim() ?? "",
+            assigned_rung: typeof data.assigned_rung === "number" ? data.assigned_rung : null,
           });
         }
         setProspectMetaLoading(false);
@@ -110,16 +114,56 @@ export default function YourPackage() {
     };
   }, [prospectId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPrices() {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        if (!cancelled) setPricesLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("layer4_revenue_logic")
+        .select("service_id, service_name, retail_price_low, pricing_tier")
+        .order("service_id");
+
+      if (cancelled) return;
+      const nextMap = Object.fromEntries(
+        (data ?? [])
+          .map((row) => ({
+            service_id: Number((row as { service_id: unknown }).service_id),
+            retail_price_low: Number((row as { retail_price_low: unknown }).retail_price_low),
+          }))
+          .filter((row) => Number.isFinite(row.service_id) && Number.isFinite(row.retail_price_low))
+          .map((row) => [row.service_id, row.retail_price_low])
+      ) as Record<number, number>;
+      setPriceMap(nextMap);
+      setPricesLoading(false);
+    }
+    void loadPrices();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const source = (prospectMeta?.source || sourceFromQuery).toLowerCase();
   const callType = (prospectMeta?.call_type || callTypeFromQuery).toLowerCase();
+  const assignedRung =
+    typeof prospectMeta?.assigned_rung === "number"
+      ? prospectMeta.assigned_rung
+      : Number.isFinite(assignedRungFromQuery)
+        ? assignedRungFromQuery
+        : null;
   const isSovereignTier = tierParam.trim().toLowerCase() === "sovereign";
-  const isAiIqEntry = source === "door9" || source === "door4-ai-iq" || callType === "ai_iq";
+  const isAiIqEntry =
+    source === "door9" || source === "ai_iq" || source === "door4-ai-iq" || callType === "ai_iq" || assignedRung === 4;
   const routeToDiscoveryCall = isSovereignTier && isAiIqEntry;
   const sovereignRoutingPending =
     isSovereignTier &&
     !!prospectId &&
     !sourceFromQuery &&
     !callTypeFromQuery &&
+    !Number.isFinite(assignedRungFromQuery) &&
     prospectMetaLoading &&
     !prospectMeta;
 
@@ -137,14 +181,20 @@ export default function YourPackage() {
     [selected]
   );
 
-  const selectedRows = useMemo(
-    () => selectedList.map((id) => ({ ...getPackageBuilderService(id) })),
-    [selectedList]
+  const selectedRows = useMemo(() => selectedList.map((id) => ({ ...getPackageBuilderService(id) })), [selectedList]);
+
+  const pricedSelectedRows = useMemo(
+    () =>
+      selectedRows.map((svc) => ({
+        ...svc,
+        monthlyPrice: priceMap[svc.id] ?? null,
+      })),
+    [selectedRows, priceMap]
   );
 
   const aLaCarteTotal = useMemo(
-    () => selectedRows.reduce((sum, s) => sum + s.monthlyPrice, 0),
-    [selectedRows]
+    () => pricedSelectedRows.reduce((sum, s) => sum + (typeof s.monthlyPrice === "number" ? s.monthlyPrice : 0), 0),
+    [pricedSelectedRows]
   );
 
   const discount = bundleDiscountRate(selectedList.length);
@@ -264,7 +314,9 @@ export default function YourPackage() {
                       <p className="mt-2 text-[11px] leading-relaxed text-white/55">{svc.description}</p>
                     ) : null}
                     <p className="mt-2 text-[11px] text-white/50">{tierAssociationLabel(id)}</p>
-                    <p className="mt-4 font-mono text-sm tabular-nums text-[#c9973a]">{formatMoney(svc.monthlyPrice)}/mo</p>
+                    <p className="mt-4 font-mono text-sm tabular-nums text-[#c9973a]">
+                      {pricesLoading ? "Loading..." : priceMap[id] != null ? `${formatMoney(priceMap[id])}/mo` : "—"}
+                    </p>
                   </button>
                 );
               })}
@@ -288,7 +340,7 @@ export default function YourPackage() {
                     {selectedList.length === 1 ? "service" : "services"}
                   </h2>
                   <ul className="mt-6 space-y-3 border-t border-white/[0.08] pt-6">
-                    {selectedRows.map((svc) => (
+                    {pricedSelectedRows.map((svc) => (
                       <li key={svc.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="font-medium text-white">{svc.name}</p>
@@ -297,7 +349,13 @@ export default function YourPackage() {
                             <p className="mt-1 max-w-xl text-xs leading-relaxed text-white/45">{svc.description}</p>
                           ) : null}
                         </div>
-                        <p className="font-mono text-sm tabular-nums text-white/70">{formatMoney(svc.monthlyPrice)}/mo</p>
+                        <p className="font-mono text-sm tabular-nums text-white/70">
+                          {pricesLoading
+                            ? "Loading..."
+                            : typeof svc.monthlyPrice === "number"
+                              ? `${formatMoney(svc.monthlyPrice)}/mo`
+                              : "—"}
+                        </p>
                       </li>
                     ))}
                   </ul>
@@ -305,19 +363,23 @@ export default function YourPackage() {
                     {hasBundleSavings ? (
                       <>
                         <p className="font-mono text-xs uppercase tracking-widest text-white/45">Stack reference</p>
-                        <p className="mt-2 text-lg text-white/50 line-through tabular-nums">{formatMoney(aLaCarteTotal)}/mo</p>
+                        <p className="mt-2 text-lg text-white/50 line-through tabular-nums">
+                          {pricesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
+                        </p>
                         <p className="mt-4 text-xl font-semibold tabular-nums text-[#c9973a] sm:text-2xl">
-                          Your bundle price: {formatMoney(bundleMonthly)}/mo
+                          Your bundle price: {pricesLoading ? "Loading..." : `${formatMoney(bundleMonthly)}/mo`}
                         </p>
                         <p className="mt-2 text-sm text-emerald-400/90">
-                          You save {formatMoney(monthlySavings)}/mo vs. à la carte
+                          {pricesLoading ? "Loading..." : `You save ${formatMoney(monthlySavings)}/mo vs. à la carte`}
                         </p>
                       </>
                     ) : (
                       <>
                         <p className="text-sm text-white/60">
                           À la carte reference:{" "}
-                          <span className="font-mono tabular-nums text-white/80">{formatMoney(aLaCarteTotal)}/mo</span>
+                          <span className="font-mono tabular-nums text-white/80">
+                            {pricesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
+                          </span>
                         </p>
                         <p className="mt-3 text-sm text-white/55">
                           Select three or more services to activate bundle savings (8% for 3–4 items, 15% for five or more).
@@ -350,17 +412,25 @@ export default function YourPackage() {
             </p>
             <p className="text-sm text-white/70">
               À la carte total:{" "}
-              <span className="font-mono tabular-nums text-white">{formatMoney(aLaCarteTotal)}/mo</span>
+              <span className="font-mono tabular-nums text-white">
+                {pricesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
+              </span>
             </p>
           </div>
           <div className="text-left sm:text-right">
             {hasBundleSavings ? (
               <>
                 <p className="text-sm text-emerald-400/95">
-                  Bundle savings: <span className="font-mono font-semibold">{formatMoney(monthlySavings)}/mo</span>
+                  Bundle savings:{" "}
+                  <span className="font-mono font-semibold">
+                    {pricesLoading ? "Loading..." : `${formatMoney(monthlySavings)}/mo`}
+                  </span>
                 </p>
                 <p className="mt-1 text-sm text-white/70">
-                  Bundle: <span className="font-mono font-semibold text-[#c9973a]">{formatMoney(bundleMonthly)}/mo</span>
+                  Bundle:{" "}
+                  <span className="font-mono font-semibold text-[#c9973a]">
+                    {pricesLoading ? "Loading..." : `${formatMoney(bundleMonthly)}/mo`}
+                  </span>
                 </p>
               </>
             ) : (
