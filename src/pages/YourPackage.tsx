@@ -7,6 +7,7 @@ import {
   getPackageBuilderService,
   tierAssociationLabel,
 } from "@/lib/packageBuilderCatalog";
+import { PACKAGE_TIERS, type PackageTierKey } from "@/anydoor/diagnosticCatalog";
 
 const GOLD = "#c9973a";
 const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
@@ -17,14 +18,20 @@ function getCheckoutFunctionUrl(): string {
   return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
 }
 
-function staticCheckoutLinkForTier(tier: string, routeToDiscoveryCall: boolean): string {
+function staticCheckoutLinkForTier(tier: string, routeToDiscoveryCall: boolean): string | null {
   const key = tier.trim().toLowerCase();
   if (key === "sovereign" && routeToDiscoveryCall) return "/contact";
-  if (key === "momentum") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "/contact";
-  if (key === "signature") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "/contact";
-  if (key === "vanguard") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "/contact";
-  if (key === "sovereign") return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SOVEREIGN as string | undefined)?.trim() || "/contact";
-  return (import.meta.env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "/contact";
+  const essentials = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "";
+  const momentum = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "";
+  const signature = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "";
+  const vanguard = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "";
+  const sovereign = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SOVEREIGN as string | undefined)?.trim() || "";
+
+  if (key === "momentum") return momentum || essentials || null;
+  if (key === "signature") return signature || momentum || essentials || null;
+  if (key === "vanguard") return vanguard || signature || momentum || essentials || null;
+  if (key === "sovereign") return sovereign || vanguard || signature || momentum || essentials || null;
+  return essentials || momentum || signature || vanguard || sovereign || null;
 }
 
 function formatMoney(n: number): string {
@@ -49,9 +56,25 @@ function parseInitialSelection(servicesParam: string | null): Set<number> {
   return ids;
 }
 
+function normalizeTierKey(raw: string | null): PackageTierKey {
+  const normalized = (raw ?? "").trim().toLowerCase();
+  if (normalized === "momentum") return "Momentum";
+  if (normalized === "signature") return "Signature";
+  if (normalized === "vanguard") return "Vanguard";
+  if (normalized === "sovereign") return "Sovereign";
+  return "Essentials";
+}
+
+function tierServices(tier: PackageTierKey): Set<number> {
+  const def = PACKAGE_TIERS.find((candidate) => candidate.key === tier);
+  return new Set((def?.serviceIds ?? []).filter((id) => PACKAGE_BUILDER_SERVICE_IDS.includes(id)));
+}
+
 export default function YourPackage() {
   const [searchParams] = useSearchParams();
-  const tierParam = searchParams.get("tier")?.trim() || "Recommended";
+  const recommendedTier = normalizeTierKey(searchParams.get("tier"));
+  const [activeTier, setActiveTier] = useState<PackageTierKey>(recommendedTier);
+  const [showTierExplorer, setShowTierExplorer] = useState(false);
   const businessName = useMemo(() => {
     const raw = searchParams.get("name")?.trim();
     if (!raw) return "Your brand";
@@ -67,7 +90,10 @@ export default function YourPackage() {
     return Number.isFinite(s) ? Math.round(Math.min(100, Math.max(0, s))) : 0;
   }, [searchParams]);
 
-  const [selected, setSelected] = useState<Set<number>>(() => parseInitialSelection(searchParams.get("services")));
+  const [selected, setSelected] = useState<Set<number>>(() => {
+    const fromQuery = parseInitialSelection(searchParams.get("services"));
+    return fromQuery.size > 0 ? fromQuery : tierServices(recommendedTier);
+  });
   const [view, setView] = useState<"carte" | "bundle">("bundle");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -154,7 +180,7 @@ export default function YourPackage() {
       : Number.isFinite(assignedRungFromQuery)
         ? assignedRungFromQuery
         : null;
-  const isSovereignTier = tierParam.trim().toLowerCase() === "sovereign";
+  const isSovereignTier = activeTier === "Sovereign";
   const isAiIqEntry =
     source === "door9" || source === "ai_iq" || source === "door4-ai-iq" || callType === "ai_iq" || assignedRung === 4;
   const routeToDiscoveryCall = isSovereignTier && isAiIqEntry;
@@ -209,9 +235,13 @@ export default function YourPackage() {
       return;
     }
     setCheckoutError(null);
-    const fallbackLink = staticCheckoutLinkForTier(tierParam, routeToDiscoveryCall);
+    const fallbackLink = staticCheckoutLinkForTier(activeTier, routeToDiscoveryCall);
 
     if (!prospectId || selectedList.length === 0) {
+      if (!fallbackLink) {
+        setCheckoutError("Stripe checkout is not configured yet. Please contact support.");
+        return;
+      }
       window.location.href = fallbackLink;
       return;
     }
@@ -233,6 +263,10 @@ export default function YourPackage() {
         return;
       }
       if (json.fallback) {
+        if (!fallbackLink) {
+          setCheckoutError("Stripe checkout is not configured yet. Please contact support.");
+          return;
+        }
         window.location.href = fallbackLink;
         return;
       }
@@ -250,7 +284,7 @@ export default function YourPackage() {
         eyebrow="ANYDOOR ENGINE · PACKAGE BUILDER"
         titleAccent={`${businessName}'s recommended`}
         titleRest="package"
-        subtitle={`Your diagnostic score of ${score} places you in the ${tierParam} tier — here's what we'd build for you.`}
+        subtitle={`Your diagnostic score of ${score} places you in the ${recommendedTier} tier — here's what we'd build for you.`}
       />
 
       <div className="pb-48 text-white">
@@ -336,9 +370,38 @@ export default function YourPackage() {
                     className="text-2xl font-light text-[#c9973a] sm:text-3xl"
                     style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
                   >
-                    Your {tierParam} package — {selectedList.length}{" "}
+                    Your {activeTier} package — {selectedList.length}{" "}
                     {selectedList.length === 1 ? "service" : "services"}
                   </h2>
+                  <p className="mt-2 text-xs text-white/45">Recommended based on your diagnostic results.</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowTierExplorer((prev) => !prev)}
+                    className="mt-2 text-xs text-white/60 underline-offset-2 transition hover:text-white/90 hover:underline"
+                  >
+                    Explore a different scope &rarr;
+                  </button>
+                  {showTierExplorer ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {PACKAGE_TIERS.map((tierDef) => (
+                        <button
+                          key={tierDef.key}
+                          type="button"
+                          onClick={() => {
+                            setActiveTier(tierDef.key);
+                            setSelected(tierServices(tierDef.key));
+                          }}
+                          className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                            activeTier === tierDef.key
+                              ? "border-[#c9973a]/60 bg-[#c9973a]/20 text-[#f4d9a5]"
+                              : "border-white/20 bg-transparent text-white/65 hover:border-white/40 hover:text-white/90"
+                          }`}
+                        >
+                          {tierDef.key}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <ul className="mt-6 space-y-3 border-t border-white/[0.08] pt-6">
                     {pricedSelectedRows.map((svc) => (
                       <li key={svc.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -390,7 +453,7 @@ export default function YourPackage() {
                       className="mt-8 inline-flex items-center rounded-full border border-[#c9973a]/45 bg-[#c9973a]/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#c9973a]"
                       style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
                     >
-                      Included in {tierParam} and above
+                      Included in {activeTier} and above
                     </p>
                   </div>
                 </>
