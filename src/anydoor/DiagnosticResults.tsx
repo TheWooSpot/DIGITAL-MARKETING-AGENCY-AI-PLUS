@@ -9,6 +9,7 @@ import { ReportVapiTapToTalk } from "./ReportVapiTapToTalk";
 import { useDiagnosticVapiCall } from "./useDiagnosticVapiCall";
 import { useCheckoutConfig } from "@/hooks/useCheckoutConfig";
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowserClient";
+import { logEvent } from "@/lib/diagnosticEvents";
 
 const GOLD = "#c9973a";
 const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
@@ -215,12 +216,13 @@ interface DiagnosticResultsProps {
   submittedUrl: string;
   /** When viewing `/report/[token]`, pass the token from the URL for the share link. */
   reportShareToken?: string;
+  /** Raw report row for `/report/{share_token}` context-driven voice launch. */
+  reportProspect?: Record<string, unknown> | null;
 }
 
-export function DiagnosticResults({ result, submittedUrl, reportShareToken }: DiagnosticResultsProps) {
+export function DiagnosticResults({ result, submittedUrl, reportShareToken, reportProspect }: DiagnosticResultsProps) {
   const navigate = useNavigate();
   const { variant: checkoutVariant = "A" } = useCheckoutConfig();
-  const diagnosticVapi = useDiagnosticVapiCall(result);
   const [tab, setTab] = useState<"summary" | "full">("summary");
   const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
   const [showFiveCta, setShowFiveCta] = useState(false);
@@ -258,6 +260,91 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
   const displayUrl = submittedUrl.startsWith("http") ? submittedUrl : `https://${submittedUrl}`;
   const shareToken = reportShareToken ?? result.share_token;
+  const logCtaClick = useCallback(() => {
+    void logEvent("cta_clicked", {
+      share_token: shareToken,
+      prospect_id: result.prospect_id,
+      door: "door-2",
+      event_data: { cta: "talk_to_strategist" },
+    });
+  }, [shareToken, result.prospect_id]);
+  const handleVoiceLaunched = useCallback(() => {
+    void logEvent("voice_launched", {
+      share_token: shareToken,
+      prospect_id: result.prospect_id,
+      door: "door-2",
+      event_data: { agent: "jordan" },
+    });
+  }, [shareToken, result.prospect_id]);
+  const handleVoiceEnded = useCallback(
+    (durationSeconds: number) => {
+      void logEvent("voice_ended", {
+        share_token: shareToken,
+        prospect_id: result.prospect_id,
+        door: "door-2",
+        event_data: { agent: "jordan", duration_seconds: durationSeconds },
+      });
+    },
+    [shareToken, result.prospect_id]
+  );
+  const getReportVoiceStartConfig = useCallback(() => {
+    if (!(typeof reportShareToken === "string" && reportShareToken.length > 0) || !reportProspect) return null;
+
+    const detectedGaps = Array.isArray(reportProspect.detected_gaps)
+      ? (reportProspect.detected_gaps as Array<Record<string, unknown>>)
+      : [];
+    const topGaps = detectedGaps
+      .slice(0, 3)
+      .map((g, i) => `${i + 1}. ${String(g.gap_description ?? "")} (priority: ${String(g.priority ?? "")})`)
+      .join("\n");
+
+    const recommendedServices = Array.isArray(reportProspect.recommended_services)
+      ? (reportProspect.recommended_services as Array<number | Record<string, unknown>>)
+      : [];
+    const topServices = recommendedServices
+      .slice(0, 3)
+      .map((s) => {
+        if (typeof s === "number") return `service_${s}:`;
+        return `service_${String(s.service_id ?? "")}: ${String(s.tier_summary ?? "")}`;
+      })
+      .join("\n");
+
+    const rawResult =
+      reportProspect.raw_result && typeof reportProspect.raw_result === "object" && !Array.isArray(reportProspect.raw_result)
+        ? (reportProspect.raw_result as Record<string, unknown>)
+        : null;
+
+    void logEvent("cta_clicked", {
+      share_token: String(reportProspect.share_token ?? shareToken ?? ""),
+      prospect_id: String(reportProspect.id ?? result.prospect_id ?? ""),
+      door: "door-2",
+      event_data: { cta: "talk_to_strategist" },
+    });
+
+    return {
+      assistantId: "e48ee900-bfb0-4ee6-a645-e89a08233365",
+      variableValues: {
+        business_name: String(reportProspect.business_name ?? "their business"),
+        industry: String(reportProspect.industry ?? ""),
+        business_descriptor: String(rawResult?.business_descriptor ?? ""),
+        overall_score: String(reportProspect.overall_score ?? ""),
+        visibility_score: String(reportProspect.visibility_score ?? ""),
+        engagement_score: String(reportProspect.engagement_score ?? ""),
+        conversion_score: String(reportProspect.conversion_score ?? ""),
+        recommended_tier: String(reportProspect.recommended_tier ?? "Essentials"),
+        tier_statement: String(rawResult?.tier_statement ?? ""),
+        top_gaps: topGaps,
+        top_services: topServices,
+        share_token: String(reportProspect.share_token ?? shareToken ?? ""),
+        report_url: window.location.href,
+      },
+    };
+  }, [reportShareToken, reportProspect, result.prospect_id, shareToken]);
+  const diagnosticVapi = useDiagnosticVapiCall(result, {
+    onVoiceLaunched: handleVoiceLaunched,
+    onVoiceEnded: handleVoiceEnded,
+    getStartConfig: getReportVoiceStartConfig,
+  });
   /** Prefer API-provided canonical URL; fallback for older responses / shared rows without share_url. */
   const shareReportUrl = useMemo(() => {
     const fromApi = result.share_url?.trim();
@@ -346,10 +433,12 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
   const handlePrint = () => window.print();
 
   const scrollToPackages = () => {
+    logCtaClick();
     document.getElementById("section-packages")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const goYourPackage = () => {
+    logCtaClick();
     const tier = encodeURIComponent((result.recommended_tier ?? "").trim());
     const services = recommendedNorm.map((r) => r.service_id).join(",");
     const name = encodeURIComponent(business_name ?? "");
@@ -497,7 +586,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
 
           <div className="flex flex-col items-center gap-3 lg:items-end">
             <div
-              className="flex h-28 w-28 items-center justify-center rounded-full border-4 bg-[#07080d] print:border-gray-400 print:bg-white sm:h-32 sm:w-32"
+              className="inline-flex h-[90px] w-[90px] aspect-square items-center justify-center rounded-full border-4 bg-[#07080d] print:border-gray-400 print:bg-white"
               style={{ borderColor: ringColor(overall) }}
             >
               <span className="text-4xl font-semibold tabular-nums text-white print:text-black" style={{ color: ringColor(overall) }}>
@@ -652,74 +741,76 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken }: Di
         </ScrollSection>
       )}
 
-      {/* Checkout CTA — after service list, before packages and Jordan */}
-      <ScrollSection className="no-print">
-        {sovereignRoutingPending ? (
-          <div
-            data-slot="checkout-cta"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Routing</p>
-            <p className="mt-3 text-sm text-white/60">Finalizing your checkout path…</p>
-          </div>
-        ) : showSovereignDiscoveryCta ? (
-          <div
-            data-slot="checkout-cta"
-            className="sovereign-cta"
-          >
-            <p className="sovereign-label">Sovereign</p>
-            <p className="sovereign-descriptor">Custom engagement</p>
-            <p className="sovereign-description">
-              Your organization&apos;s scale and complexity warrants a dedicated discovery conversation — not a
-              checkout form. Let&apos;s talk about what a strategic engagement looks like for you.
-            </p>
-            <a href="/contact" className="sovereign-button">
-              Schedule a discovery call →
-            </a>
-            <p className="sovereign-note">No commitment required. We&apos;ll scope your engagement together.</p>
-          </div>
-        ) : (
-          <div
-            data-slot="checkout-cta"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
-            <h3
-              className="mt-3 text-xl font-light text-white sm:text-2xl"
-              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+      {/* Checkout CTA — hidden on public shared reports (`/report/{share_token}`) */}
+      {!(typeof reportShareToken === "string" && reportShareToken.length > 0) ? (
+        <ScrollSection className="no-print">
+          {sovereignRoutingPending ? (
+            <div
+              data-slot="checkout-cta"
+              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
             >
-              Continue when you&apos;re ready
-            </h3>
-            <p className="mt-2 text-sm text-white/55">
-              You&apos;ll complete checkout securely on Stripe. After payment, you&apos;ll land on a confirmation page
-              and we&apos;ll follow up to get things moving.
-            </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              {checkoutVariant === "A" ? (
-                <button
-                  type="button"
-                  disabled={checkoutLoading || sovereignRoutingPending}
-                  onClick={() => void beginCheckout()}
-                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-                >
-                  {checkoutLoading ? "Starting checkout…" : "Checkout"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.href = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
-                  }}
-                  className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-                >
-                  Go to payment link
-                </button>
-              )}
+              <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Routing</p>
+              <p className="mt-3 text-sm text-white/60">Finalizing your checkout path…</p>
             </div>
-            {checkoutError ? <p className="mt-3 text-center text-sm text-amber-300">{checkoutError}</p> : null}
-          </div>
-        )}
-      </ScrollSection>
+          ) : showSovereignDiscoveryCta ? (
+            <div
+              data-slot="checkout-cta"
+              className="sovereign-cta"
+            >
+              <p className="sovereign-label">Sovereign</p>
+              <p className="sovereign-descriptor">Custom engagement</p>
+              <p className="sovereign-description">
+                Your organization&apos;s scale and complexity warrants a dedicated discovery conversation — not a
+                checkout form. Let&apos;s talk about what a strategic engagement looks like for you.
+              </p>
+              <a href="/contact" className="sovereign-button">
+                Schedule a discovery call →
+              </a>
+              <p className="sovereign-note">No commitment required. We&apos;ll scope your engagement together.</p>
+            </div>
+          ) : (
+            <div
+              data-slot="checkout-cta"
+              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
+              <h3
+                className="mt-3 text-xl font-light text-white sm:text-2xl"
+                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+              >
+                Continue when you&apos;re ready
+              </h3>
+              <p className="mt-2 text-sm text-white/55">
+                You&apos;ll complete checkout securely on Stripe. After payment, you&apos;ll land on a confirmation page
+                and we&apos;ll follow up to get things moving.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                {checkoutVariant === "A" ? (
+                  <button
+                    type="button"
+                    disabled={checkoutLoading || sovereignRoutingPending}
+                    onClick={() => void beginCheckout()}
+                    className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+                  >
+                    {checkoutLoading ? "Starting checkout…" : "Checkout"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
+                    }}
+                    className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
+                  >
+                    Go to payment link
+                  </button>
+                )}
+              </div>
+              {checkoutError ? <p className="mt-3 text-center text-sm text-amber-300">{checkoutError}</p> : null}
+            </div>
+          )}
+        </ScrollSection>
+      ) : null}
 
       {/* SECTION 4 — Packages */}
       <ScrollSection id="section-packages" className="scroll-mt-28">
