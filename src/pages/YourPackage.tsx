@@ -2,12 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
-import {
-  PACKAGE_BUILDER_SERVICE_IDS,
-  getPackageBuilderService,
-  tierAssociationLabel,
-} from "@/lib/packageBuilderCatalog";
-import { PACKAGE_TIERS, type PackageTierKey } from "@/anydoor/diagnosticCatalog";
+import type { PackageTierKey } from "@/anydoor/diagnosticCatalog";
 
 const GOLD = "#c9973a";
 const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
@@ -46,16 +41,6 @@ function bundleDiscountRate(selectedCount: number): number {
   return 0;
 }
 
-function parseInitialSelection(servicesParam: string | null): Set<number> {
-  const ids = new Set<number>();
-  const raw = servicesParam ?? "";
-  for (const part of raw.split(",")) {
-    const n = Number(part.trim());
-    if (Number.isFinite(n) && PACKAGE_BUILDER_SERVICE_IDS.includes(n)) ids.add(n);
-  }
-  return ids;
-}
-
 function normalizeTierKey(raw: string | null): PackageTierKey {
   const normalized = (raw ?? "").trim().toLowerCase();
   if (normalized === "momentum") return "Momentum";
@@ -65,16 +50,45 @@ function normalizeTierKey(raw: string | null): PackageTierKey {
   return "Essentials";
 }
 
-function tierServices(tier: PackageTierKey): Set<number> {
-  const def = PACKAGE_TIERS.find((candidate) => candidate.key === tier);
-  return new Set((def?.serviceIds ?? []).filter((id) => PACKAGE_BUILDER_SERVICE_IDS.includes(id)));
+type ProspectRecommendedService = {
+  service_id: number;
+  tier_summary?: string;
+};
+
+type RevenueServiceRow = {
+  service_id: number;
+  service_name: string;
+  pricing_tier: string | null;
+  retail_price_low: number | null;
+  initiation_fee_low: number | null;
+  stripe_monthly_price_id: string | null;
+  stripe_setup_price_id: string | null;
+};
+
+type DisplayedService = RevenueServiceRow & {
+  tier_summary?: string;
+};
+
+function parseRecommendedServices(raw: unknown): ProspectRecommendedService[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ProspectRecommendedService[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object") continue;
+    const serviceId = Number((row as { service_id?: unknown }).service_id);
+    if (!Number.isFinite(serviceId)) continue;
+    const tierSummaryRaw = (row as { tier_summary?: unknown }).tier_summary;
+    out.push({
+      service_id: Math.trunc(serviceId),
+      tier_summary: typeof tierSummaryRaw === "string" ? tierSummaryRaw.trim() : undefined,
+    });
+  }
+  return out;
 }
 
 export default function YourPackage() {
   const [searchParams] = useSearchParams();
-  const recommendedTier = normalizeTierKey(searchParams.get("tier"));
-  const [activeTier, setActiveTier] = useState<PackageTierKey>(recommendedTier);
-  const [showTierExplorer, setShowTierExplorer] = useState(false);
+  const queryRecommendedTier = normalizeTierKey(searchParams.get("tier"));
+  const [recommendedTier, setRecommendedTier] = useState<PackageTierKey>(queryRecommendedTier);
   const businessName = useMemo(() => {
     const raw = searchParams.get("name")?.trim();
     if (!raw) return "Your brand";
@@ -90,15 +104,11 @@ export default function YourPackage() {
     return Number.isFinite(s) ? Math.round(Math.min(100, Math.max(0, s))) : 0;
   }, [searchParams]);
 
-  const [selected, setSelected] = useState<Set<number>>(() => {
-    const fromQuery = parseInitialSelection(searchParams.get("services"));
-    return fromQuery.size > 0 ? fromQuery : tierServices(recommendedTier);
-  });
-  const [view, setView] = useState<"carte" | "bundle">("bundle");
+  const [displayedServices, setDisplayedServices] = useState<DisplayedService[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [priceMap, setPriceMap] = useState<Record<number, number>>({});
-  const [pricesLoading, setPricesLoading] = useState(true);
   const prospectId = searchParams.get("prospect_id")?.trim() || "";
   const companySize = searchParams.get("business_size")?.trim() || "";
   const sourceFromQuery = searchParams.get("source")?.trim() || "";
@@ -109,68 +119,101 @@ export default function YourPackage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadProspectMeta() {
+    async function loadPackageFromProspect() {
       if (!prospectId) {
-        setProspectMeta(null);
+        setDisplayedServices([]);
+        setServicesError("Missing prospect_id in URL.");
         setProspectMetaLoading(false);
+        setServicesLoading(false);
         return;
       }
-      const supabase = getSupabaseBrowserClient();
-      if (!supabase) return;
-      setProspectMetaLoading(true);
-      const { data, error } = await supabase
-        .from("layer5_prospects")
-        .select("source, call_type, assigned_rung")
-        .eq("id", prospectId)
-        .maybeSingle<{ source: string | null; call_type: string | null; assigned_rung: number | null }>();
-      if (!cancelled) {
-        if (!error && data) {
-          setProspectMeta({
-            source: data.source?.trim() ?? "",
-            call_type: data.call_type?.trim() ?? "",
-            assigned_rung: typeof data.assigned_rung === "number" ? data.assigned_rung : null,
-          });
-        }
-        setProspectMetaLoading(false);
-      }
-    }
-    void loadProspectMeta();
-    return () => {
-      cancelled = true;
-    };
-  }, [prospectId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadPrices() {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) {
-        if (!cancelled) setPricesLoading(false);
+        if (!cancelled) {
+          setServicesError("Supabase is not configured in this environment.");
+          setProspectMetaLoading(false);
+          setServicesLoading(false);
+        }
         return;
       }
-      const { data } = await supabase
-        .from("layer4_revenue_logic")
-        .select("service_id, service_name, retail_price_low, pricing_tier")
-        .order("service_id");
+      setServicesLoading(true);
+      setProspectMetaLoading(true);
+      setServicesError(null);
+
+      const { data: prospect, error: prospectError } = await supabase
+        .from("layer5_prospects")
+        .select("recommended_services, recommended_tier, source, call_type, assigned_rung")
+        .eq("id", prospectId)
+        .maybeSingle<{
+          recommended_services: unknown;
+          recommended_tier: string | null;
+          source: string | null;
+          call_type: string | null;
+          assigned_rung: number | null;
+        }>();
 
       if (cancelled) return;
-      const nextMap = Object.fromEntries(
-        (data ?? [])
-          .map((row) => ({
-            service_id: Number((row as { service_id: unknown }).service_id),
-            retail_price_low: Number((row as { retail_price_low: unknown }).retail_price_low),
-          }))
-          .filter((row) => Number.isFinite(row.service_id) && Number.isFinite(row.retail_price_low))
-          .map((row) => [row.service_id, row.retail_price_low])
-      ) as Record<number, number>;
-      setPriceMap(nextMap);
-      setPricesLoading(false);
+      if (prospectError || !prospect) {
+        setDisplayedServices([]);
+        setProspectMeta(null);
+        setServicesError(prospectError?.message ?? "Prospect not found.");
+        setProspectMetaLoading(false);
+        setServicesLoading(false);
+        return;
+      }
+
+      setProspectMeta({
+        source: prospect.source?.trim() ?? "",
+        call_type: prospect.call_type?.trim() ?? "",
+        assigned_rung: typeof prospect.assigned_rung === "number" ? prospect.assigned_rung : null,
+      });
+      setProspectMetaLoading(false);
+      setRecommendedTier(normalizeTierKey(prospect.recommended_tier ?? queryRecommendedTier));
+
+      const recommended = parseRecommendedServices(prospect.recommended_services);
+      if (recommended.length === 0) {
+        setDisplayedServices([]);
+        setServicesLoading(false);
+        return;
+      }
+
+      const recommendedIds = Array.from(new Set(recommended.map((service) => service.service_id)));
+      const { data: revenueRows, error: revenueError } = await supabase
+        .from("layer4_revenue_logic")
+        .select(
+          "service_id, service_name, pricing_tier, retail_price_low, initiation_fee_low, stripe_monthly_price_id, stripe_setup_price_id"
+        )
+        .in("service_id", recommendedIds)
+        .returns<RevenueServiceRow[]>();
+
+      if (cancelled) return;
+      if (revenueError) {
+        setDisplayedServices([]);
+        setServicesError(revenueError.message);
+        setServicesLoading(false);
+        return;
+      }
+
+      const detailsById = new Map((revenueRows ?? []).map((row) => [row.service_id, row]));
+      const joined: DisplayedService[] = recommended
+        .map((service) => {
+          const details = detailsById.get(service.service_id);
+          if (!details) return null;
+          return {
+            ...details,
+            tier_summary: service.tier_summary,
+          };
+        })
+        .filter((row): row is DisplayedService => !!row);
+
+      setDisplayedServices(joined);
+      setServicesLoading(false);
     }
-    void loadPrices();
+    void loadPackageFromProspect();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [prospectId, queryRecommendedTier]);
 
   const source = (prospectMeta?.source || sourceFromQuery).toLowerCase();
   const callType = (prospectMeta?.call_type || callTypeFromQuery).toLowerCase();
@@ -180,7 +223,7 @@ export default function YourPackage() {
       : Number.isFinite(assignedRungFromQuery)
         ? assignedRungFromQuery
         : null;
-  const isSovereignTier = activeTier === "Sovereign";
+  const isSovereignTier = recommendedTier === "Sovereign";
   const isAiIqEntry =
     source === "door9" || source === "ai_iq" || source === "door4-ai-iq" || callType === "ai_iq" || assignedRung === 4;
   const routeToDiscoveryCall = isSovereignTier && isAiIqEntry;
@@ -193,51 +236,27 @@ export default function YourPackage() {
     prospectMetaLoading &&
     !prospectMeta;
 
-  const toggle = useCallback((id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const selectedList = useMemo(
-    () => PACKAGE_BUILDER_SERVICE_IDS.filter((id) => selected.has(id)),
-    [selected]
-  );
-
-  const selectedRows = useMemo(() => selectedList.map((id) => ({ ...getPackageBuilderService(id) })), [selectedList]);
-
-  const pricedSelectedRows = useMemo(
-    () =>
-      selectedRows.map((svc) => ({
-        ...svc,
-        monthlyPrice: priceMap[svc.id] ?? null,
-      })),
-    [selectedRows, priceMap]
-  );
-
+  const selectedServiceIds = useMemo(() => displayedServices.map((service) => service.service_id), [displayedServices]);
   const aLaCarteTotal = useMemo(
-    () => pricedSelectedRows.reduce((sum, s) => sum + (typeof s.monthlyPrice === "number" ? s.monthlyPrice : 0), 0),
-    [pricedSelectedRows]
+    () => displayedServices.reduce((sum, service) => sum + (service.retail_price_low ?? 0), 0),
+    [displayedServices]
   );
 
-  const discount = bundleDiscountRate(selectedList.length);
+  const discount = bundleDiscountRate(selectedServiceIds.length);
   const bundleMonthly = Math.round(aLaCarteTotal * (1 - discount));
   const monthlySavings = aLaCarteTotal - bundleMonthly;
-  const hasBundleSavings = selectedList.length >= 3;
+  const hasBundleSavings = selectedServiceIds.length >= 3;
 
-  async function startCheckout() {
+  const startCheckout = useCallback(async () => {
     if (checkoutLoading) return;
     if (sovereignRoutingPending) {
       setCheckoutError("Preparing your checkout path. Please wait a moment and try again.");
       return;
     }
     setCheckoutError(null);
-    const fallbackLink = staticCheckoutLinkForTier(activeTier, routeToDiscoveryCall);
+    const fallbackLink = staticCheckoutLinkForTier(recommendedTier, routeToDiscoveryCall);
 
-    if (!prospectId || selectedList.length === 0) {
+    if (!prospectId || selectedServiceIds.length === 0) {
       if (!fallbackLink) {
         setCheckoutError("Stripe checkout is not configured yet. Please contact support.");
         return;
@@ -253,7 +272,7 @@ export default function YourPackage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prospect_id: prospectId,
-          selected_services: selectedList,
+          selected_services: displayedServices.map((service) => service.service_id),
           company_size: companySize,
         }),
       });
@@ -276,7 +295,16 @@ export default function YourPackage() {
     } finally {
       setCheckoutLoading(false);
     }
-  }
+  }, [
+    checkoutLoading,
+    companySize,
+    displayedServices,
+    prospectId,
+    recommendedTier,
+    routeToDiscoveryCall,
+    selectedServiceIds.length,
+    sovereignRoutingPending,
+  ]);
 
   return (
     <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
@@ -291,176 +319,70 @@ export default function YourPackage() {
         <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: GOLD }}>
           Configure your stack
         </p>
-
-        <div className="no-print mt-4 inline-flex rounded-lg border border-white/[0.08] bg-[#07080d]/80 p-1">
-          <button
-            type="button"
-            onClick={() => setView("bundle")}
-            className={`rounded-md px-5 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-              view === "bundle" ? "bg-[#c9973a] text-[#07080d]" : "text-white/50 hover:text-white"
-            }`}
-          >
-            Bundle — best value
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("carte")}
-            className={`rounded-md px-5 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-              view === "carte" ? "bg-[#c9973a] text-[#07080d]" : "text-white/50 hover:text-white"
-            }`}
-          >
-            À la carte
-          </button>
-        </div>
-
-        {view === "carte" ? (
-          <>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <h2 className="text-xl font-light text-white" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-                Every capability · toggle what you want live
+        <div className="mt-8 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 sm:p-8">
+          {servicesLoading ? (
+            <p className="text-sm text-white/60">Loading package recommendations...</p>
+          ) : servicesError ? (
+            <p className="text-sm text-amber-300">{servicesError}</p>
+          ) : displayedServices.length === 0 ? (
+            <p className="text-sm text-white/60">No recommended services were found for this prospect.</p>
+          ) : (
+            <>
+              <h2
+                className="text-2xl font-light text-[#c9973a] sm:text-3xl"
+                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+              >
+                Your {recommendedTier} package — {displayedServices.length}{" "}
+                {displayedServices.length === 1 ? "service" : "services"}
               </h2>
-              <p className="font-mono text-sm tabular-nums text-[#c9973a]">Monthly total: {formatMoney(aLaCarteTotal)}/mo</p>
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {PACKAGE_BUILDER_SERVICE_IDS.map((id) => {
-                const svc = getPackageBuilderService(id);
-                const on = selected.has(id);
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => toggle(id)}
-                    className={`rounded-xl border p-5 text-left transition-colors ${
-                      on ? "border-[#c9973a]/60 bg-[#c9973a]/10" : "border-white/[0.08] bg-white/[0.02] hover:border-white/20"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/45">{svc.category}</span>
-                      <span
-                        className={`h-5 w-5 shrink-0 rounded border-2 ${
-                          on ? "border-[#c9973a] bg-[#c9973a]" : "border-white/30"
-                        }`}
-                        aria-hidden
-                      />
+              <p className="mt-2 text-xs text-white/45">
+                Recommended services come from your saved diagnostic result.
+              </p>
+              <ul className="mt-6 space-y-3 border-t border-white/[0.08] pt-6">
+                {displayedServices.map((service) => (
+                  <li key={service.service_id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-white">{service.service_name}</p>
+                      <p className="text-xs text-white/50">{service.pricing_tier ?? "Service"}</p>
+                      {service.tier_summary ? (
+                        <p className="mt-1 max-w-xl text-xs leading-relaxed text-white/45">{service.tier_summary}</p>
+                      ) : null}
                     </div>
-                    <p className="mt-3 font-semibold text-white leading-snug">{svc.name}</p>
-                    {svc.description ? (
-                      <p className="mt-2 text-[11px] leading-relaxed text-white/55">{svc.description}</p>
-                    ) : null}
-                    <p className="mt-2 text-[11px] text-white/50">{tierAssociationLabel(id)}</p>
-                    <p className="mt-4 font-mono text-sm tabular-nums text-[#c9973a]">
-                      {pricesLoading ? "Loading..." : priceMap[id] != null ? `${formatMoney(priceMap[id])}/mo` : "—"}
+                    <p className="font-mono text-sm tabular-nums text-white/70">
+                      {typeof service.retail_price_low === "number"
+                        ? `${formatMoney(service.retail_price_low)}/mo`
+                        : "—"}
                     </p>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="mt-8 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 sm:p-8">
-              {selectedList.length === 0 ? (
-                <p className="text-sm text-white/60">
-                  No services selected yet. Switch to <strong className="text-white/90">À la carte</strong> to turn on
-                  recommendations, then return here to see your bundle.
-                </p>
-              ) : (
-                <>
-                  <h2
-                    className="text-2xl font-light text-[#c9973a] sm:text-3xl"
-                    style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-                  >
-                    Your {activeTier} package — {selectedList.length}{" "}
-                    {selectedList.length === 1 ? "service" : "services"}
-                  </h2>
-                  <p className="mt-2 text-xs text-white/45">Recommended based on your diagnostic results.</p>
-                  <button
-                    type="button"
-                    onClick={() => setShowTierExplorer((prev) => !prev)}
-                    className="mt-2 text-xs text-white/60 underline-offset-2 transition hover:text-white/90 hover:underline"
-                  >
-                    Explore a different scope &rarr;
-                  </button>
-                  {showTierExplorer ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {PACKAGE_TIERS.map((tierDef) => (
-                        <button
-                          key={tierDef.key}
-                          type="button"
-                          onClick={() => {
-                            setActiveTier(tierDef.key);
-                            setSelected(tierServices(tierDef.key));
-                          }}
-                          className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
-                            activeTier === tierDef.key
-                              ? "border-[#c9973a]/60 bg-[#c9973a]/20 text-[#f4d9a5]"
-                              : "border-white/20 bg-transparent text-white/65 hover:border-white/40 hover:text-white/90"
-                          }`}
-                        >
-                          {tierDef.key}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  <ul className="mt-6 space-y-3 border-t border-white/[0.08] pt-6">
-                    {pricedSelectedRows.map((svc) => (
-                      <li key={svc.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-medium text-white">{svc.name}</p>
-                          <p className="text-xs text-white/50">{svc.category}</p>
-                          {svc.description ? (
-                            <p className="mt-1 max-w-xl text-xs leading-relaxed text-white/45">{svc.description}</p>
-                          ) : null}
-                        </div>
-                        <p className="font-mono text-sm tabular-nums text-white/70">
-                          {pricesLoading
-                            ? "Loading..."
-                            : typeof svc.monthlyPrice === "number"
-                              ? `${formatMoney(svc.monthlyPrice)}/mo`
-                              : "—"}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-8 border-t border-white/[0.08] pt-6">
-                    {hasBundleSavings ? (
-                      <>
-                        <p className="font-mono text-xs uppercase tracking-widest text-white/45">Stack reference</p>
-                        <p className="mt-2 text-lg text-white/50 line-through tabular-nums">
-                          {pricesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
-                        </p>
-                        <p className="mt-4 text-xl font-semibold tabular-nums text-[#c9973a] sm:text-2xl">
-                          Your bundle price: {pricesLoading ? "Loading..." : `${formatMoney(bundleMonthly)}/mo`}
-                        </p>
-                        <p className="mt-2 text-sm text-emerald-400/90">
-                          {pricesLoading ? "Loading..." : `You save ${formatMoney(monthlySavings)}/mo vs. à la carte`}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm text-white/60">
-                          À la carte reference:{" "}
-                          <span className="font-mono tabular-nums text-white/80">
-                            {pricesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
-                          </span>
-                        </p>
-                        <p className="mt-3 text-sm text-white/55">
-                          Select three or more services to activate bundle savings (8% for 3–4 items, 15% for five or more).
-                        </p>
-                      </>
-                    )}
-                    <p
-                      className="mt-8 inline-flex items-center rounded-full border border-[#c9973a]/45 bg-[#c9973a]/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#c9973a]"
-                      style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}
-                    >
-                      Included in {activeTier} and above
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8 border-t border-white/[0.08] pt-6">
+                {hasBundleSavings ? (
+                  <>
+                    <p className="font-mono text-xs uppercase tracking-widest text-white/45">Stack reference</p>
+                    <p className="mt-2 text-lg text-white/50 line-through tabular-nums">{`${formatMoney(aLaCarteTotal)}/mo`}</p>
+                    <p className="mt-4 text-xl font-semibold tabular-nums text-[#c9973a] sm:text-2xl">
+                      Your bundle price: {`${formatMoney(bundleMonthly)}/mo`}
                     </p>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
-        )}
+                    <p className="mt-2 text-sm text-emerald-400/90">
+                      {`You save ${formatMoney(monthlySavings)}/mo vs. à la carte`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-white/60">
+                      À la carte reference:{" "}
+                      <span className="font-mono tabular-nums text-white/80">{`${formatMoney(aLaCarteTotal)}/mo`}</span>
+                    </p>
+                    <p className="mt-3 text-sm text-white/55">
+                      Bundle savings activate automatically (8% for 3-4 services, 15% for 5+ services).
+                    </p>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <aside
@@ -471,12 +393,12 @@ export default function YourPackage() {
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#c9973a]">Summary</p>
             <p className="mt-1 text-sm text-white/80">
-              Services selected: <span className="font-semibold tabular-nums text-white">{selectedList.length}</span>
+              Services selected: <span className="font-semibold tabular-nums text-white">{selectedServiceIds.length}</span>
             </p>
             <p className="text-sm text-white/70">
               À la carte total:{" "}
               <span className="font-mono tabular-nums text-white">
-                {pricesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
+                {servicesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
               </span>
             </p>
           </div>
@@ -486,13 +408,13 @@ export default function YourPackage() {
                 <p className="text-sm text-emerald-400/95">
                   Bundle savings:{" "}
                   <span className="font-mono font-semibold">
-                    {pricesLoading ? "Loading..." : `${formatMoney(monthlySavings)}/mo`}
+                    {servicesLoading ? "Loading..." : `${formatMoney(monthlySavings)}/mo`}
                   </span>
                 </p>
                 <p className="mt-1 text-sm text-white/70">
                   Bundle:{" "}
                   <span className="font-mono font-semibold text-[#c9973a]">
-                    {pricesLoading ? "Loading..." : `${formatMoney(bundleMonthly)}/mo`}
+                    {servicesLoading ? "Loading..." : `${formatMoney(bundleMonthly)}/mo`}
                   </span>
                 </p>
               </>
@@ -503,7 +425,7 @@ export default function YourPackage() {
           <div className="sm:ml-4">
             <button
               type="button"
-              disabled={checkoutLoading || selectedList.length === 0 || sovereignRoutingPending}
+              disabled={checkoutLoading || selectedServiceIds.length === 0 || sovereignRoutingPending || servicesLoading}
               onClick={() => void startCheckout()}
               className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a] disabled:cursor-not-allowed disabled:opacity-50"
             >
