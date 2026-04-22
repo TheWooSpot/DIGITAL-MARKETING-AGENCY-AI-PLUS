@@ -13,6 +13,8 @@ import { logEvent } from "@/lib/diagnosticEvents";
 
 const GOLD = "#c9973a";
 const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
+const JORDAN_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
+const MARIBELLE_ASSISTANT_ID = "b1ebad3f-04b6-4f62-bd31-7859bb06ba4f";
 
 function getCheckoutFunctionUrl(): string {
   const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
@@ -269,23 +271,25 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
     });
   }, [shareToken, result.prospect_id]);
   const handleVoiceLaunched = useCallback(() => {
+    const assistantAgent = checkoutVariant === "B" ? "maribelle" : "jordan";
     void logEvent("voice_launched", {
       share_token: shareToken,
       prospect_id: result.prospect_id,
       door: "door-2",
-      event_data: { agent: "jordan" },
+      event_data: { agent: assistantAgent },
     });
-  }, [shareToken, result.prospect_id]);
+  }, [checkoutVariant, shareToken, result.prospect_id]);
   const handleVoiceEnded = useCallback(
     (durationSeconds: number) => {
+      const assistantAgent = checkoutVariant === "B" ? "maribelle" : "jordan";
       void logEvent("voice_ended", {
         share_token: shareToken,
         prospect_id: result.prospect_id,
         door: "door-2",
-        event_data: { agent: "jordan", duration_seconds: durationSeconds },
+        event_data: { agent: assistantAgent, duration_seconds: durationSeconds },
       });
     },
-    [shareToken, result.prospect_id]
+    [checkoutVariant, shareToken, result.prospect_id]
   );
   const getReportVoiceStartConfig = useCallback(() => {
     if (!(typeof reportShareToken === "string" && reportShareToken.length > 0) || !reportProspect) return null;
@@ -322,7 +326,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
     });
 
     return {
-      assistantId: "e48ee900-bfb0-4ee6-a645-e89a08233365",
+      assistantId: checkoutVariant === "B" ? MARIBELLE_ASSISTANT_ID : JORDAN_ASSISTANT_ID,
       variableValues: {
         business_name: String(reportProspect.business_name ?? "their business"),
         industry: String(reportProspect.industry ?? ""),
@@ -339,7 +343,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
         report_url: window.location.href,
       },
     };
-  }, [reportShareToken, reportProspect, result.prospect_id, shareToken]);
+  }, [checkoutVariant, reportShareToken, reportProspect, result.prospect_id, shareToken]);
   const diagnosticVapi = useDiagnosticVapiCall(result, {
     onVoiceLaunched: handleVoiceLaunched,
     onVoiceEnded: handleVoiceEnded,

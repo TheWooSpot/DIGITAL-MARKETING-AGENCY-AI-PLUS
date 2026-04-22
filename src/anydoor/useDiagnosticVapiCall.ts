@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
 import { vapi } from "@/lib/vapiClient";
@@ -81,25 +81,40 @@ export type DiagnosticVapiCall = {
   clearError: () => void;
 };
 
+type UseDiagnosticVapiCallOptions = {
+  onVoiceLaunched?: () => void;
+  onVoiceEnded?: (durationSeconds: number) => void;
+  getStartConfig?: () => { assistantId: string; variableValues: Record<string, string> } | null;
+};
+
 /**
  * Shared `vapi` from `@/lib/vapiClient` — listener registration only; no second `new Vapi()`.
  */
-export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiCall {
+export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDiagnosticVapiCallOptions): DiagnosticVapiCall {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
   const [startLocked, setStartLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const callStartedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     const client = vapi;
     if (!hasPublicKey || !client) return;
 
     const onCallStart = () => {
+      callStartedAtRef.current = Date.now();
       setIsCallActive(true);
       setError(null);
+      options?.onVoiceLaunched?.();
     };
-    const onCallEnd = () => setIsCallActive(false);
+    const onCallEnd = () => {
+      const startedAt = callStartedAtRef.current;
+      const durationSeconds = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : 0;
+      callStartedAtRef.current = null;
+      setIsCallActive(false);
+      options?.onVoiceEnded?.(durationSeconds);
+    };
 
     const onError = (e: unknown) => {
       const msg = toUserFriendlyMessage(extractErrorMessage(e));
@@ -132,14 +147,15 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       client.removeListener("call-start-failed", onCallStartFailed);
       client.stop();
     };
-  }, [hasPublicKey]);
+  }, [hasPublicKey, options]);
 
   const start = useCallback(() => {
     if (!hasPublicKey) {
       setError("Voice is not configured. Add VITE_VAPI_PUBLIC_KEY and redeploy.");
       return;
     }
-    const assistantId = getEvaluationSpecialistAssistantId();
+    const startConfig = options?.getStartConfig?.() ?? null;
+    const assistantId = startConfig?.assistantId || getEvaluationSpecialistAssistantId();
     if (!assistantId) {
       setError("Voice assistant is not configured. Set VITE_VAPI_ASSISTANT_ID in .env / Vercel and rebuild.");
       return;
@@ -148,11 +164,11 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
     setStartLocked(true);
     window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
-    const variableValues = buildAssistantVariableValues(result);
+    const variableValues = startConfig?.variableValues ?? buildAssistantVariableValues(result);
     console.log("[useDiagnosticVapiCall] starting assistantId:", assistantId.slice(0, 8) + "...");
     try {
       vapi?.start(assistantId, {
-        maxDurationSeconds: 420,
+        maxDurationSeconds: 1080,
         variableValues,
       });
     } catch (e) {
@@ -161,7 +177,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult): DiagnosticVapiC
       setStartLocked(false);
       releaseVapiTapLockEarly();
     }
-  }, [hasPublicKey, result]);
+  }, [hasPublicKey, options, result]);
 
   const end = useCallback(() => {
     vapi?.stop();
