@@ -69,7 +69,6 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
       client.removeListener("call-end", onCallEnd);
       client.removeListener("error", onError);
       client.removeListener("call-start-failed", onCallStartFailed);
-      client.stop();
     };
   }, [hasPublicKey]);
 

@@ -12,7 +12,6 @@ export async function invokeSupabaseEdgeFunction(name: string, body: unknown): P
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key}`,
-      apikey: key,
     },
     body: JSON.stringify(body),
   });

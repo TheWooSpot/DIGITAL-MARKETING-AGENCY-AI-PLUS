@@ -167,7 +167,7 @@ export default function YourPackage() {
         .select(
           "service_id, service_name, pricing_tier, retail_price_low, initiation_fee_low, stripe_monthly_price_id, stripe_setup_price_id"
         )
-        .in("service_id", recommendedIds)
+        .in("service_id", recommendedIds.map(String))
         .returns<RevenueServiceRow[]>();
 
       if (cancelled) return;
