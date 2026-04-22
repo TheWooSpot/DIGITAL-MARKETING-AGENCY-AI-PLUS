@@ -13,22 +13,6 @@ function getCheckoutFunctionUrl(): string {
   return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
 }
 
-function staticCheckoutLinkForTier(tier: string, routeToDiscoveryCall: boolean): string | null {
-  const key = tier.trim().toLowerCase();
-  if (key === "sovereign" && routeToDiscoveryCall) return "/contact";
-  const essentials = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "";
-  const momentum = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "";
-  const signature = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "";
-  const vanguard = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "";
-  const sovereign = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SOVEREIGN as string | undefined)?.trim() || "";
-
-  if (key === "momentum") return momentum || essentials || null;
-  if (key === "signature") return signature || momentum || essentials || null;
-  if (key === "vanguard") return vanguard || signature || momentum || essentials || null;
-  if (key === "sovereign") return sovereign || vanguard || signature || momentum || essentials || null;
-  return essentials || momentum || signature || vanguard || sovereign || null;
-}
-
 function formatMoney(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(
     n
@@ -254,14 +238,17 @@ export default function YourPackage() {
       return;
     }
     setCheckoutError(null);
-    const fallbackLink = staticCheckoutLinkForTier(recommendedTier, routeToDiscoveryCall);
+    if (routeToDiscoveryCall) {
+      window.location.href = "/contact";
+      return;
+    }
 
-    if (!prospectId || selectedServiceIds.length === 0) {
-      if (!fallbackLink) {
-        setCheckoutError("Stripe checkout is not configured yet. Please contact support.");
-        return;
-      }
-      window.location.href = fallbackLink;
+    if (!prospectId) {
+      setCheckoutError("Missing package context. Please rerun your diagnostic and try checkout again.");
+      return;
+    }
+    if (selectedServiceIds.length === 0) {
+      setCheckoutError("No services selected for checkout yet.");
       return;
     }
 
@@ -279,14 +266,6 @@ export default function YourPackage() {
       const json = (await res.json().catch(() => ({}))) as { session_url?: string; fallback?: boolean; error?: string };
       if (json.session_url) {
         window.location.href = json.session_url;
-        return;
-      }
-      if (json.fallback) {
-        if (!fallbackLink) {
-          setCheckoutError("Stripe checkout is not configured yet. Please contact support.");
-          return;
-        }
-        window.location.href = fallbackLink;
         return;
       }
       setCheckoutError(json.error || "Could not start checkout.");
@@ -425,7 +404,7 @@ export default function YourPackage() {
           <div className="sm:ml-4">
             <button
               type="button"
-              disabled={checkoutLoading || selectedServiceIds.length === 0 || sovereignRoutingPending || servicesLoading}
+              disabled={checkoutLoading || selectedServiceIds.length === 0 || sovereignRoutingPending || servicesLoading || !prospectId}
               onClick={() => void startCheckout()}
               className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a] disabled:cursor-not-allowed disabled:opacity-50"
             >
