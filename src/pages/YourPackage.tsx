@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnyDoorHero, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
-import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import type { PackageTierKey } from "@/anydoor/diagnosticCatalog";
 
 const GOLD = "#c9973a";
 const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
+
+const LOAD_PACKAGE_URL = (() => {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+  if (!base) return "/functions/v1/load-your-package";
+  return `${base.replace(/\/$/, "")}/functions/v1/load-your-package`;
+})();
 
 function getCheckoutFunctionUrl(): string {
   const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
@@ -34,12 +39,29 @@ function normalizeTierKey(raw: string | null): PackageTierKey {
   return "Essentials";
 }
 
-type ProspectRecommendedService = {
-  service_id: number;
-  tier_summary?: string;
+type LoadYourPackageTotals = {
+  a_la_carte_monthly: number;
+  bundle_discount_pct: number;
+  bundle_monthly: number;
+  setup_total: number;
 };
 
-type RevenueServiceRow = {
+type LoadYourPackageResponse = {
+  prospect: {
+    id?: string;
+    business_name?: string | null;
+    url?: string | null;
+    overall_score?: number | null;
+    recommended_tier?: string | null;
+    source?: string | null;
+    call_type?: string | null;
+    assigned_rung?: number | null;
+  };
+  services: unknown;
+  totals: LoadYourPackageTotals;
+};
+
+type DisplayedService = {
   service_id: number;
   service_name: string;
   pricing_tier: string | null;
@@ -47,23 +69,26 @@ type RevenueServiceRow = {
   initiation_fee_low: number | null;
   stripe_monthly_price_id: string | null;
   stripe_setup_price_id: string | null;
-};
-
-type DisplayedService = RevenueServiceRow & {
   tier_summary?: string;
 };
 
-function parseRecommendedServices(raw: unknown): ProspectRecommendedService[] {
+function toDisplayedServices(raw: unknown): DisplayedService[] {
   if (!Array.isArray(raw)) return [];
-  const out: ProspectRecommendedService[] = [];
+  const out: DisplayedService[] = [];
   for (const row of raw) {
     if (!row || typeof row !== "object") continue;
-    const serviceId = Number((row as { service_id?: unknown }).service_id);
-    if (!Number.isFinite(serviceId)) continue;
-    const tierSummaryRaw = (row as { tier_summary?: unknown }).tier_summary;
+    const r = row as Record<string, unknown>;
+    const id = Number(r.service_id);
+    if (!Number.isFinite(id)) continue;
     out.push({
-      service_id: Math.trunc(serviceId),
-      tier_summary: typeof tierSummaryRaw === "string" ? tierSummaryRaw.trim() : undefined,
+      service_id: Math.trunc(id),
+      service_name: String(r.service_name ?? ""),
+      pricing_tier: r.pricing_tier == null || r.pricing_tier === "" ? null : String(r.pricing_tier),
+      retail_price_low: r.retail_price_low == null ? null : Number(r.retail_price_low),
+      initiation_fee_low: r.initiation_fee_low == null ? null : Number(r.initiation_fee_low),
+      stripe_monthly_price_id: r.stripe_monthly_price_id == null ? null : String(r.stripe_monthly_price_id),
+      stripe_setup_price_id: r.stripe_setup_price_id == null ? null : String(r.stripe_setup_price_id),
+      tier_summary: typeof r.tier_summary === "string" && r.tier_summary.trim() ? r.tier_summary.trim() : undefined,
     });
   }
   return out;
@@ -73,7 +98,11 @@ export default function YourPackage() {
   const [searchParams] = useSearchParams();
   const queryRecommendedTier = normalizeTierKey(searchParams.get("tier"));
   const [recommendedTier, setRecommendedTier] = useState<PackageTierKey>(queryRecommendedTier);
+  const [loadedProspect, setLoadedProspect] = useState<LoadYourPackageResponse["prospect"] | null>(null);
+  const [packageTotals, setPackageTotals] = useState<LoadYourPackageTotals | null>(null);
   const businessName = useMemo(() => {
+    const fromApi = loadedProspect?.business_name?.trim();
+    if (fromApi) return fromApi;
     const raw = searchParams.get("name")?.trim();
     if (!raw) return "Your brand";
     try {
@@ -81,12 +110,15 @@ export default function YourPackage() {
     } catch {
       return raw.replace(/\+/g, " ");
     }
-  }, [searchParams]);
+  }, [loadedProspect, searchParams]);
 
   const score = useMemo(() => {
-    const s = Number(searchParams.get("score") ?? "0");
+    const s =
+      loadedProspect?.overall_score != null && Number.isFinite(Number(loadedProspect.overall_score))
+        ? Number(loadedProspect.overall_score)
+        : Number(searchParams.get("score") ?? "0");
     return Number.isFinite(s) ? Math.round(Math.min(100, Math.max(0, s))) : 0;
-  }, [searchParams]);
+  }, [loadedProspect, searchParams]);
 
   const [displayedServices, setDisplayedServices] = useState<DisplayedService[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -103,101 +135,72 @@ export default function YourPackage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadPackageFromProspect() {
+    async function loadPackage() {
       if (!prospectId) {
         setDisplayedServices([]);
+        setPackageTotals(null);
+        setLoadedProspect(null);
         setServicesError("Missing prospect_id in URL.");
         setProspectMetaLoading(false);
         setServicesLoading(false);
         return;
       }
-      const supabase = getSupabaseBrowserClient();
-      if (!supabase) {
-        if (!cancelled) {
-          setServicesError("Supabase is not configured in this environment.");
-          setProspectMetaLoading(false);
-          setServicesLoading(false);
-        }
-        return;
-      }
       setServicesLoading(true);
       setProspectMetaLoading(true);
       setServicesError(null);
+      try {
+        const res = await fetch(LOAD_PACKAGE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prospect_id: prospectId }),
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`load-your-package ${res.status}: ${errText}`);
+        }
+        const data = (await res.json()) as LoadYourPackageResponse;
+        if (cancelled) return;
 
-      const { data: prospect, error: prospectError } = await supabase
-        .from("layer5_prospects")
-        .select("recommended_services, recommended_tier, source, call_type, assigned_rung")
-        .eq("id", prospectId)
-        .maybeSingle<{
-          recommended_services: unknown;
-          recommended_tier: string | null;
-          source: string | null;
-          call_type: string | null;
-          assigned_rung: number | null;
-        }>();
+        setLoadedProspect(data.prospect);
+        setProspectMeta({
+          source: data.prospect?.source != null ? String(data.prospect.source).trim() : "",
+          call_type: data.prospect?.call_type != null ? String(data.prospect.call_type).trim() : "",
+          assigned_rung:
+            data.prospect?.assigned_rung != null && typeof data.prospect.assigned_rung === "number"
+              ? data.prospect.assigned_rung
+              : null,
+        });
+        setRecommendedTier(normalizeTierKey(data.prospect?.recommended_tier ?? null));
+        setPackageTotals(
+          data.totals && typeof data.totals === "object"
+            ? {
+                a_la_carte_monthly: Number(data.totals.a_la_carte_monthly),
+                bundle_discount_pct: Number(data.totals.bundle_discount_pct),
+                bundle_monthly: Number(data.totals.bundle_monthly),
+                setup_total: Number(data.totals.setup_total),
+              }
+            : null
+        );
+        setDisplayedServices(toDisplayedServices(data.services));
 
-      if (cancelled) return;
-      if (prospectError || !prospect) {
-        setDisplayedServices([]);
-        setProspectMeta(null);
-        setServicesError(prospectError?.message ?? "Prospect not found.");
         setProspectMetaLoading(false);
         setServicesLoading(false);
-        return;
-      }
-
-      setProspectMeta({
-        source: prospect.source?.trim() ?? "",
-        call_type: prospect.call_type?.trim() ?? "",
-        assigned_rung: typeof prospect.assigned_rung === "number" ? prospect.assigned_rung : null,
-      });
-      setProspectMetaLoading(false);
-      setRecommendedTier(normalizeTierKey(prospect.recommended_tier ?? queryRecommendedTier));
-
-      const recommended = parseRecommendedServices(prospect.recommended_services);
-      if (recommended.length === 0) {
+      } catch (err) {
+        if (cancelled) return;
         setDisplayedServices([]);
+        setPackageTotals(null);
+        setLoadedProspect(null);
+        setProspectMeta(null);
+        setServicesError(err instanceof Error ? err.message : String(err));
+        setProspectMetaLoading(false);
         setServicesLoading(false);
-        return;
       }
-
-      const recommendedIds = Array.from(new Set(recommended.map((service) => service.service_id)));
-      const { data: revenueRows, error: revenueError } = await supabase
-        .from("layer4_revenue_logic")
-        .select(
-          "service_id, service_name, pricing_tier, retail_price_low, initiation_fee_low, stripe_monthly_price_id, stripe_setup_price_id"
-        )
-        .in("service_id", recommendedIds.map(String))
-        .returns<RevenueServiceRow[]>();
-
-      if (cancelled) return;
-      if (revenueError) {
-        setDisplayedServices([]);
-        setServicesError(revenueError.message);
-        setServicesLoading(false);
-        return;
-      }
-
-      const detailsById = new Map((revenueRows ?? []).map((row) => [row.service_id, row]));
-      const joined: DisplayedService[] = recommended
-        .map((service) => {
-          const details = detailsById.get(service.service_id);
-          if (!details) return null;
-          return {
-            ...details,
-            tier_summary: service.tier_summary,
-          };
-        })
-        .filter((row): row is DisplayedService => !!row);
-
-      setDisplayedServices(joined);
-      setServicesLoading(false);
     }
-    void loadPackageFromProspect();
+    void loadPackage();
     return () => {
       cancelled = true;
     };
-  }, [prospectId, queryRecommendedTier]);
+  }, [prospectId]);
 
   const source = (prospectMeta?.source || sourceFromQuery).toLowerCase();
   const callType = (prospectMeta?.call_type || callTypeFromQuery).toLowerCase();
@@ -221,13 +224,20 @@ export default function YourPackage() {
     !prospectMeta;
 
   const selectedServiceIds = useMemo(() => displayedServices.map((service) => service.service_id), [displayedServices]);
-  const aLaCarteTotal = useMemo(
-    () => displayedServices.reduce((sum, service) => sum + (service.retail_price_low ?? 0), 0),
-    [displayedServices]
-  );
-
   const discount = bundleDiscountRate(selectedServiceIds.length);
-  const bundleMonthly = Math.round(aLaCarteTotal * (1 - discount));
+  const aLaCarteTotal = useMemo(() => {
+    if (packageTotals != null && Number.isFinite(packageTotals.a_la_carte_monthly)) {
+      return packageTotals.a_la_carte_monthly;
+    }
+    return displayedServices.reduce((sum, service) => sum + (service.retail_price_low ?? 0), 0);
+  }, [packageTotals, displayedServices]);
+
+  const bundleMonthly = useMemo(() => {
+    if (packageTotals != null && Number.isFinite(packageTotals.bundle_monthly)) {
+      return packageTotals.bundle_monthly;
+    }
+    return Math.round(aLaCarteTotal * (1 - discount));
+  }, [packageTotals, aLaCarteTotal, discount]);
   const monthlySavings = aLaCarteTotal - bundleMonthly;
   const hasBundleSavings = selectedServiceIds.length >= 3;
 
