@@ -7,38 +7,12 @@ import { getServiceSummaryForTier } from "@/lib/serviceTierSummaries";
 import { Download, Mic } from "lucide-react";
 import { ReportVapiTapToTalk } from "./ReportVapiTapToTalk";
 import { useDiagnosticVapiCall } from "./useDiagnosticVapiCall";
-import { useCheckoutConfig } from "@/hooks/useCheckoutConfig";
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowserClient";
 import { logEvent } from "@/lib/diagnosticEvents";
+import { JORDAN_ASSISTANT_ID } from "@/lib/vapiClient";
+import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 
 const GOLD = "#c9973a";
-const CHECKOUT_FN_PATH = "/functions/v1/create-checkout-session";
-const JORDAN_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
-const MARIBELLE_ASSISTANT_ID = "b1ebad3f-04b6-4f62-bd31-7859bb06ba4f";
-
-function getCheckoutFunctionUrl(): string {
-  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
-  if (!base) return CHECKOUT_FN_PATH;
-  return `${base.replace(/\/$/, "")}${CHECKOUT_FN_PATH}`;
-}
-
-function staticCheckoutLinkForTier(tier: PackageTierKey | null, routeToDiscoveryCall: boolean): string {
-  const env = import.meta.env;
-  switch (tier) {
-    case "Momentum":
-      return (env.VITE_STRIPE_PAYMENT_LINK_MOMENTUM as string | undefined)?.trim() || "/contact";
-    case "Signature":
-      return (env.VITE_STRIPE_PAYMENT_LINK_SIGNATURE as string | undefined)?.trim() || "/contact";
-    case "Vanguard":
-      return (env.VITE_STRIPE_PAYMENT_LINK_VANGUARD as string | undefined)?.trim() || "/contact";
-    case "Sovereign":
-      if (routeToDiscoveryCall) return "/contact";
-      return (env.VITE_STRIPE_PAYMENT_LINK_SOVEREIGN as string | undefined)?.trim() || "/contact";
-    case "Essentials":
-    default:
-      return (env.VITE_STRIPE_PAYMENT_LINK_ESSENTIALS as string | undefined)?.trim() || "/contact";
-  }
-}
 
 function clampScore(n: number): number {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -224,7 +198,6 @@ interface DiagnosticResultsProps {
 
 export function DiagnosticResults({ result, submittedUrl, reportShareToken, reportProspect }: DiagnosticResultsProps) {
   const navigate = useNavigate();
-  const { variant: checkoutVariant = "A" } = useCheckoutConfig();
   const [tab, setTab] = useState<"summary" | "full">("summary");
   const [openPanels, setOpenPanels] = useState<Record<number, boolean>>(() => ({ 0: true, 1: true }));
   const [showFiveCta, setShowFiveCta] = useState(false);
@@ -232,8 +205,8 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
   const [tapReady, setTapReady] = useState(false);
   const [footerEmail, setFooterEmail] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [emailSendState, setEmailSendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [emailSendError, setEmailSendError] = useState<string | null>(null);
   const [prospectMeta, setProspectMeta] = useState<{ source: string; call_type: string } | null>(null);
   const [prospectMetaLoading, setProspectMetaLoading] = useState(false);
 
@@ -271,25 +244,23 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
     });
   }, [shareToken, result.prospect_id]);
   const handleVoiceLaunched = useCallback(() => {
-    const assistantAgent = checkoutVariant === "B" ? "maribelle" : "jordan";
     void logEvent("voice_launched", {
       share_token: shareToken,
       prospect_id: result.prospect_id,
       door: "door-2",
-      event_data: { agent: assistantAgent },
+      event_data: { agent: "jordan" },
     });
-  }, [checkoutVariant, shareToken, result.prospect_id]);
+  }, [shareToken, result.prospect_id]);
   const handleVoiceEnded = useCallback(
     (durationSeconds: number) => {
-      const assistantAgent = checkoutVariant === "B" ? "maribelle" : "jordan";
       void logEvent("voice_ended", {
         share_token: shareToken,
         prospect_id: result.prospect_id,
         door: "door-2",
-        event_data: { agent: assistantAgent, duration_seconds: durationSeconds },
+        event_data: { agent: "jordan", duration_seconds: durationSeconds },
       });
     },
-    [checkoutVariant, shareToken, result.prospect_id]
+    [shareToken, result.prospect_id]
   );
   const getReportVoiceStartConfig = useCallback(() => {
     if (!(typeof reportShareToken === "string" && reportShareToken.length > 0) || !reportProspect) return null;
@@ -326,7 +297,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
     });
 
     return {
-      assistantId: checkoutVariant === "B" ? MARIBELLE_ASSISTANT_ID : JORDAN_ASSISTANT_ID,
+      assistantId: JORDAN_ASSISTANT_ID,
       variableValues: {
         business_name: String(reportProspect.business_name ?? "their business"),
         industry: String(reportProspect.industry ?? ""),
@@ -343,7 +314,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
         report_url: window.location.href,
       },
     };
-  }, [checkoutVariant, reportShareToken, reportProspect, result.prospect_id, shareToken]);
+  }, [reportShareToken, reportProspect, result.prospect_id, shareToken]);
   const diagnosticVapi = useDiagnosticVapiCall(result, {
     onVoiceLaunched: handleVoiceLaunched,
     onVoiceEnded: handleVoiceEnded,
@@ -450,62 +421,6 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
     const prospectId = encodeURIComponent(result.prospect_id ?? "");
     navigate(`/your-package?tier=${tier}&services=${services}&name=${name}&score=${scoreStr}&prospect_id=${prospectId}`);
   };
-
-  const beginCheckout = useCallback(async () => {
-    if (checkoutLoading) return;
-    if (sovereignRoutingPending) {
-      setCheckoutError("Loading offer routing. Please wait a moment and retry.");
-      return;
-    }
-    setCheckoutError(null);
-    const fallbackLink = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
-    if (!result.prospect_id) {
-      window.location.href = fallbackLink;
-      return;
-    }
-    const selectedServices = recommendedNorm.map((r) => r.service_id);
-    if (selectedServices.length === 0) {
-      window.location.href = fallbackLink;
-      return;
-    }
-
-    setCheckoutLoading(true);
-    try {
-      const res = await fetch(getCheckoutFunctionUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prospect_id: result.prospect_id,
-          selected_services: selectedServices,
-          company_size: estimated_size ?? business_descriptor ?? "",
-        }),
-      });
-      const json = (await res.json().catch(() => ({}))) as {
-        session_url?: string;
-        fallback?: boolean;
-        error?: string;
-      };
-      if (json.session_url) {
-        window.location.href = json.session_url;
-        return;
-      }
-      if (json.fallback) {
-        window.location.href = fallbackLink;
-        return;
-      }
-      // Missing Stripe price IDs means checkout isn't configured yet — fall back
-      // to static payment link silently rather than showing a confusing error.
-      if (json.error?.includes("Missing Stripe IDs") || json.missing_service_ids) {
-        window.location.href = fallbackLink;
-        return;
-      }
-      setCheckoutError(json.error || "Unable to start checkout right now.");
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : "Checkout request failed.");
-    } finally {
-      setCheckoutLoading(false);
-    }
-  }, [business_descriptor, checkoutLoading, estimated_size, recTier, recommendedNorm, result.prospect_id, showSovereignDiscoveryCta, sovereignRoutingPending]);
 
   return (
     <div
@@ -745,8 +660,10 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
         </ScrollSection>
       )}
 
-      {/* Checkout CTA — hidden on public shared reports (`/report/{share_token}`) */}
-      {!(typeof reportShareToken === "string" && reportShareToken.length > 0) ? (
+      {/* Sovereign-only routing — shared reports + default case render nothing.
+          Standard users reach checkout via "SEE YOUR CUSTOM PACKAGE →" banner
+          which navigates to /your-package with its own sticky footer CHECKOUT. */}
+      {!(typeof reportShareToken === "string" && reportShareToken.length > 0) && (sovereignRoutingPending || showSovereignDiscoveryCta) ? (
         <ScrollSection className="no-print">
           {sovereignRoutingPending ? (
             <div
@@ -756,11 +673,8 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
               <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Routing</p>
               <p className="mt-3 text-sm text-white/60">Finalizing your checkout path…</p>
             </div>
-          ) : showSovereignDiscoveryCta ? (
-            <div
-              data-slot="checkout-cta"
-              className="sovereign-cta"
-            >
+          ) : (
+            <div data-slot="checkout-cta" className="sovereign-cta">
               <p className="sovereign-label">Sovereign</p>
               <p className="sovereign-descriptor">Custom engagement</p>
               <p className="sovereign-description">
@@ -771,46 +685,6 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
                 Schedule a discovery call →
               </a>
               <p className="sovereign-note">No commitment required. We&apos;ll scope your engagement together.</p>
-            </div>
-          ) : (
-            <div
-              data-slot="checkout-cta"
-              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8"
-            >
-              <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Checkout</p>
-              <h3
-                className="mt-3 text-xl font-light text-white sm:text-2xl"
-                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-              >
-                Continue when you&apos;re ready
-              </h3>
-              <p className="mt-2 text-sm text-white/55">
-                You&apos;ll complete checkout securely on Stripe. After payment, you&apos;ll land on a confirmation page
-                and we&apos;ll follow up to get things moving.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                {checkoutVariant === "A" ? (
-                  <button
-                    type="button"
-                    disabled={checkoutLoading || sovereignRoutingPending}
-                    onClick={() => void beginCheckout()}
-                    className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-                  >
-                    {checkoutLoading ? "Starting checkout…" : "Checkout"}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.location.href = staticCheckoutLinkForTier(recTier, showSovereignDiscoveryCta);
-                    }}
-                    className="rounded border border-[#c9973a]/50 bg-[#c9973a]/10 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#c9973a]"
-                  >
-                    Go to payment link
-                  </button>
-                )}
-              </div>
-              {checkoutError ? <p className="mt-3 text-center text-sm text-amber-300">{checkoutError}</p> : null}
             </div>
           )}
         </ScrollSection>
@@ -943,9 +817,32 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
         <p className="text-center text-sm text-white/70 print:text-black">Not ready to talk? We&apos;ll follow up.</p>
         <form
           className="no-print mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            console.log("Send My Report", footerEmail);
+            const destination = footerEmail.trim();
+            if (!destination) return;
+            if (!shareReportUrl) {
+              setEmailSendState("error");
+              setEmailSendError("Report link is not ready yet. Try again in a moment.");
+              return;
+            }
+            setEmailSendState("sending");
+            setEmailSendError(null);
+            const res = await invokeSupabaseEdgeFunction("send-diagnostic-report", {
+              email: destination,
+              business_name: business_name ?? "Your business",
+              share_url: shareReportUrl,
+              share_token: shareToken ?? "",
+              submitted_url: displayUrl,
+            });
+            const body = (await res.json().catch(() => ({}))) as { error?: string };
+            if (!res.ok) {
+              setEmailSendState("error");
+              setEmailSendError(body.error || "Unable to send report email right now.");
+              return;
+            }
+            setEmailSendState("sent");
+            setFooterEmail("");
           }}
         >
           <input
@@ -959,9 +856,15 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
             type="submit"
             className="min-h-[48px] rounded border border-[#c9973a] bg-[#c9973a] px-6 text-xs font-semibold uppercase tracking-widest text-[#07080d] hover:bg-[#c9973a]/90"
           >
-            Send My Report
+            {emailSendState === "sending" ? "Sending..." : "Send My Report"}
           </button>
         </form>
+        {emailSendState === "sent" ? (
+          <p className="mt-3 text-center text-xs text-emerald-400">Report sent. Check your inbox.</p>
+        ) : null}
+        {emailSendState === "error" && emailSendError ? (
+          <p className="mt-3 text-center text-xs text-amber-300">{emailSendError}</p>
+        ) : null}
         <p className="mt-6 text-center text-xs text-white/45 print:text-gray-600">
           Your diagnostic has been saved to our system. A Socialutely advisor will reach out within 24 hours.
         </p>
@@ -1001,7 +904,58 @@ function PackageColumn({
         {tier.displayName}
       </h4>
       {showSovereignCopy ? (
-        <p className="mt-1 text-sm leading-snug text-white/60">{sovereignTierCopy}</p>
+        <>
+          <p className="text-sm leading-relaxed text-white/65">
+            For organizations whose complexity exceeds productized packages — multi-brand, multi-region,
+            compliance-sensitive, or enterprise scale.
+          </p>
+          <p className="mt-4 text-sm font-medium text-white/85">By conversation only.</p>
+
+          {/*
+            ═══════════════════════════════════════════════════════════════
+            SOVEREIGN RENOVATION — Deferred strategic discussion
+            Target session: ~Apr 27-28 2026 (5 days from Apr 22/23)
+            ═══════════════════════════════════════════════════════════════
+
+            ACTUAL SOVEREIGN SERVICES in layer4_revenue_logic (not shown above
+            because UX direction is "by conversation only", not checkout):
+              • Service ID 1001 — Socialutely Circle™       — $2,997/mo · $1,497 setup
+              • Service ID 1002 — Momentum Vault™           — $1,997/mo · $997 setup
+              • Service ID 1003 — Concierge Access™         — $4,997/mo · $2,497 setup
+
+            THREE CTA PATH OPTIONS to resolve in renovation session.
+            Uncomment the winner:
+
+            Option 1 — Calendar booking (lowest friction)
+            <a href="/contact" className="sovereign-button">
+              Schedule a discovery call →
+            </a>
+
+            Option 2 — Door 7 Vision Session (Architect's Studio / DreamScape™ —
+                       leverages existing Amelia voice agent for applicant qualification)
+            <a href="/dreamscape" className="sovereign-button">
+              Let's explore what's possible →
+            </a>
+
+            Option 3 — AI intake form specific to Sovereign applicants
+                       (filters tire-kickers, captures enterprise-scope signals)
+            <a href="/sovereign-intake" className="sovereign-button">
+              Begin Sovereign intake →
+            </a>
+
+            DISCUSSION POINTS for renovation session:
+              - Are 1001/1002/1003 definitionally correct Sovereign products?
+              - Should tier bands be renormalized? Cursor proposed:
+                  Essentials $1,800-$3,500 · Momentum $4,200-$6,500 ·
+                  Signature $8,500-$14,000 · Vanguard $18,000-$35,000 ·
+                  Sovereign $15,000+  (note: Vanguard cap > Sovereign floor —
+                  needs resolution; Claude proposed Sovereign $35,000+ floor)
+              - Gap-handling rule for no-man's-land pricing zones
+              - Is Sovereign a tier (purchasable) or an engagement category
+                (relationship-only, not on menu)?
+            ═══════════════════════════════════════════════════════════════
+          */}
+        </>
       ) : isRec && tierStatement ? (
         <p className="mt-1 text-sm italic leading-snug text-[#c9973a]/80 print:text-amber-900">{tierStatement}</p>
       ) : null}
@@ -1010,22 +964,26 @@ function PackageColumn({
           ★ Recommended
         </span>
       )}
-      <div className="my-4 border-t border-white/10" />
-      <ul className="space-y-2 text-xs text-white/80 print:text-gray-800">
-        {tier.serviceIds.map((id) => (
-          <li key={id} className="leading-snug">
-            · {serviceName(id)}
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 border-t border-white/10 pt-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#c9973a]">Positive impact</p>
-        <ul className="mt-3 space-y-2 text-[11px] leading-relaxed text-white/60 print:text-gray-700">
-          {tier.serviceIds.map((id) => (
-            <li key={`imp-${id}`}>— {impactForService(id, serviceName(id), tier.key)}</li>
-          ))}
-        </ul>
-      </div>
+      {showSovereignCopy ? null : (
+        <>
+          <div className="my-4 border-t border-white/10" />
+          <ul className="space-y-2 text-xs text-white/80 print:text-gray-800">
+            {tier.serviceIds.map((id) => (
+              <li key={id} className="leading-snug">
+                · {serviceName(id)}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#c9973a]">Positive impact</p>
+            <ul className="mt-3 space-y-2 text-[11px] leading-relaxed text-white/60 print:text-gray-700">
+              {tier.serviceIds.map((id) => (
+                <li key={`imp-${id}`}>— {impactForService(id, serviceName(id), tier.key)}</li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
     </div>
   );
 }
