@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DiagnosticResult } from "./DiagnosticForm";
 import { serviceName } from "./diagnosticCatalog";
-import { vapi } from "@/lib/vapiClient";
+import { JORDAN_ASSISTANT_ID, vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 
@@ -11,9 +11,8 @@ import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
  * `VITE_ELEVENLABS_JORDAN_AGENT_ID` / `VITE_ELEVENLABS_JESSICA_AGENT_ID` only (Vapi TTS uses ElevenLabs **voice** ids from the dashboard, not agent ids).
  */
 
-/** Assistant UUID for `vapi.start()` — must be set via `VITE_VAPI_ASSISTANT_ID` (never hardcode in source). */
 export function getEvaluationSpecialistAssistantId(): string {
-  return (import.meta.env.VITE_VAPI_ASSISTANT_ID as string | undefined)?.trim() ?? "";
+  return JORDAN_ASSISTANT_ID;
 }
 
 export function buildAssistantVariableValues(result: DiagnosticResult) {
@@ -88,7 +87,7 @@ type UseDiagnosticVapiCallOptions = {
 };
 
 /**
- * Shared `vapi` from `@/lib/vapiClient` — listener registration only; no second `new Vapi()`.
+ * Shared `vapi` from `@/lib/vapiClient` — listener registration only; no second client instance.
  */
 export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDiagnosticVapiCallOptions): DiagnosticVapiCall {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
@@ -97,6 +96,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
   const [startLocked, setStartLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const callStartedAtRef = useRef<number | null>(null);
+  const fallbackTriedRef = useRef(false);
 
   useEffect(() => {
     const client = vapi;
@@ -104,6 +104,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
 
     const onCallStart = () => {
       callStartedAtRef.current = Date.now();
+      fallbackTriedRef.current = false;
       setIsCallActive(true);
       setError(null);
       options?.onVoiceLaunched?.();
@@ -117,7 +118,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
     };
 
     const onError = (e: unknown) => {
-      const msg = toUserFriendlyMessage(extractErrorMessage(e));
+      const msg = appendVapiAssistantKeyHint(toUserFriendlyMessage(extractErrorMessage(e)));
       console.error("[Vapi diagnostic report / Evaluation Specialist]", e);
       setError(msg);
       setIsCallActive(false);
@@ -126,7 +127,7 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
     };
 
     const onCallStartFailed = (e: unknown) => {
-      const msg = toUserFriendlyMessage(extractErrorMessage(e));
+      const msg = appendVapiAssistantKeyHint(toUserFriendlyMessage(extractErrorMessage(e)));
       console.error("[Vapi diagnostic report / Evaluation Specialist] call-start-failed", e);
       setError(msg);
       setIsCallActive(false);
@@ -145,38 +146,63 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
       client.removeListener("call-end", onCallEnd);
       client.removeListener("error", onError);
       client.removeListener("call-start-failed", onCallStartFailed);
-      client.stop();
     };
   }, [hasPublicKey, options]);
 
   const start = useCallback(() => {
-    if (!hasPublicKey) {
-      setError("Voice is not configured. Add VITE_VAPI_PUBLIC_KEY and redeploy.");
-      return;
-    }
-    const startConfig = options?.getStartConfig?.() ?? null;
-    const assistantId = startConfig?.assistantId || getEvaluationSpecialistAssistantId();
-    if (!assistantId) {
-      setError("Voice assistant is not configured. Set VITE_VAPI_ASSISTANT_ID in .env / Vercel and rebuild.");
-      return;
-    }
-    if (!acquireVapiTapLock()) return;
-    setStartLocked(true);
-    window.setTimeout(() => setStartLocked(false), 3000);
-    setError(null);
-    const variableValues = startConfig?.variableValues ?? buildAssistantVariableValues(result);
-    console.log("[useDiagnosticVapiCall] starting assistantId:", assistantId.slice(0, 8) + "...");
-    try {
-      vapi?.start(assistantId, {
-        maxDurationSeconds: 1080,
-        variableValues,
-      });
-    } catch (e) {
-      console.error("[useDiagnosticVapiCall] vapi.start() threw:", e);
-      setError("Voice connection unavailable. Please try again in a moment.");
-      setStartLocked(false);
-      releaseVapiTapLockEarly();
-    }
+    void (async () => {
+      if (!hasPublicKey) {
+        setError("Voice is not configured. Add VITE_VAPI_PUBLIC_KEY and redeploy.");
+        return;
+      }
+      const startConfig = options?.getStartConfig?.() ?? null;
+      const assistantId = startConfig?.assistantId || getEvaluationSpecialistAssistantId();
+      if (!assistantId) {
+        setError("Voice assistant is not configured.");
+        return;
+      }
+      if (!acquireVapiTapLock()) return;
+      fallbackTriedRef.current = false;
+      setStartLocked(true);
+      window.setTimeout(() => setStartLocked(false), 3000);
+      setError(null);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch {
+        alert("Microphone access required. Please allow and try again.");
+        setStartLocked(false);
+        releaseVapiTapLockEarly();
+        return;
+      }
+      const variableValues = startConfig?.variableValues ?? buildAssistantVariableValues(result);
+      console.log("[useDiagnosticVapiCall] starting assistantId:", assistantId.slice(0, 8) + "...");
+      const attemptStart = async (attempt: number): Promise<void> => {
+        try {
+          await vapi?.start(assistantId, {
+            maxDurationSeconds: 1080,
+            variableValues,
+          });
+        } catch (e) {
+          const msgRaw = extractErrorMessage(e);
+          const msgLower = (typeof msgRaw === "string" ? msgRaw : String(msgRaw ?? "")).toLowerCase();
+          const isKrispRace =
+            msgLower.includes("krisp") ||
+            msgLower.includes("didiniterror") ||
+            msgLower.includes("cannot read properties of null");
+          if (isKrispRace && attempt === 1) {
+            console.warn("[useDiagnosticVapiCall] Krisp init race on attempt 1, retrying in 500ms");
+            await new Promise((r) => setTimeout(r, 500));
+            return attemptStart(2);
+          }
+          console.error(`[useDiagnosticVapiCall] vapi.start() threw on attempt ${attempt}:`, e);
+          setError("Voice connection unavailable. Please try again in a moment.");
+          setStartLocked(false);
+          releaseVapiTapLockEarly();
+        }
+      };
+      void attemptStart(1);
+    })();
   }, [hasPublicKey, options, result]);
 
   const end = useCallback(() => {
