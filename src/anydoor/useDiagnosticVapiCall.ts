@@ -182,6 +182,10 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
           await vapi?.start(assistantId, {
             maxDurationSeconds: 1080,
             variableValues,
+            backgroundSpeechDenoisingPlan: {
+              smartDenoisingPlan: { enabled: false },
+              fourierDenoisingPlan: { enabled: false },
+            },
           });
         } catch (e) {
           const msgRaw = extractErrorMessage(e);
