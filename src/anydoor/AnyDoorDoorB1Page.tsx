@@ -31,7 +31,7 @@ export default function AnyDoorDoorB1Page() {
       <AnyDoorPageShell narrow={!result}>
         <div className={result ? "no-print" : ""}>
           <AnyDoorEntryScreen
-            eyebrow="ANYDOOR ENGINE · D-2 · THE MIRROR"
+            eyebrow="ANYDOOR ENGINE · D-2 · THE LENS"
             heading="URL Multipoint Diagnostic"
             subtext1="You don't know what your business looks like from the outside."
             subtext2="See your digital presence clearly — strengths, gaps, and what to do first."

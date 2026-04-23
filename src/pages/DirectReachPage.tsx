@@ -8,7 +8,7 @@ export default function DirectReachPage() {
     <div className="anydoor-door-page min-h-screen">
       <AnyDoorPageShell>
         <AnyDoorEntryScreen
-          eyebrow="ANYDOOR ENGINE · D-1 · THE DIRECT REACH"
+          eyebrow="ANYDOOR ENGINE · D-1 · THE OPEN DOOR"
           heading="Reach Out. We Respond Intelligently."
           subtext1={"You reached out but weren't sure where to start."}
           subtext2="We meet you where you are and connect you to exactly the right next step."

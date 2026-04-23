@@ -25,14 +25,14 @@ export default function QuotePage() {
     <div className="anydoor-door-page min-h-screen">
     <AnyDoorPageShell backHref="/calculator" backLabel="← Back to calculator">
       <AnyDoorEntryScreen
-        eyebrow="ANYDOOR ENGINE · D-6 · THE QUOTE"
+        eyebrow="ANYDOOR ENGINE · D-6 · THE RIVAL"
         heading={"You Know What You Want. Here's the Answer."}
         subtext1="You know what you need — you just want a number."
         subtext2="A transparent, itemized quote built around your specific situation."
       />
 
       <div className="anydoor-surface-card mx-auto w-full">
-        <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Pre-selected from D-5 · The Calculator</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#c9973a]">Pre-selected from D-5 · The Workbench</p>
         <ul className="mt-4 space-y-2 text-sm" style={{ color: DIM }}>
           <li>
             <span style={{ color: DIM }}>Business size: </span>

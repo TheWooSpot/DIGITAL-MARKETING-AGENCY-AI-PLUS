@@ -14,7 +14,7 @@ import {
   parseAiqNumber,
   rungFromTotalScore,
 } from "@/lib/aiIq/door4Scoring";
-import { vapi } from "@/lib/vapiClient";
+import { JORDAN_ASSISTANT_ID, vapi } from "@/lib/vapiClient";
 import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 
@@ -24,9 +24,6 @@ const GOLD = "#c9993a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
-
-/** Jordan — Evaluation Specialist (hardcoded per spec, same as AiIqReport.tsx) */
-const JORDAN_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
 
 function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
@@ -55,7 +52,6 @@ function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
       vapi.removeListener("call-end", onEnd);
       vapi.removeListener("error", onErr);
       vapi.removeListener("call-start-failed", onErr);
-      vapi.stop();
     };
   }, [hasPublicKey]);
 
@@ -803,7 +799,7 @@ export default function AiIqAssessmentPage() {
       {phase === "gate" && (
         <div className="mx-auto w-full max-w-[580px]">
           <AnyDoorEntryScreen
-            eyebrow="ANYDOOR ENGINE · D-4 · AI IQ™"
+            eyebrow="ANYDOOR ENGINE · D-4 · THE COMPASS"
             heading="Find Out Exactly Where Your AI Stands"
             subtext1={"You don't know where your organization stands on AI readiness."}
             subtext2="A real score across 7 dimensions and a clear path to where you go next."

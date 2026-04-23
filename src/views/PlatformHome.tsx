@@ -37,55 +37,55 @@ const DOOR_HOME_CARD_COPY: Record<
   { eyebrow: string; header: string; challenge: string; benefit: string }
 > = {
   "D-1": {
-    eyebrow: "D-1 · THE DIRECT REACH",
+    eyebrow: "D-1 · THE OPEN DOOR",
     header: "Reach Out. We Respond Intelligently.",
     challenge: "You reached out but weren't sure where to start.",
     benefit: "We meet you where you are and route you to exactly the right conversation.",
   },
   "D-2": {
-    eyebrow: "D-2 · THE MIRROR",
+    eyebrow: "D-2 · THE LENS",
     header: "URL Multipoint Diagnostic",
     challenge: "You don't know what your business looks like from the outside.",
     benefit: "See your digital presence clearly — strengths, gaps, and what to do first.",
   },
   "D-3": {
-    eyebrow: "D-3 · THE SELF-DISCOVERY",
+    eyebrow: "D-3 · THE MIRROR",
     header: "Seven Questions That Surface Something True",
     challenge: "You sense something isn't working but can't quite name it.",
     benefit: "Honest questions that surface what your business actually needs right now.",
   },
   "D-4": {
-    eyebrow: "D-4 · THE AI IQ™",
+    eyebrow: "D-4 · THE COMPASS",
     header: "Find Out Exactly Where Your AI Stands",
     challenge: "You don't know where your organization stands on AI readiness.",
     benefit: "A real score across 7 dimensions and a clear path to where you go next.",
   },
   "D-5": {
-    eyebrow: "D-5 · THE CALCULATOR",
+    eyebrow: "D-5 · THE WORKBENCH",
     header: "What Would This Actually Be Worth?",
     challenge: "You can't justify the investment without knowing the return.",
     benefit: "See what smarter marketing could be worth to your business in real numbers.",
   },
   "D-6": {
-    eyebrow: "D-6 · THE QUOTE",
+    eyebrow: "D-6 · THE RIVAL",
     header: "You Know What You Want. Here's the Answer.",
     challenge: "You know what you need — you just want a number.",
     benefit: "A transparent, itemized quote built around your specific situation.",
   },
   "D-7": {
-    eyebrow: "D-7 · THE DREAM",
+    eyebrow: "D-7 · THE ARCHITECT'S STUDIO",
     header: "Tell Us Where You Want to Go",
     challenge: "You know where you want to go but haven't said it out loud yet.",
     benefit: "A voice conversation that maps your vision and builds the path toward it.",
   },
   "D-8": {
-    eyebrow: "D-8 · THE REFERRAL",
+    eyebrow: "D-8 · THE HANDSHAKE",
     header: "Someone Sent You Here. That Means Something.",
     challenge: "You arrived through a trusted referral and want to know what's next.",
     benefit: "Start with context — we already know a little about why you're here.",
   },
   "D-9": {
-    eyebrow: "D-9 · THE AD RESPONSE",
+    eyebrow: "D-9 · THE THREAD",
     header: "You Saw Something. Let's Continue.",
     challenge: "Something specific caught your attention and brought you here.",
     benefit: "Pick up exactly where your interest began — no starting over.",
@@ -121,7 +121,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-1",
     status: "discovery",
-    title: "The Direct Reach",
+    title: "The Open Door",
     description:
       "One conversation starter — call, text, or email — routed so nothing important slips through.",
     cta: { kind: "link", href: "/direct-reach", label: "Connect now →" },
@@ -129,7 +129,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-2",
     status: "live",
-    title: "The Mirror",
+    title: "The Lens",
     description:
       "Paste your URL. See how visible, credible, and conversion-ready your digital presence really is.",
     cta: { kind: "link", href: "/diagnostic", label: "Run free diagnostic" },
@@ -137,7 +137,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-3",
     status: "beta",
-    title: "The Self-Discovery",
+    title: "The Mirror",
     description:
       "Seven open answers — then a reflection of what you actually said, not what you meant to say.",
     cta: { kind: "link", href: "/self-discovery", label: "Start discovery" },
@@ -145,7 +145,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-4",
     status: "live",
-    title: "The AI IQ™",
+    title: "The Compass",
     description:
       "Twenty-one questions across seven domains — one score that shows where your organization sits on the adoption curve.",
     cta: { kind: "link", href: "/ai-iq", label: "Take the AI IQ™" },
@@ -153,7 +153,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-5",
     status: "live",
-    title: "The Calculator",
+    title: "The Workbench",
     description:
       "A few inputs — a sober projection of what stronger visibility and automation could mean in dollars, before you talk price.",
     cta: {
@@ -166,7 +166,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-6",
     status: "building",
-    title: "The Quote",
+    title: "The Rival",
     description:
       "Pick the outcomes you want — see a scoped quote that matches the work, not a generic menu.",
     cta: { kind: "link", href: "/quote", label: "Get my quote →" },
@@ -174,7 +174,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-7",
     status: "live",
-    title: "The Dream",
+    title: "The Architect's Studio",
     description:
       "A short voice session to say where you want the business to go — and hear it reflected back with warmth and precision.",
     cta: { kind: "link", href: "/dream", label: "Begin vision session" },
@@ -182,7 +182,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-8",
     status: "beta",
-    title: "The Referral Landing",
+    title: "The Handshake",
     description:
       "You were sent here on purpose — this path honors that introduction and continues the right conversation.",
     cta: { kind: "link", href: "/referral", label: "Continue →" },
@@ -190,7 +190,7 @@ const FALLBACK_DOORS: DoorDef[] = [
   {
     label: "D-9",
     status: "beta",
-    title: "The Ad Response",
+    title: "The Thread",
     description: "Continue the exact promise you clicked — same offer, same framing, next step ready.",
     cta: { kind: "link", href: "/ad-response", label: "Continue →" },
   },

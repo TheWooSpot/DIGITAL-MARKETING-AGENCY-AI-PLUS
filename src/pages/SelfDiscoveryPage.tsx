@@ -6,8 +6,7 @@ import { useSession } from "@/context/SessionContext";
 import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 import { door3ServiceName } from "@/lib/door3/serviceNames";
 import type { DiscoveryQuestion, Door3Analysis } from "@/lib/door3/types";
-import { getEvaluationSpecialistAssistantId } from "@/anydoor/useDiagnosticVapiCall";
-import { vapi } from "@/lib/vapiClient";
+import { JORDAN_ASSISTANT_ID, vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 import { Mic, PhoneOff } from "lucide-react";
@@ -503,6 +502,15 @@ export default function SelfDiscoveryPage() {
     if (!acquireVapiTapLock()) return;
     setJordanStartLocked(true);
     window.setTimeout(() => setJordanStartLocked(false), 3000);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+    } catch {
+      alert("Microphone access required. Please allow and try again.");
+      setJordanStartLocked(false);
+      releaseVapiTapLockEarly();
+      return;
+    }
     const gaps =
       analysis.top_gaps && analysis.top_gaps.length > 0
         ? analysis.top_gaps
@@ -522,8 +530,8 @@ export default function SelfDiscoveryPage() {
       door3_summary: analysis.core_tension ?? analysis.primary_gap ?? "",
     };
     try {
-      await vapi.start(getEvaluationSpecialistAssistantId(), {
-        maxDurationSeconds: 420,
+      await vapi.start(JORDAN_ASSISTANT_ID, {
+        maxDurationSeconds: 1080,
         variableValues,
       });
       setCallActive(true);
@@ -548,7 +556,7 @@ export default function SelfDiscoveryPage() {
       {stage === "gate" && (
         <div className="mx-auto w-full max-w-[580px]">
           <AnyDoorEntryScreen
-            eyebrow="ANYDOOR ENGINE · D-3 · THE SELF-DISCOVERY"
+            eyebrow="ANYDOOR ENGINE · D-3 · THE MIRROR"
             heading="Seven Questions That Surface Something True"
             subtext1={"You sense something isn't working but can't quite name it."}
             subtext2="Honest questions that surface what your business actually needs right now."
@@ -639,7 +647,7 @@ export default function SelfDiscoveryPage() {
             className="text-[11px] font-medium uppercase tracking-[0.28em]"
             style={{ color: GOLD, fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
           >
-            D-3 · THE SELF-DISCOVERY
+            D-3 · THE MIRROR
           </p>
           <h1
             className="text-[clamp(2rem,5vw,2.625rem)] font-light leading-tight"

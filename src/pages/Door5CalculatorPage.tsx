@@ -164,7 +164,7 @@ export default function Door5CalculatorPage() {
         {phase === "gate" && (
           <div className="mx-auto w-full max-w-[580px]">
             <AnyDoorEntryScreen
-              eyebrow="ANYDOOR ENGINE · D-5 · THE CALCULATOR"
+              eyebrow="ANYDOOR ENGINE · D-5 · THE WORKBENCH"
               heading="What Would This Actually Be Worth?"
               subtext1={"You can't justify the investment without knowing the return."}
               subtext2="See what smarter marketing could be worth to your business in real numbers."

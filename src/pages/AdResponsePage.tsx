@@ -7,7 +7,7 @@ export default function AdResponsePage() {
     <div className="anydoor-door-page min-h-screen">
       <AnyDoorPageShell>
         <AnyDoorEntryScreen
-          eyebrow="ANYDOOR ENGINE · D-9 · THE AD RESPONSE"
+          eyebrow="ANYDOOR ENGINE · D-9 · THE THREAD"
           heading={"You Saw Something. Let's Continue."}
           subtext1="Something specific caught your attention and brought you here."
           subtext2="Pick up exactly where your interest began — no starting over."
