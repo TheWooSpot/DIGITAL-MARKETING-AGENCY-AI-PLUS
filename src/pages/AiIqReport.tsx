@@ -26,8 +26,8 @@ function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3;
 }
 
-interface Door9Submission {
-  tally_submission_id: string;
+interface Door4Submission {
+  id: number;
   full_name: string | null;
   business_name: string | null;
   email: string | null;
@@ -36,13 +36,18 @@ interface Door9Submission {
   ai_iq_band: string | null;
   recommended_rung: number | null;
   recommended_rung_label: string | null;
-  recommended_rung_price: string | null;
-  recommended_rung_type: string | null;
-  score_deployment_depth: number | null;
-  score_integration_maturity: number | null;
-  score_revenue_alignment: number | null;
-  score_automation_orchestration: number | null;
-  score_oversight_awareness: number | null;
+  recommended_rung_price?: string | null;
+  recommended_rung_type?: string | null;
+  deployment_depth_score: number | null;
+  integration_maturity_score: number | null;
+  revenue_alignment_score: number | null;
+  automation_orchestration_score: number | null;
+  oversight_awareness_score: number | null;
+  team_human_readiness_score: number | null;
+  strategic_leadership_score: number | null;
+  data_foundation_score: number | null;
+  customer_intelligence_score: number | null;
+  investment_posture_score: number | null;
   created_at: string;
 }
 
@@ -141,7 +146,7 @@ function extractVapiErr(e: unknown): string {
   return appendVapiAssistantKeyHint(extractVapiErrorMessage(e));
 }
 
-function useAiIqVapi(submission: Door9Submission | null) {
+function useAiIqVapi(submission: Door4Submission | null) {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
@@ -177,7 +182,6 @@ function useAiIqVapi(submission: Door9Submission | null) {
       client.removeListener("call-end", onCallEnd);
       client.removeListener("error", onError);
       client.removeListener("call-start-failed", onCallStartFailed);
-      client.stop();
     };
   }, [hasPublicKey]);
 
@@ -191,7 +195,7 @@ function useAiIqVapi(submission: Door9Submission | null) {
     window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     const variableValues: Record<string, string> = {
-      context: "AI_IQ_Door9_Report",
+      context: "AI_IQ_Door4_Report",
       business_name: submission?.business_name ?? "your business",
       full_name: submission?.full_name ?? "",
       ai_iq_score: String(submission?.ai_iq_score ?? 0),
@@ -199,7 +203,7 @@ function useAiIqVapi(submission: Door9Submission | null) {
       recommended_rung: String(submission?.recommended_rung ?? 0),
     };
     vapi?.start(AI_IQ_VAPI_ASSISTANT_ID, {
-      maxDurationSeconds: 420,
+      maxDurationSeconds: 1080,
       variableValues,
     });
   }, [hasPublicKey, submission]);
@@ -290,7 +294,7 @@ export default function AiIqReport() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [row, setRow] = useState<Door9Submission | null>(null);
+  const [row, setRow] = useState<Door4Submission | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -313,10 +317,17 @@ export default function AiIqReport() {
         }
         return;
       }
+      const idAsNumber = Number(submissionId);
+      if (!Number.isFinite(idAsNumber)) {
+        setNotFound(true);
+        setRow(null);
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
-        .from("door9_submissions")
+        .from("door4_submissions")
         .select("*")
-        .eq("tally_submission_id", submissionId)
+        .eq("id", idAsNumber)
         .maybeSingle();
 
       if (cancelled) return;
@@ -332,7 +343,7 @@ export default function AiIqReport() {
         setLoading(false);
         return;
       }
-      setRow(data as Door9Submission);
+      setRow(data as Door4Submission);
       setLoading(false);
     })();
 
@@ -350,11 +361,16 @@ export default function AiIqReport() {
   const domains = useMemo(() => {
     if (!row) return [];
     const items = [
-      { key: "Deployment Depth", score: row.score_deployment_depth },
-      { key: "Integration Maturity", score: row.score_integration_maturity },
-      { key: "Revenue Alignment", score: row.score_revenue_alignment },
-      { key: "Automation Orchestration", score: row.score_automation_orchestration },
-      { key: "Oversight Awareness", score: row.score_oversight_awareness },
+      { key: "Deployment Depth", score: row.deployment_depth_score },
+      { key: "Integration Maturity", score: row.integration_maturity_score },
+      { key: "Revenue Alignment", score: row.revenue_alignment_score },
+      { key: "Automation Orchestration", score: row.automation_orchestration_score },
+      { key: "Oversight Awareness", score: row.oversight_awareness_score },
+      { key: "Team & Human Readiness", score: row.team_human_readiness_score },
+      { key: "Strategic Leadership", score: row.strategic_leadership_score },
+      { key: "Data Foundation", score: row.data_foundation_score },
+      { key: "Customer Intelligence", score: row.customer_intelligence_score },
+      { key: "Investment Posture", score: row.investment_posture_score },
     ];
     return items.map((d) => ({
       ...d,
@@ -439,7 +455,7 @@ export default function AiIqReport() {
         eyebrow="SOCIALUTELY · AI IQ™ REPORT"
         titleAccent="Your AI IQ™ Report"
         titleRest={biz}
-        subtitle={`Completed ${completedDate} · 15 questions across 5 domains · Rung 1 complete`}
+        subtitle={`Completed ${completedDate} · 22 questions across 11 domains · Rung 1 complete`}
       />
 
       <div className="mx-auto max-w-3xl pb-16 text-[#e8eef5]">
@@ -482,7 +498,7 @@ export default function AiIqReport() {
 
         {/* 5. Domain breakdown */}
         <section className="mt-12">
-          <p className="anydoor-exp-eyebrow text-left">Score by Domain · 5 Areas Assessed</p>
+          <p className="anydoor-exp-eyebrow text-left">Score by Domain · 10 Scored Areas</p>
           <div className="mt-6 grid gap-4">
             {domains.map((d) => {
               const chip = scoreChipColor(d.score);
@@ -628,7 +644,7 @@ export default function AiIqReport() {
         {/* 9. Footer */}
         <footer className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row">
           <p className="text-center text-xs text-white/45 sm:text-left" style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}>
-            Socialutely | AI Marketing Platform · AI IQ™ v1 · Door 9
+            Socialutely | AI Marketing Platform · AI IQ™ v1 · Door 4
           </p>
           <button
             type="button"

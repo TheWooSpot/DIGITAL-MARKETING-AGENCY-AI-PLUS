@@ -77,6 +77,8 @@ function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
 
 const AI_IQ_CONTEXT_URL =
   "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-context";
+const DOOR4_SCORE_URL =
+  "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/door4-score";
 
 const THINKING_MESSAGES = [
   "Reviewing your organization...",
@@ -288,7 +290,7 @@ export default function AiIqAssessmentPage() {
         return;
       }
       const { data, error } = await supabase
-        .from("door9_ai_iq_questions")
+        .from("door4_ai_iq_questions")
         .select("question_id, domain, question, option, score");
       if (cancelled) return;
       if (error) {
@@ -306,7 +308,7 @@ export default function AiIqAssessmentPage() {
       });
       const grouped = groupAndSortQuestions(rows);
       setQuestions(grouped);
-      setLoadError(rows.length === 0 ? "No questions loaded. Seed `door9_ai_iq_questions` in Supabase." : null);
+      setLoadError(rows.length === 0 ? "No questions loaded. Seed `door4_ai_iq_questions` in Supabase." : null);
       setPhase("gate");
     })();
     return () => {
@@ -625,26 +627,38 @@ export default function AiIqAssessmentPage() {
 
     const orgContextText = optLabel?.trim() || null;
 
-    const submissionRow = {
-      name: name.trim(),
-      email: email.trim(),
-      url: url.trim() || null,
-      total_score: total,
-      org_context: orgContextText,
-      deployment_depth_score: domains.deployment_depth,
-      integration_maturity_score: domains.integration_maturity,
-      revenue_alignment_score: domains.revenue_alignment,
-      automation_orchestration_score: domains.automation_orchestration,
-      oversight_awareness_score: domains.oversight_awareness,
-      team_human_readiness_score: domains.team_human_readiness,
-      strategic_leadership_score: domains.strategic_leadership,
-      recommended_rung: rungFromTotalScore(total),
-      source: "door4-ai-iq",
-      business_context: businessContext,
-      personalization_applied: businessContext.source !== "fallback",
-    };
+    const scorePayloadFields = [
+      { key: "full_name", label: "Full Name", type: "INPUT_TEXT", value: name.trim() },
+      { key: "business_name", label: "Business Name", type: "INPUT_TEXT", value: businessContext.business_name || name.trim() },
+      { key: "business_email", label: "Business Email", type: "INPUT_EMAIL", value: email.trim() },
+      { key: "website_url", label: "Website URL (optional)", type: "INPUT_LINK", value: url.trim() || "" },
+    ];
+    const answerFields = questions.map((q) => {
+      const selectedOption = selectedOptionByQuestion.get(q.question_id) ?? "";
+      return {
+        key: q.question_id,
+        label: q.question,
+        type: "MULTIPLE_CHOICE",
+        value: selectedOption ? [selectedOption] : [],
+        options: q.options.map((o) => ({ id: o.option, text: o.option })),
+      };
+    });
 
-    const { error: d9Err } = await supabase.from("door9_submissions").insert(submissionRow);
+    const scoreRes = await fetch(DOOR4_SCORE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        data: {
+          submissionId: crypto.randomUUID(),
+          fields: [...scorePayloadFields, ...answerFields],
+        },
+      }),
+    });
+    let scoreErrMessage: string | null = null;
+    if (!scoreRes.ok) {
+      const bodyText = await scoreRes.text();
+      scoreErrMessage = bodyText || `door4-score failed with status ${scoreRes.status}`;
+    }
 
     const rung = rungFromTotalScore(total);
     const notes = `Rung ${rung} · ${orgContextText ?? "No org context provided"}`;
@@ -663,7 +677,7 @@ export default function AiIqAssessmentPage() {
     );
 
     const parts: string[] = [];
-    if (d9Err) parts.push(`door9_submissions: ${d9Err.message}`);
+    if (scoreErrMessage) parts.push(`door4-score: ${scoreErrMessage}`);
     if (pErr) parts.push(`layer5_prospects: ${pErr.message}`);
     if (parts.length > 0) setPersistError(parts.join(" · "));
 
