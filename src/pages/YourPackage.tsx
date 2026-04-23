@@ -125,6 +125,7 @@ export default function YourPackage() {
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [setupTotal, setSetupTotal] = useState<number>(0);
   const prospectId = searchParams.get("prospect_id")?.trim() || "";
   const companySize = searchParams.get("business_size")?.trim() || "";
   const sourceFromQuery = searchParams.get("source")?.trim() || "";
@@ -139,6 +140,7 @@ export default function YourPackage() {
       if (!prospectId) {
         setDisplayedServices([]);
         setPackageTotals(null);
+        setSetupTotal(0);
         setLoadedProspect(null);
         setServicesError("Missing prospect_id in URL.");
         setProspectMetaLoading(false);
@@ -182,6 +184,7 @@ export default function YourPackage() {
             : null
         );
         setDisplayedServices(toDisplayedServices(data.services));
+        setSetupTotal(Number(data.totals?.setup_total ?? 0));
 
         setProspectMetaLoading(false);
         setServicesLoading(false);
@@ -189,6 +192,7 @@ export default function YourPackage() {
         if (cancelled) return;
         setDisplayedServices([]);
         setPackageTotals(null);
+        setSetupTotal(0);
         setLoadedProspect(null);
         setProspectMeta(null);
         setServicesError(err instanceof Error ? err.message : String(err));
@@ -353,6 +357,14 @@ export default function YourPackage() {
                     <p className="mt-4 text-xl font-semibold tabular-nums text-[#c9973a] sm:text-2xl">
                       Your bundle price: {`${formatMoney(bundleMonthly)}/mo`}
                     </p>
+                    {setupTotal > 0 ? (
+                      <p className="mt-2 text-sm text-white/70">
+                        Plus one-time setup:{" "}
+                        <span className="font-semibold text-white">
+                          ${setupTotal.toLocaleString()}
+                        </span>
+                      </p>
+                    ) : null}
                     <p className="mt-2 text-sm text-emerald-400/90">
                       {`You save ${formatMoney(monthlySavings)}/mo vs. à la carte`}
                     </p>
@@ -389,6 +401,11 @@ export default function YourPackage() {
               <span className="font-mono tabular-nums text-white">
                 {servicesLoading ? "Loading..." : `${formatMoney(aLaCarteTotal)}/mo`}
               </span>
+            </p>
+            <p className="text-xs text-white/60">
+              Setup: <span className="font-semibold text-white">
+                ${setupTotal.toLocaleString()}
+              </span> one-time
             </p>
           </div>
           <div className="text-left sm:text-right">
