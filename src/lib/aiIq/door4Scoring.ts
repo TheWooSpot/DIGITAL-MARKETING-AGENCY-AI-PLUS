@@ -6,14 +6,27 @@
 export const DOMAIN_MAX = {
   deployment_depth: 15,
   integration_maturity: 15,
-  revenue_alignment: 20,
+  revenue_alignment: 15,
   automation_orchestration: 15,
-  oversight_awareness: 10,
+  oversight_awareness: 15,
   team_human_readiness: 15,
-  strategic_leadership: 10,
+  strategic_leadership: 15,
+  data_foundation: 45,
+  customer_intelligence: 45,
+  investment_posture: 45,
 } as const;
 
-export type DomainKey = keyof typeof DOMAIN_MAX;
+export type DomainKey =
+  | "deployment_depth"
+  | "integration_maturity"
+  | "revenue_alignment"
+  | "automation_orchestration"
+  | "oversight_awareness"
+  | "team_human_readiness"
+  | "strategic_leadership"
+  | "data_foundation"
+  | "customer_intelligence"
+  | "investment_posture";
 
 export const DOMAIN_LABEL: Record<DomainKey, string> = {
   deployment_depth: "Deployment Depth",
@@ -23,6 +36,9 @@ export const DOMAIN_LABEL: Record<DomainKey, string> = {
   oversight_awareness: "Oversight Awareness",
   team_human_readiness: "Team & Human Readiness",
   strategic_leadership: "Strategic Leadership",
+  data_foundation: "Data Foundation",
+  customer_intelligence: "Customer Intelligence",
+  investment_posture: "Investment Posture",
 };
 
 /** Map AIQ index (1–22) to domain; 22 = context only. */
@@ -43,6 +59,15 @@ export function parseAiqNumber(questionId: string): number {
   return m ? parseInt(m[1], 10) : -1;
 }
 
+function domainFromQuestionId(questionId: string): DomainKey | "organizational_context" | null {
+  const qid = questionId.trim().toUpperCase();
+  if (/^DF([1-9])$/.test(qid)) return "data_foundation";
+  if (/^CI([1-9])$/.test(qid)) return "customer_intelligence";
+  if (/^IP([1-9])$/.test(qid)) return "investment_posture";
+  const aiq = parseAiqNumber(qid);
+  return domainForAiqIndex(aiq);
+}
+
 export function bandLabelFromScore(score: number): string {
   const s = Math.min(100, Math.max(0, Math.round(score)));
   if (s <= 20) return "AI Absent";
@@ -52,11 +77,11 @@ export function bandLabelFromScore(score: number): string {
   return "Intelligent Infrastructure";
 }
 
-/** 0–40 → 2, 41–70 → 3, 71–100 → 4 */
-export function rungFromTotalScore(score: number): 2 | 3 | 4 {
-  const s = Math.min(100, Math.max(0, score));
-  if (s <= 40) return 2;
-  if (s <= 70) return 3;
+export function rungFromTotalScore(total: number): 1 | 2 | 3 | 4 {
+  const s = Math.min(100, Math.max(0, total));
+  if (s <= 40) return 1;
+  if (s <= 60) return 2;
+  if (s <= 80) return 3;
   return 4;
 }
 
@@ -68,6 +93,9 @@ export interface DomainScores {
   oversight_awareness: number;
   team_human_readiness: number;
   strategic_leadership: number;
+  data_foundation: number;
+  customer_intelligence: number;
+  investment_posture: number;
 }
 
 const ZERO_DOMAINS: DomainScores = {
@@ -78,6 +106,9 @@ const ZERO_DOMAINS: DomainScores = {
   oversight_awareness: 0,
   team_human_readiness: 0,
   strategic_leadership: 0,
+  data_foundation: 0,
+  customer_intelligence: 0,
+  investment_posture: 0,
 };
 
 /**
@@ -90,9 +121,7 @@ export function computeScoresFromAnswers(
 ): { total: number; domains: DomainScores } {
   const raw = { ...ZERO_DOMAINS };
   for (const qid of questionIdsIncluding22) {
-    const n = parseAiqNumber(qid);
-    if (n === 22) continue;
-    const d = domainForAiqIndex(n);
+    const d = domainFromQuestionId(qid);
     if (!d || d === "organizational_context") continue;
     const pts = answers.get(qid) ?? 0;
     raw[d] += pts;

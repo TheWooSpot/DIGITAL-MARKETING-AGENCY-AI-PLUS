@@ -25,7 +25,7 @@ const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 
-function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
+function useAiIqJordanVapi(score: number, rung: 1 | 2 | 3 | 4, band: string) {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
@@ -260,7 +260,7 @@ export default function AiIqAssessmentPage() {
   const [resultTotal, setResultTotal] = useState(0);
   const [resultDomains, setResultDomains] = useState<Record<DomainKey, number> | null>(null);
   const [resultBand, setResultBand] = useState("");
-  const [resultRung, setResultRung] = useState<2 | 3 | 4>(2);
+  const [resultRung, setResultRung] = useState<1 | 2 | 3 | 4>(1);
   const [orgContext, setOrgContext] = useState<{ option: string; question: string } | null>(null);
   const [persistError, setPersistError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -659,6 +659,25 @@ export default function AiIqAssessmentPage() {
     if (!scoreRes.ok) {
       const bodyText = await scoreRes.text();
       scoreErrMessage = bodyText || `door4-score failed with status ${scoreRes.status}`;
+    } else {
+      // Trust the server — override local computation with authoritative values
+      try {
+        const scoreData = await scoreRes.json();
+        if (typeof scoreData.ai_iq_score === "number") {
+          setResultTotal(scoreData.ai_iq_score);
+        }
+        if (typeof scoreData.ai_iq_band === "string") {
+          setResultBand(scoreData.ai_iq_band);
+        }
+        if (typeof scoreData.recommended_rung === "number") {
+          setResultRung(scoreData.recommended_rung as 1 | 2 | 3 | 4);
+        }
+        if (scoreData.domain_scores && typeof scoreData.domain_scores === "object") {
+          setResultDomains(scoreData.domain_scores as Record<DomainKey, number>);
+        }
+      } catch {
+        // Fall back to client-computed values already in state
+      }
     }
 
     const rung = rungFromTotalScore(total);
@@ -681,13 +700,15 @@ export default function AiIqAssessmentPage() {
           score: total,
           band: bandLabelFromScore(total),
           rung,
-          rung_label: rung === 2 ? "Adaptation" : rung === 3 ? "Optimization" : "Stewardship",
+          rung_label: rung === 1 ? "Awareness" : rung === 2 ? "Adaptation" : rung === 3 ? "Optimization" : "Stewardship",
           rung_description:
-            rung === 2
-              ? "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."
-              : rung === 3
-                ? "Workshop-style facilitation so adoption matches how your business actually runs."
-                : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
+            rung === 1
+              ? "Awareness — free orientation resources to align your team on AI readiness fundamentals."
+              : rung === 2
+                ? "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."
+                : rung === 3
+                  ? "Workshop-style facilitation so adoption matches how your business actually runs."
+                  : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
           domain_scores: domains,
         }),
       }
@@ -766,6 +787,8 @@ export default function AiIqAssessmentPage() {
   }, [phase, resultDomains, gapBlocks, generateResultsSummary, resultTotal, businessContext]);
 
   const cta = useMemo(() => {
+    if (resultRung === 1)
+      return { href: "https://socialutely.com/hubai", label: "Start with Awareness — free →" };
     if (resultRung === 2)
       return { href: RUNG2_URL, label: "Enroll in Rung 2 — Adaptation →" };
     if (resultRung === 3)
@@ -802,7 +825,7 @@ export default function AiIqAssessmentPage() {
             eyebrow="ANYDOOR ENGINE · D-4 · THE COMPASS"
             heading="Find Out Exactly Where Your AI Stands"
             subtext1={"You don't know where your organization stands on AI readiness."}
-            subtext2="A real score across 7 dimensions and a clear path to where you go next."
+            subtext2="A real score across 10 dimensions and a clear path to where you go next."
             bodyText="About 8–12 minutes. One question at a time."
           />
           {loadError && (
@@ -1254,9 +1277,11 @@ export default function AiIqAssessmentPage() {
                 Rung {resultRung}
               </p>
               <p className="mt-1 text-xl font-semibold text-white">
-                {resultRung === 2 ? "Adaptation™" : resultRung === 3 ? "Optimization™" : "Stewardship™"}
+                {resultRung === 1 ? "Awareness" : resultRung === 2 ? "Adaptation™" : resultRung === 3 ? "Optimization™" : "Stewardship™"}
               </p>
               <p className="mt-4 text-sm leading-relaxed" style={{ color: DIM }}>
+                {resultRung === 1 &&
+                  `With a score of ${resultTotal}, your organization is at the start of the AI readiness ladder. Rung 1 is Awareness — free orientation resources to align your team on what matters before deeper implementation.`}
                 {resultRung === 2 &&
                   `With a score of ${resultTotal}, your organization is at the start of a real AI journey. Rung 2 gives you a structured, practical roadmap — no jargon, no wasted effort. You'll leave with a clear implementation plan and the confidence to execute it.`}
                 {resultRung === 3 &&
