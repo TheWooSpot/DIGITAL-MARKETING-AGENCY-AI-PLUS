@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
 import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
@@ -168,6 +168,13 @@ const RUNG4_URL =
   (import.meta.env.VITE_AI_IQ_DISCOVERY_CALENDAR_URL as string | undefined)?.trim() ||
   "/ai-readiness/rung-4";
 
+function rungHrefWithScore(baseUrl: string, score: number): string {
+  const path = baseUrl.split("#")[0];
+  return path.includes("?") ? `${path}&score=${score}` : `${path}?score=${score}`;
+}
+
+type PartnerGateStatus = "checking" | "allowed" | "denied";
+
 function domainBarColor(score: number, max: number): string {
   const r = max > 0 ? score / max : 0;
   if (r >= 0.66) return "#2ecc8a";
@@ -232,6 +239,11 @@ function fallbackBusinessContext(name: string): AiIqBusinessContext {
 
 export default function AiIqAssessmentPage() {
   const { mergeSession, ...sessionSnapshot } = useSession();
+  const [searchParams] = useSearchParams();
+  const partnerToken = searchParams.get("partner_token");
+  const [partnerGateStatus, setPartnerGateStatus] = useState<PartnerGateStatus>("checking");
+  const [invitingPartner, setInvitingPartner] = useState<string | null>(null);
+
   const [phase, setPhase] = useState<
     | "loading"
     | "gate"
@@ -279,6 +291,40 @@ export default function AiIqAssessmentPage() {
   const [selectedIndustry, setSelectedIndustry] = useState<string>("");
   const [customIndustry, setCustomIndustry] = useState<string>("");
   const confirmedIndustry = selectedIndustry === "Other" ? customIndustry.trim() : selectedIndustry;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!partnerToken?.trim()) {
+        if (!cancelled) setPartnerGateStatus("denied");
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        if (!cancelled) setPartnerGateStatus("denied");
+        return;
+      }
+      const { data, error } = await supabase.rpc("validate_partner_token", {
+        p_token: partnerToken.trim(),
+      });
+      if (cancelled) return;
+      if (error) {
+        setPartnerGateStatus("denied");
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row || typeof row !== "object" || !(row as { valid?: boolean }).valid) {
+        setPartnerGateStatus("denied");
+        return;
+      }
+      const firstName = String((row as { partner_first_name?: string | null }).partner_first_name ?? "").trim();
+      setInvitingPartner(firstName || null);
+      setPartnerGateStatus("allowed");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [partnerToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -650,6 +696,7 @@ export default function AiIqAssessmentPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        partner_token: partnerToken?.trim() || null,
         data: {
           submissionId: crypto.randomUUID(),
           fields: [...scorePayloadFields, ...answerFields],
@@ -711,10 +758,11 @@ export default function AiIqAssessmentPage() {
                   ? "Workshop-style facilitation so adoption matches how your business actually runs."
                   : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
           domain_scores: domains,
+          partner_token: partnerToken?.trim() || null,
         }),
       }
     );
-  }, [answers, email, mergeSession, name, questions, selectedOptionByQuestion, url, businessContext]);
+  }, [answers, email, mergeSession, name, partnerToken, questions, selectedOptionByQuestion, url, businessContext]);
 
   const goBack = useCallback(() => {
     pendingQuizAdvanceRef.current = false;
@@ -791,11 +839,11 @@ export default function AiIqAssessmentPage() {
     if (resultRung === 1)
       return { href: "https://socialutely.com/hubai", label: "Start with Awareness — free →" };
     if (resultRung === 2)
-      return { href: RUNG2_URL, label: "Enroll in Rung 2 — Adaptation →" };
+      return { href: rungHrefWithScore(RUNG2_URL, resultTotal), label: "Enroll in Rung 2 — Adaptation →" };
     if (resultRung === 3)
-      return { href: RUNG3_URL, label: "Enroll in Rung 3 — Optimization →" };
-    return { href: RUNG4_URL, label: "Book a discovery call →" };
-  }, [resultRung]);
+      return { href: rungHrefWithScore(RUNG3_URL, resultTotal), label: "Enroll in Rung 3 — Optimization →" };
+    return { href: rungHrefWithScore(RUNG4_URL, resultTotal), label: "Book a discovery call →" };
+  }, [resultRung, resultTotal]);
 
   const headline = BAND_HEADLINES[resultBand] ?? BAND_HEADLINES["AI Absent"];
 
@@ -852,6 +900,69 @@ export default function AiIqAssessmentPage() {
     ? `${DOMAIN_LABEL[topGap.key]} is consistently measured, adopted, and reinforced in day-to-day operations so AI progress compounds instead of resetting.`
     : "";
 
+  if (partnerGateStatus === "checking") {
+    return (
+      <div className="anydoor-door-page min-h-screen" style={{ backgroundColor: BG }}>
+        <AnyDoorPageShell narrow={false}>
+          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+              style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+            />
+            <p className="text-center text-sm" style={{ color: DIM, fontFamily: "Arial, sans-serif" }}>
+              Verifying invitation…
+            </p>
+          </div>
+        </AnyDoorPageShell>
+      </div>
+    );
+  }
+
+  if (partnerGateStatus === "denied") {
+    return (
+      <div className="anydoor-door-page min-h-screen" style={{ backgroundColor: BG }}>
+        <AnyDoorPageShell narrow={false}>
+          <div className="mx-auto w-full max-w-[560px] px-4 py-10">
+            <p
+              className="mb-4 text-center font-mono text-[11px] uppercase tracking-[0.28em]"
+              style={{ color: GOLD }}
+            >
+              AI READINESS LABS · RUNG 1
+            </p>
+            <h1
+              className="mb-6 text-center text-3xl font-light leading-snug sm:text-4xl"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: GOLD }}
+            >
+              By Invitation Only, For Now
+            </h1>
+            <div className="space-y-4 text-[15px] leading-relaxed" style={{ color: WHITE, fontFamily: "Arial, sans-serif" }}>
+              <p>
+                The AI IQ assessment is currently in its testing period. We are working with a small group of named
+                partners who invite the business owners they believe would benefit most.
+              </p>
+              <p>
+                If you have an invitation, use the link your partner shared with you — it will include a personal access
+                token that grants you entry.
+              </p>
+              <p>
+                If you do not yet have an invitation and would like one, reach out directly. We are onboarding carefully
+                during this phase.
+              </p>
+            </div>
+            <div className="mt-10 flex justify-center">
+              <a
+                href="https://socialutely.com"
+                className="anydoor-btn-gold inline-flex items-center justify-center no-underline"
+              >
+                Return to Socialutely →
+              </a>
+            </div>
+          </div>
+        </AnyDoorPageShell>
+      </div>
+    );
+  }
+
   if (phase === "loading") {
     return (
       <div className="anydoor-door-page min-h-screen">
@@ -873,6 +984,14 @@ export default function AiIqAssessmentPage() {
     <AnyDoorPageShell narrow={false}>
       {phase === "gate" && (
         <div className="mx-auto w-full max-w-[580px]">
+          {invitingPartner ? (
+            <p
+              className="mb-3 text-center text-xs sm:text-[13px]"
+              style={{ color: "rgba(201,153,58,0.85)", fontFamily: "var(--font-dm-sans), Arial, sans-serif" }}
+            >
+              Invited by {invitingPartner} — welcome.
+            </p>
+          ) : null}
           <AnyDoorEntryScreen
             eyebrow="ANYDOOR ENGINE · D-4 · THE COMPASS"
             heading="Find Out Exactly Where Your AI Stands"
