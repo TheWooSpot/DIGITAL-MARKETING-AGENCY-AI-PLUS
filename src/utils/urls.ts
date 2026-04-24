@@ -6,7 +6,7 @@
 
 export type ReportLinkInput = {
   siteBaseUrl: string;
-  /** Row UUID from layer5_prospects after insert */
+  /** Row UUID from prospects table after insert */
   prospectId?: string;
   /** Opaque secret issued with the row; required with prospectId */
   reportAccessKey?: string;

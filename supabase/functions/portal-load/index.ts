@@ -47,12 +47,25 @@ serve(async (req) => {
         .eq('portal_token', token)
     }
 
+    let geoData: any = {};
+    try {
+      const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '';
+      if (clientIP && clientIP !== '127.0.0.1') {
+        const geoRes = await fetch(`https://ipapi.co/${clientIP}/json/`);
+        if (geoRes.ok) geoData = await geoRes.json();
+      }
+    } catch (_) {}
+
     await supabase.from('portal_views').insert({
       portal_token: token,
       prospect_id: prospect.id,
       section: 'page_load',
       cta_clicked: 'none',
       user_agent: req.headers.get('user-agent') || '',
+      country: geoData.country_name || null,
+      region: geoData.region || null,
+      city: geoData.city || null,
+      isp: geoData.org || null,
     })
 
     const { data: faq } = await supabase

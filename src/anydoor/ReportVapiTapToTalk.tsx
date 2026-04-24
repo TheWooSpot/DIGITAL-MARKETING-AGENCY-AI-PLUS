@@ -37,7 +37,7 @@ export function ReportVapiTapToTalk({ vapi }: ReportVapiTapToTalkProps) {
             className="inline-flex items-center gap-2 rounded-lg border border-[#c9973a] bg-[#c9973a]/15 px-4 py-2.5 text-sm font-semibold text-[#c9973a] transition hover:bg-[#c9973a]/25 disabled:pointer-events-none disabled:opacity-50"
           >
             <Mic className="h-4 w-4" aria-hidden />
-            Tap to Talk
+            Talk to Jordan about this report
           </button>
         ) : (
           <button

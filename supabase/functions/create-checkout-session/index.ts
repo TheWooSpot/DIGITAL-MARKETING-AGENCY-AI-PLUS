@@ -10,10 +10,6 @@ type RequestBody = {
   company_size?: string;
 };
 
-type CheckoutConfigRow = {
-  config_value: string | null;
-};
-
 type ServiceStripeRow = {
   service_id: string;
   stripe_monthly_price_id: string | null;
@@ -76,14 +72,8 @@ Deno.serve(async (req) => {
     Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   };
 
-  const cfgRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/checkout_config?config_key=eq.active_checkout_variant&select=config_value&limit=1`,
-    { headers: sbHeaders }
-  );
-  if (!cfgRes.ok) return json({ error: "Failed to read checkout_config", detail: await cfgRes.text() }, 500);
-  const cfgRows = (await cfgRes.json()) as CheckoutConfigRow[];
-  const activeVariant = String(cfgRows?.[0]?.config_value ?? "").trim().toUpperCase();
-  if (activeVariant !== "A") return json({ fallback: true });
+  // Always use dynamic Stripe Checkout session creation to keep checkout pricing
+  // consistent with the selected service set and avoid variant fallback drift.
 
   const inList = serviceIds.join(",");
   const svcRes = await fetch(

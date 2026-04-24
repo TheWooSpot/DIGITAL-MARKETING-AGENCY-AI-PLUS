@@ -89,9 +89,13 @@ Score the business on four dimensions from 0-100:
 ═══════════════════════════════════════════════════
 SCORE CONSISTENCY RULES — MANDATORY
 ═══════════════════════════════════════════════════
-Before assigning scores, commit to a single business classification. Your classification of what this business is MUST be consistent with the typical score ranges defined below. If you classify a business as an "early-stage marketplace", its overall score MUST fall in the 12–38 range. If you classify it as a "dominant national platform", its overall score MUST be 75–92. You cannot classify a business as sophisticated and score it low, or classify it as early-stage and score it high. The classification and score must be internally consistent.
-
-Additionally: Do NOT allow outside knowledge to inflate scores beyond what the business's actual web presence, traffic signals, and observable marketing infrastructure would justify. Score based on observable evidence, not assumed sophistication.
+Before assigning any score, commit to a single business classification. Your classification MUST be internally consistent with the typical score ranges above. Rules:
+1. If you classify a business as early-stage, startup, or emerging → overall score MUST be under 40.
+2. If you classify a business as established SMB → overall score MUST be 35–58.
+3. If you classify a business as sophisticated, dominant, or enterprise-scale → overall score MUST be 75+.
+4. You CANNOT classify a business as sophisticated and score it below 60. You CANNOT classify it as early-stage and score it above 45. The classification and score must match.
+5. Base scores ONLY on observable web presence, deployed marketing infrastructure, and measurable digital signals — NOT on assumed sophistication, brand recognition, or industry reputation alone.
+6. The same domain submitted twice should produce scores within 15 points of each other. If you have no strong evidence for a high score, default conservative.
 
 Map detected gaps to Socialutely service IDs. Only use these IDs: ${ALLOWED_SERVICE_IDS.join(", ")}.
 Each gap: service_id (from list), gap_description (short), priority ("high" | "medium" | "low").
@@ -118,6 +122,7 @@ business_name, industry, business_descriptor, scores (object with visibility, en
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
       max_tokens: 3000,
+      temperature: 0,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     }),

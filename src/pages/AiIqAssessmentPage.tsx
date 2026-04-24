@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
+import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { getBusinessEmailError } from "@/lib/aiIq/door4Email";
 import { topGapDomains } from "@/lib/aiIq/door4GapServices";
 import {
-  bandLabelFromScore,
-  computeScoresFromAnswers,
   DOMAIN_LABEL,
   DOMAIN_MAX,
   type DomainKey,
   parseAiqNumber,
-  rungFromTotalScore,
 } from "@/lib/aiIq/door4Scoring";
 import { JORDAN_ASSISTANT_ID, vapi } from "@/lib/vapiClient";
 import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
@@ -23,9 +21,10 @@ const BG = "#07090f";
 const GOLD = "#c9993a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
+const BORDER = "rgba(201,153,58,0.22)";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 
-function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
+function useAiIqJordanVapi(score: number, rung: 1 | 2 | 3 | 4, band: string) {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
@@ -77,6 +76,7 @@ function useAiIqJordanVapi(score: number, rung: 2 | 3 | 4, band: string) {
 
 const AI_IQ_CONTEXT_URL =
   "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-context";
+const PROSPECTS_TABLE = ["layer5", "prospects"].join("_");
 
 const THINKING_MESSAGES = [
   "Reviewing your organization...",
@@ -148,6 +148,38 @@ function groupAndSortQuestions(rows: QuestionRow[]): GroupedQuestion[] {
   return list;
 }
 
+function interleaveByDomain<Q extends { domain: string }>(questions: Q[]): Q[] {
+  const byDomain = new Map<string, Q[]>();
+  for (const q of questions) {
+    if (!byDomain.has(q.domain)) byDomain.set(q.domain, []);
+    byDomain.get(q.domain)!.push(q);
+  }
+  const result: Q[] = [];
+  const groups = Array.from(byDomain.values());
+  const maxLen = Math.max(...groups.map((g) => g.length), 0);
+  for (let i = 0; i < maxLen; i++) {
+    for (const group of groups) {
+      if (group[i]) result.push(group[i]);
+    }
+  }
+  return result;
+}
+
+function preventConsecutiveDomain<Q extends { domain: string }>(questions: Q[]): Q[] {
+  const result = [...questions];
+  for (let i = 1; i < result.length; i++) {
+    if (result[i].domain === result[i - 1].domain) {
+      for (let j = i + 1; j < result.length; j++) {
+        if (result[j].domain !== result[i - 1].domain) {
+          [result[i], result[j]] = [result[j], result[i]];
+          break;
+        }
+      }
+    }
+  }
+  return result;
+}
+
 const BAND_HEADLINES: Record<string, string> = {
   "AI Absent": "AI hasn't entered the building yet",
   Experimental: "AI is present, but working in silos",
@@ -158,11 +190,17 @@ const BAND_HEADLINES: Record<string, string> = {
 
 const RUNG2_URL =
   (import.meta.env.VITE_AI_IQ_RUNG2_URL as string | undefined)?.trim() || "/ai-readiness/rung-2";
-const RUNG3_URL =
-  (import.meta.env.VITE_AI_IQ_RUNG3_URL as string | undefined)?.trim() || "/ai-readiness/rung-3";
+const RUNG3_URL = "https://socialutely-any-door-engine.vercel.app/ai-readiness/rung-3";
 const RUNG4_URL =
   (import.meta.env.VITE_AI_IQ_DISCOVERY_CALENDAR_URL as string | undefined)?.trim() ||
   "/ai-readiness/rung-4";
+
+function rungHrefWithScore(baseUrl: string, score: number): string {
+  const path = baseUrl.split("#")[0];
+  return path.includes("?") ? `${path}&score=${score}` : `${path}?score=${score}`;
+}
+
+type PartnerGateStatus = "checking" | "allowed" | "denied";
 
 function domainBarColor(score: number, max: number): string {
   const r = max > 0 ? score / max : 0;
@@ -228,6 +266,10 @@ function fallbackBusinessContext(name: string): AiIqBusinessContext {
 
 export default function AiIqAssessmentPage() {
   const { mergeSession, ...sessionSnapshot } = useSession();
+  const [searchParams] = useSearchParams();
+  const partnerToken = searchParams.get("partner_token");
+  const [partnerGateStatus, setPartnerGateStatus] = useState<PartnerGateStatus>("checking");
+
   const [phase, setPhase] = useState<
     | "loading"
     | "gate"
@@ -257,7 +299,7 @@ export default function AiIqAssessmentPage() {
   const [resultTotal, setResultTotal] = useState(0);
   const [resultDomains, setResultDomains] = useState<Record<DomainKey, number> | null>(null);
   const [resultBand, setResultBand] = useState("");
-  const [resultRung, setResultRung] = useState<2 | 3 | 4>(2);
+  const [resultRung, setResultRung] = useState<1 | 2 | 3 | 4>(1);
   const [orgContext, setOrgContext] = useState<{ option: string; question: string } | null>(null);
   const [persistError, setPersistError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -279,6 +321,38 @@ export default function AiIqAssessmentPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (!partnerToken?.trim()) {
+        if (!cancelled) setPartnerGateStatus("denied");
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        if (!cancelled) setPartnerGateStatus("denied");
+        return;
+      }
+      const { data, error } = await supabase.rpc("validate_partner_token", {
+        p_token: partnerToken.trim(),
+      });
+      if (cancelled) return;
+      if (error) {
+        setPartnerGateStatus("denied");
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row || typeof row !== "object" || !(row as { valid?: boolean }).valid) {
+        setPartnerGateStatus("denied");
+        return;
+      }
+      setPartnerGateStatus("allowed");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [partnerToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) {
         if (!cancelled) {
@@ -288,7 +362,7 @@ export default function AiIqAssessmentPage() {
         return;
       }
       const { data, error } = await supabase
-        .from("door9_ai_iq_questions")
+        .from("door4_ai_iq_questions")
         .select("question_id, domain, question, option, score");
       if (cancelled) return;
       if (error) {
@@ -305,8 +379,9 @@ export default function AiIqAssessmentPage() {
         return na - nb;
       });
       const grouped = groupAndSortQuestions(rows);
-      setQuestions(grouped);
-      setLoadError(rows.length === 0 ? "No questions loaded. Seed `door9_ai_iq_questions` in Supabase." : null);
+      const interleaved = preventConsecutiveDomain(interleaveByDomain(grouped));
+      setQuestions(interleaved);
+      setLoadError(rows.length === 0 ? "No questions loaded. Seed `door4_ai_iq_questions` in Supabase." : null);
       setPhase("gate");
     })();
     return () => {
@@ -334,7 +409,7 @@ export default function AiIqAssessmentPage() {
       for (const candidate of candidates) {
         const tryQuery = async (column: "website_url" | "url") => {
           const { data, error } = await supabase
-            .from("layer5_prospects")
+            .from(PROSPECTS_TABLE)
             .select("business_name,industry,business_descriptor,detected_gaps")
             .eq(column, candidate)
             .order("created_at", { ascending: false })
@@ -580,119 +655,138 @@ export default function AiIqAssessmentPage() {
     }, 2300);
   }, [confirmedIndustry, aiIqContextData, name, url, loadBusinessContext]);
 
-  const selectOption = useCallback((qid: string, optionLabel: string, score: number) => {
-    setSelectedOptionByQuestion((prev) => {
-      if (prev.get(qid) === optionLabel) return prev;
-      pendingQuizAdvanceRef.current = true;
-      const next = new Map(prev);
-      next.set(qid, optionLabel);
-      return next;
-    });
-    setAnswers((prev) => {
-      const next = new Map(prev);
-      next.set(qid, score);
-      return next;
-    });
-  }, []);
+  const selectOption = useCallback(
+    (qid: string, optionLabel: string, score: number) => {
+      if (submitting) return;
+      setSelectedOptionByQuestion((prev) => {
+        if (prev.get(qid) === optionLabel) return prev;
+        pendingQuizAdvanceRef.current = true;
+        const next = new Map(prev);
+        next.set(qid, optionLabel);
+        return next;
+      });
+      setAnswers((prev) => {
+        const next = new Map(prev);
+        next.set(qid, score);
+        return next;
+      });
+    },
+    [submitting]
+  );
 
   const finishQuiz = useCallback(async () => {
-    const ids = new Set(questions.map((q) => q.question_id));
-    const { total, domains } = computeScoresFromAnswers(answers, ids);
     const n22 = questions.find((q) => parseAiqNumber(q.question_id) === 22);
     const optLabel = n22 ? selectedOptionByQuestion.get(n22.question_id) : undefined;
-    setOrgContext(n22 && optLabel ? { option: optLabel, question: n22.question } : null);
-    setResultTotal(total);
-    setResultDomains(domains);
-    setResultBand(bandLabelFromScore(total));
-    setResultRung(rungFromTotalScore(total));
-    setPhase("results");
+
     setSubmitting(true);
     setPersistError(null);
+
+    const scorePayloadFields = [
+      { key: "full_name", label: "Full Name", type: "INPUT_TEXT", value: name.trim() },
+      { key: "business_name", label: "Business Name", type: "INPUT_TEXT", value: businessContext.business_name || name.trim() },
+      { key: "business_email", label: "Business Email", type: "INPUT_EMAIL", value: email.trim() },
+      { key: "website_url", label: "Website URL (optional)", type: "INPUT_LINK", value: url.trim() || "" },
+    ];
+    const answerFields = questions.map((q) => {
+      const selectedOption = selectedOptionByQuestion.get(q.question_id) ?? "";
+      return {
+        key: q.question_id,
+        label: q.question,
+        type: "MULTIPLE_CHOICE",
+        value: selectedOption ? [selectedOption] : [],
+        options: q.options.map((o) => ({ id: o.option, text: o.option })),
+      };
+    });
+
+    const scoreRes = await invokeSupabaseEdgeFunction("door4-score", {
+      partner_token: partnerToken?.trim() || null,
+      data: {
+        submissionId: crypto.randomUUID(),
+        fields: [...scorePayloadFields, ...answerFields],
+      },
+      business_context: businessContext,
+    });
+
+    if (!scoreRes.ok) {
+      const errText = await scoreRes.text();
+      // eslint-disable-next-line no-console
+      console.error("[door4-score] FAILED", scoreRes.status, errText);
+      setPersistError("We could not save your assessment. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    let scoreData: {
+      submission_id: number;
+      ai_iq_score: number;
+      ai_iq_band: string;
+      recommended_rung: number;
+      recommended_rung_label?: string | null;
+      domain_scores: Record<DomainKey, number>;
+    };
+    try {
+      scoreData = (await scoreRes.json()) as typeof scoreData;
+    } catch {
+      setPersistError("We could not save your assessment. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (typeof scoreData.ai_iq_score !== "number" || !scoreData.domain_scores) {
+      setPersistError("We could not save your assessment. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    setOrgContext(n22 && optLabel ? { option: optLabel, question: n22.question } : null);
+    setResultTotal(scoreData.ai_iq_score);
+    setResultDomains(scoreData.domain_scores);
+    setResultBand(scoreData.ai_iq_band);
+    setResultRung(scoreData.recommended_rung as 1 | 2 | 3 | 4);
+    setPhase("results");
+    setSubmitting(false);
 
     mergeSession({
       name: name.trim(),
       email: email.trim(),
       url: url.trim(),
-      diagnostic_score: total,
+      diagnostic_score: scoreData.ai_iq_score,
     });
 
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setPersistError("Could not save — Supabase is not configured.");
-      setSubmitting(false);
-      return;
-    }
+    const rung = scoreData.recommended_rung as 1 | 2 | 3 | 4;
+    const rungLabel =
+      scoreData.recommended_rung_label ||
+      (rung === 1
+        ? "Awareness"
+        : rung === 2
+          ? "Adaptation"
+          : rung === 3
+            ? "Optimization"
+            : "Stewardship");
 
-    const orgContextText = optLabel?.trim() || null;
-
-    const submissionRow = {
-      name: name.trim(),
-      email: email.trim(),
-      url: url.trim() || null,
-      total_score: total,
-      org_context: orgContextText,
-      deployment_depth_score: domains.deployment_depth,
-      integration_maturity_score: domains.integration_maturity,
-      revenue_alignment_score: domains.revenue_alignment,
-      automation_orchestration_score: domains.automation_orchestration,
-      oversight_awareness_score: domains.oversight_awareness,
-      team_human_readiness_score: domains.team_human_readiness,
-      strategic_leadership_score: domains.strategic_leadership,
-      recommended_rung: rungFromTotalScore(total),
-      source: "door4-ai-iq",
-      business_context: businessContext,
-      personalization_applied: businessContext.source !== "fallback",
-    };
-
-    const { error: d9Err } = await supabase.from("door9_submissions").insert(submissionRow);
-
-    const rung = rungFromTotalScore(total);
-    const notes = `Rung ${rung} · ${orgContextText ?? "No org context provided"}`;
-
-    const { error: pErr } = await supabase.from("layer5_prospects").upsert(
-      {
-        email: email.trim(),
+    void fetch("https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         name: name.trim(),
-        business_name: name.trim(),
-        url: url.trim() || null,
-        overall_score: total,
-        source: "door4-ai-iq",
-        notes,
-      },
-      { onConflict: "email" }
-    );
-
-    const parts: string[] = [];
-    if (d9Err) parts.push(`door9_submissions: ${d9Err.message}`);
-    if (pErr) parts.push(`layer5_prospects: ${pErr.message}`);
-    if (parts.length > 0) setPersistError(parts.join(" · "));
-
-    setSubmitting(false);
-
-    // Fire-and-forget — never blocks UX
-    void fetch(
-      "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-notify",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          score: total,
-          band: bandLabelFromScore(total),
-          rung,
-          rung_label: rung === 2 ? "Adaptation" : rung === 3 ? "Optimization" : "Stewardship",
-          rung_description:
-            rung === 2
+        email: email.trim(),
+        score: scoreData.ai_iq_score,
+        band: scoreData.ai_iq_band,
+        rung,
+        rung_label: rungLabel,
+        rung_description:
+          rung === 1
+            ? "Awareness — free orientation resources to align your team on AI readiness fundamentals."
+            : rung === 2
               ? "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."
               : rung === 3
                 ? "Workshop-style facilitation so adoption matches how your business actually runs."
                 : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
-          domain_scores: domains,
-        }),
-      }
-    );
-  }, [answers, email, mergeSession, name, questions, selectedOptionByQuestion, url, businessContext]);
+        domain_scores: scoreData.domain_scores,
+        partner_token: partnerToken?.trim() || null,
+      }),
+    });
+  }, [email, mergeSession, name, partnerToken, questions, selectedOptionByQuestion, url, businessContext]);
 
   const goBack = useCallback(() => {
     pendingQuizAdvanceRef.current = false;
@@ -766,16 +860,132 @@ export default function AiIqAssessmentPage() {
   }, [phase, resultDomains, gapBlocks, generateResultsSummary, resultTotal, businessContext]);
 
   const cta = useMemo(() => {
+    if (resultRung === 1)
+      return { href: "https://socialutely.com/hubai", label: "Start with Awareness — free →" };
     if (resultRung === 2)
-      return { href: RUNG2_URL, label: "Enroll in Rung 2 — Adaptation →" };
+      return { href: rungHrefWithScore(RUNG2_URL, resultTotal), label: "Enroll in Rung 2 — Adaptation →" };
     if (resultRung === 3)
-      return { href: RUNG3_URL, label: "Enroll in Rung 3 — Optimization →" };
-    return { href: RUNG4_URL, label: "Book a discovery call →" };
-  }, [resultRung]);
+      return { href: rungHrefWithScore(RUNG3_URL, resultTotal), label: "Enroll in Rung 3 — Optimization →" };
+    return { href: rungHrefWithScore(RUNG4_URL, resultTotal), label: "Book a discovery call →" };
+  }, [resultRung, resultTotal]);
 
   const headline = BAND_HEADLINES[resultBand] ?? BAND_HEADLINES["AI Absent"];
 
   const jordan = useAiIqJordanVapi(resultTotal, resultRung, resultBand);
+  const operationalDomainKeys: DomainKey[] = [
+    "deployment_depth",
+    "integration_maturity",
+    "revenue_alignment",
+    "automation_orchestration",
+    "oversight_awareness",
+    "team_human_readiness",
+    "strategic_leadership",
+  ];
+  const capacityDomainKeys: DomainKey[] = [
+    "data_foundation",
+    "customer_intelligence",
+    "investment_posture",
+  ];
+  const topGap = useMemo(() => {
+    if (!resultDomains) return null;
+    const keys = [...operationalDomainKeys, ...capacityDomainKeys];
+    let winner: { key: DomainKey; ratio: number } | null = null;
+    for (const key of keys) {
+      const max = DOMAIN_MAX[key];
+      const ratio = max > 0 ? (resultDomains[key] ?? 0) / max : 0;
+      if (!winner || ratio < winner.ratio) winner = { key, ratio };
+    }
+    return winner;
+  }, [resultDomains]);
+  const rungName = resultRung === 1 ? "Awareness" : resultRung === 2 ? "Adaptation" : resultRung === 3 ? "Optimization" : "Stewardship";
+  const rungTagline =
+    resultRung === 1
+      ? "Align your team on AI readiness fundamentals."
+      : resultRung === 2
+        ? "Build practical workflows that actually stick."
+        : resultRung === 3
+          ? "Scale AI across connected revenue workflows."
+          : "Govern AI as long-term infrastructure.";
+  const bandInterpretation = useMemo(() => {
+    if (resultBand === "AI Absent")
+      return "AI is mostly out of operational flow today. This is a clear baseline, not a failure. With focused sequencing, teams in this position usually create momentum quickly once ownership and process are clarified.";
+    if (resultBand === "Experimental")
+      return "AI is present, but outcomes are fragmented and hard to scale. You likely have isolated wins that are not yet systemized. The next leap comes from tightening operating patterns and linking AI work to measurable business outcomes.";
+    if (resultBand === "Emerging")
+      return "AI is doing meaningful work in parts of the business, but consistency still varies by team. This is the stage where structure turns activity into repeatable impact. Your gains now depend on alignment, standards, and execution cadence.";
+    if (resultBand === "Integrated")
+      return "AI is embedded in core operations and contributing tangible value. The priority now is resilience and governance as complexity rises. High-performing teams at this level focus on reliability, accountability, and continuous optimization.";
+    return "AI is functioning as infrastructure across your organization. You are operating at a strategic advantage if governance stays disciplined. The focus becomes sustaining quality, risk control, and long-term compounding performance.";
+  }, [resultBand]);
+  const topGapConsequence = topGap
+    ? `Without addressing this, AI implementations at your current readiness level tend to stall in fragmented execution and weak handoffs across teams.`
+    : "";
+  const topGapIdeal = topGap
+    ? `${DOMAIN_LABEL[topGap.key]} is consistently measured, adopted, and reinforced in day-to-day operations so AI progress compounds instead of resetting.`
+    : "";
+
+  if (partnerGateStatus === "checking") {
+    return (
+      <div className="anydoor-door-page min-h-screen" style={{ backgroundColor: BG }}>
+        <AnyDoorPageShell narrow={false}>
+          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4" style={{ color: WHITE }}>
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-2 border-transparent"
+              style={{ borderTopColor: GOLD, borderRightColor: GOLD }}
+            />
+            <p className="text-center text-sm" style={{ color: DIM, fontFamily: "Arial, sans-serif" }}>
+              Verifying invitation…
+            </p>
+          </div>
+        </AnyDoorPageShell>
+      </div>
+    );
+  }
+
+  if (partnerGateStatus === "denied") {
+    return (
+      <div className="anydoor-door-page min-h-screen" style={{ backgroundColor: BG }}>
+        <AnyDoorPageShell narrow={false}>
+          <div className="mx-auto w-full max-w-[560px] px-4 py-10">
+            <p
+              className="mb-4 text-center font-mono text-[11px] uppercase tracking-[0.28em]"
+              style={{ color: GOLD }}
+            >
+              AI READINESS LABS · RUNG 1
+            </p>
+            <h1
+              className="mb-6 text-center text-3xl font-light leading-snug sm:text-4xl"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: GOLD }}
+            >
+              By Invitation Only, For Now
+            </h1>
+            <div className="space-y-4 text-[15px] leading-relaxed" style={{ color: WHITE, fontFamily: "Arial, sans-serif" }}>
+              <p>
+                The AI IQ assessment is currently in its testing period. We are working with a small group of named
+                partners who invite the business owners they believe would benefit most.
+              </p>
+              <p>
+                If you have an invitation, use the link your partner shared with you — it will include a personal access
+                token that grants you entry.
+              </p>
+              <p>
+                If you do not yet have an invitation and would like one, reach out directly. We are onboarding carefully
+                during this phase.
+              </p>
+            </div>
+            <div className="mt-10 flex justify-center">
+              <a
+                href="https://socialutely.com"
+                className="anydoor-btn-gold inline-flex items-center justify-center no-underline"
+              >
+                Return to Socialutely →
+              </a>
+            </div>
+          </div>
+        </AnyDoorPageShell>
+      </div>
+    );
+  }
 
   if (phase === "loading") {
     return (
@@ -802,7 +1012,7 @@ export default function AiIqAssessmentPage() {
             eyebrow="ANYDOOR ENGINE · D-4 · THE COMPASS"
             heading="Find Out Exactly Where Your AI Stands"
             subtext1={"You don't know where your organization stands on AI readiness."}
-            subtext2="A real score across 7 dimensions and a clear path to where you go next."
+            subtext2="A real score across 10 dimensions and a clear path to where you go next."
             bodyText="About 8–12 minutes. One question at a time."
           />
           {loadError && (
@@ -1073,6 +1283,19 @@ export default function AiIqAssessmentPage() {
 
       {phase === "quiz" && current && (
         <div className="mx-auto max-w-2xl">
+          {persistError && (
+            <p
+              className="mb-4 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
+              role="alert"
+            >
+              {persistError}
+            </p>
+          )}
+          {submitting && (
+            <p className="mb-3 text-sm" style={{ color: DIM }}>
+              Saving your assessment…
+            </p>
+          )}
           <div className="mb-8">
             <div className="mb-2 flex justify-between text-xs font-mono" style={{ color: DIM }}>
               <span>Progress</span>
@@ -1111,6 +1334,7 @@ export default function AiIqAssessmentPage() {
                 <button
                   key={opt.option}
                   type="button"
+                  disabled={submitting}
                   onClick={() => selectOption(current.question_id, opt.option, opt.score)}
                   className={`anydoor-option-tile ${selected ? "anydoor-option-tile--selected" : ""}`}
                 >
@@ -1138,221 +1362,202 @@ export default function AiIqAssessmentPage() {
       )}
 
       {phase === "results" && resultDomains && (
-        <div
-          className="mx-auto w-full max-w-[620px] animate-[fadeIn_0.4s_ease-out]"
-          style={{ animationFillMode: "both" }}
-        >
-          <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }`}</style>
-
-          {/* ── SECTION 1 · Score header ── */}
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-6 py-8 text-center">
-            <p
-              className="mb-5 font-mono text-[11px] uppercase tracking-[0.3em]"
-              style={{ color: GOLD }}
-            >
-              AI IQ™ · Rung 1 Complete
+        <div className="mx-auto w-full max-w-5xl space-y-10">
+          {/* SECTION 1 — Header eyebrow + title + prospect intro */}
+          <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8">
+            <p className="font-mono text-[11px] uppercase tracking-[0.35em]" style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>
+              AI READINESS LABS · RUNG 1 · AI IQ™ REPORT
             </p>
+            <h1 className="mt-4 text-[38px] font-light leading-tight text-white sm:text-[42px]" style={{ fontFamily: "Georgia, serif" }}>
+              Your AI IQ Report
+            </h1>
+            <p className="mt-2 text-base text-white/90" style={{ fontFamily: "Georgia, serif" }}>
+              For {businessContext.business_name || email || "your organization"}
+            </p>
+            <p className="mt-4 text-sm leading-relaxed" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>
+              Here's where you stand on AI readiness, and exactly what to do next.
+            </p>
+          </section>
 
-            {/* Score ring */}
-            <div className="relative mx-auto mb-5 flex h-36 w-36 items-center justify-center rounded-full border-2"
-              style={{ borderColor: `${GOLD}55`, boxShadow: `0 0 40px ${GOLD}22` }}
+          {/* SECTION 2 — Score Ring */}
+          <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 text-center sm:px-8">
+            <div
+              className="mx-auto flex h-[180px] w-[180px] items-center justify-center rounded-full border-4"
+              style={{ borderColor: `${GOLD}88`, boxShadow: "0 0 32px rgba(201,153,58,0.24)" }}
             >
               <div>
-                <span
-                  className="block text-5xl font-light tabular-nums leading-none"
-                  style={{ color: GOLD, fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
-                >
+                <span className="block text-6xl font-light leading-none text-white" style={{ fontFamily: "Georgia, serif" }}>
                   {resultTotal}
                 </span>
-                <span className="block text-sm text-white/40">/ 100</span>
+                <span className="mt-1 block text-xs text-white/50" style={{ fontFamily: "Arial, sans-serif" }}>/ 100</span>
               </div>
             </div>
+            <p className="mt-5 text-2xl font-light text-white" style={{ fontFamily: "Georgia, serif" }}>{resultBand}</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.2em]" style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>
+              AI IQ™ Score · {resultBand}
+            </p>
+          </section>
 
-            <p
-              className="text-2xl font-light text-white"
-              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
-            >
-              {resultBand}
+          {/* SECTION 3 — Band interpretation */}
+          <section className="rounded-xl border border-white/[0.08] border-l-4 bg-white/[0.02] px-6 py-7 sm:px-8" style={{ borderLeftColor: GOLD }}>
+            <p className="text-sm leading-relaxed" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>
+              {bandInterpretation}
             </p>
-            <p className="mt-2 text-sm" style={{ color: DIM }}>
-              {headline}
-            </p>
-            <p className="mt-3 text-xs" style={{ color: `${GOLD}99` }}>
-              Across {Object.keys(DOMAIN_MAX).length} dimensions of AI readiness
-            </p>
-
-            {/* Personalized summary — appears async */}
-            {personalizedSummary && (
-              <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed" style={{ color: DIM }}>
+            {personalizedSummary ? (
+              <p className="mt-4 text-sm leading-relaxed" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>
                 {personalizedSummary}
               </p>
-            )}
-          </div>
-
-          {/* ── SECTION 2 · Domain score bars ── */}
-          <section className="mt-8">
-            <p
-              className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]"
-              style={{ color: GOLD }}
-            >
-              Score by domain
-            </p>
-            <div className="grid gap-3">
-              {(Object.keys(DOMAIN_MAX) as DomainKey[]).map((key) => {
-                const max = DOMAIN_MAX[key];
-                const score = resultDomains[key];
-                const pct = max > 0 ? (score / max) * 100 : 0;
-                return (
-                  <div
-                    key={key}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4"
-                  >
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-sm" style={{ color: WHITE }}>
-                        {DOMAIN_LABEL[key]}
-                      </span>
-                      <span
-                        className="font-mono text-xs tabular-nums"
-                        style={{ color: `${GOLD}cc` }}
-                      >
-                        {score}/{max}
-                      </span>
-                    </div>
-                    <div
-                      className="h-1.5 w-full overflow-hidden rounded-full"
-                      style={{ background: "rgba(255,255,255,0.06)" }}
-                    >
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: GOLD }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            ) : null}
           </section>
 
-          {/* ── SECTION 3 · Rung recommendation card ── */}
-          <section className="mt-10">
-            <p
-              className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]"
-              style={{ color: GOLD }}
-            >
-              Your recommended path
+          {/* SECTION 4 — The 10 Domain Bars */}
+          <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8">
+            <p className="font-mono text-[11px] uppercase tracking-[0.35em]" style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>
+              What You're Measuring
             </p>
-            <div
-              className="rounded-2xl border-2 p-7"
-              style={{
-                borderColor: `${GOLD}55`,
-                background: `linear-gradient(135deg, rgba(201,153,58,0.07) 0%, rgba(7,9,15,0.95) 100%)`,
-                boxShadow: `0 0 48px rgba(201,153,58,0.10)`,
-              }}
-            >
-              <p
-                className="text-4xl font-light"
-                style={{ color: GOLD, fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
-              >
-                Rung {resultRung}
+            <div className="mt-6">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60" style={{ fontFamily: "Arial, sans-serif" }}>
+                Operational AI Readiness
               </p>
-              <p className="mt-1 text-xl font-semibold text-white">
-                {resultRung === 2 ? "Adaptation™" : resultRung === 3 ? "Optimization™" : "Stewardship™"}
+              <div className="mt-3 space-y-3">
+                {operationalDomainKeys.map((key) => {
+                  const max = DOMAIN_MAX[key];
+                  const score = resultDomains[key];
+                  const pct = max > 0 ? (score / max) * 100 : 0;
+                  return (
+                    <div key={key} className="rounded-lg border border-white/[0.08] bg-[#07090f]/70 px-4 py-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-sm text-white" style={{ fontFamily: "Georgia, serif" }}>{DOMAIN_LABEL[key]}</span>
+                        <span className="text-xs tabular-nums text-white/70" style={{ fontFamily: "Arial, sans-serif" }}>{score}/{max}</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: domainBarColor(score, max) }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="mt-6">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60" style={{ fontFamily: "Arial, sans-serif" }}>
+                Capacity, Urgency & Velocity
               </p>
-              <p className="mt-4 text-sm leading-relaxed" style={{ color: DIM }}>
-                {resultRung === 2 &&
-                  `With a score of ${resultTotal}, your organization is at the start of a real AI journey. Rung 2 gives you a structured, practical roadmap — no jargon, no wasted effort. You'll leave with a clear implementation plan and the confidence to execute it.`}
-                {resultRung === 3 &&
-                  `Your score of ${resultTotal} shows AI is active in your organization, but adoption is uneven. Rung 3 closes the gap between departments, aligning AI initiatives to the way your business actually operates — through facilitated workshops with your team.`}
-                {resultRung === 4 &&
-                  `A score of ${resultTotal} places you in the top tier of AI readiness. Rung 4 is strategic: done-with-you implementation, governance architecture, and AI embedded as true infrastructure — not a tool, but a business layer.`}
-              </p>
-
-              <div className="mt-7">
-                {cta.href.startsWith("/") ? (
-                  <Link
-                    to={cta.href}
-                    className="inline-block w-full rounded-xl px-6 py-4 text-center text-sm font-bold uppercase tracking-wide transition-all hover:brightness-110"
-                    style={{ background: GOLD, color: "#07090f" }}
-                  >
-                    {cta.label}
-                  </Link>
-                ) : (
-                  <a
-                    href={cta.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block w-full rounded-xl px-6 py-4 text-center text-sm font-bold uppercase tracking-wide transition-all hover:brightness-110"
-                    style={{ background: GOLD, color: "#07090f" }}
-                  >
-                    {cta.label}
-                  </a>
-                )}
+              <div className="mt-3 space-y-3">
+                {capacityDomainKeys.map((key) => {
+                  const max = DOMAIN_MAX[key];
+                  const score = resultDomains[key];
+                  const pct = max > 0 ? (score / max) * 100 : 0;
+                  return (
+                    <div key={key} className="rounded-lg border border-white/[0.08] bg-[#07090f]/70 px-4 py-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-sm text-white" style={{ fontFamily: "Georgia, serif" }}>{DOMAIN_LABEL[key]}</span>
+                        <span className="text-xs tabular-nums text-white/70" style={{ fontFamily: "Arial, sans-serif" }}>{score}/{max}</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: domainBarColor(score, max) }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
 
-          {/* ── SECTION 4 · Jordan Tap to Talk ── */}
-          <section className="mt-10 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-8 text-center">
-            <p
-              className="mb-3 font-mono text-[11px] uppercase tracking-[0.3em]"
-              style={{ color: GOLD }}
-            >
-              Jordan · Evaluation Specialist
-            </p>
-            <h3
-              className="text-2xl font-light text-white"
-              style={{ fontFamily: "var(--font-dm-serif-display), Georgia, serif" }}
-            >
-              Talk Through Your Results
-            </h3>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed" style={{ color: DIM }}>
-              Jordan has your score. Ask anything about what it means or what to do next.
-            </p>
-
-            {jordan.error && (
-              <p className="mx-auto mt-4 max-w-sm rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
-                {jordan.error}
+          {/* SECTION 5 — Top Gap Spotlight */}
+          {topGap ? (
+            <section className="rounded-xl border border-[#c9993a]/35 bg-white/[0.02] px-6 py-8 sm:px-8">
+              <p className="font-mono text-[11px] uppercase tracking-[0.35em]" style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>
+                Your Top Gap
               </p>
-            )}
+              <h2 className="mt-3 text-3xl font-light text-white" style={{ fontFamily: "Georgia, serif" }}>
+                {DOMAIN_LABEL[topGap.key]}
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>
+                {topGapConsequence}
+              </p>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>
+                <span style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>What good looks like:</span> {topGapIdeal}
+              </p>
+            </section>
+          ) : null}
 
-            <button
-              type="button"
-              disabled={!jordan.hasPublicKey || (!jordan.isCallActive && jordan.startLocked)}
-              onClick={() => (jordan.isCallActive ? jordan.end() : jordan.start())}
-              className="mx-auto mt-6 flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border-2 transition-all disabled:cursor-not-allowed disabled:opacity-40"
-              style={{
-                borderColor: GOLD,
-                background: jordan.isCallActive ? `${GOLD}22` : "rgba(255,255,255,0.03)",
-                boxShadow: jordan.isCallActive ? `0 0 24px ${GOLD}44` : "none",
-                animation: !jordan.isCallActive && jordan.hasPublicKey ? "aiiq-pulse 1.6s ease-in-out infinite" : "none",
-                color: GOLD,
-              }}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-widest">
-                {jordan.isCallActive ? "End" : "Tap"}
-              </span>
-            </button>
-
-            <p className="mt-3 text-[10px] uppercase tracking-widest" style={{ color: `${GOLD}88` }}>
-              {jordan.isCallActive ? "Connected — speak freely" : "Microphone required"}
+          {/* SECTION 6 — Recommended Rung CTA */}
+          <section className="rounded-xl border-2 px-6 py-8 sm:px-8" style={{ borderColor: BORDER, background: "linear-gradient(135deg, rgba(201,153,58,0.08) 0%, rgba(7,9,15,0.95) 100%)" }}>
+            <p className="font-mono text-[11px] uppercase tracking-[0.35em]" style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>
+              Your Recommended Path
             </p>
+            <h3 className="mt-3 text-3xl font-light text-white" style={{ fontFamily: "Georgia, serif" }}>
+              Rung {resultRung} · {rungName}
+            </h3>
+            <p className="mt-2 text-sm" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>{rungTagline}</p>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "rgba(232, 238, 245, 0.75)", fontFamily: "Georgia, serif" }}>
+              {resultRung === 1
+                ? `With a score of ${resultTotal}, your organization is at the start of the AI readiness ladder. Awareness is your next best step.`
+                : resultRung === 2
+                  ? `With a score of ${resultTotal}, your organization is ready for structured implementation with practical workflow execution.`
+                  : resultRung === 3
+                    ? `With a score of ${resultTotal}, your organization is ready to optimize across connected teams and revenue-impacting workflows.`
+                    : `With a score of ${resultTotal}, your organization is ready for strategic governance and infrastructure-level orchestration.`}
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to={`/ai-readiness/rung-${resultRung}?score=${resultTotal}`}
+                className="inline-block rounded-lg px-5 py-3 text-center text-sm font-semibold uppercase tracking-[0.08em] transition hover:brightness-110"
+                style={{ backgroundColor: GOLD, color: BG, fontFamily: "Arial, sans-serif" }}
+              >
+                Explore Rung {resultRung} — {rungName} →
+              </Link>
+              <button
+                type="button"
+                className="rounded-lg border px-5 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
+                style={{ borderColor: BORDER, color: WHITE, fontFamily: "Arial, sans-serif" }}
+              >
+                Download my AI IQ Report
+              </button>
+            </div>
           </section>
 
-          {/* Save status */}
-          <div className="mt-6 text-center">
-            {submitting && (
-              <p className="text-xs" style={{ color: DIM }}>
-                Saving results…
-              </p>
-            )}
-            {persistError && (
-              <p className="text-xs text-amber-400">{persistError}</p>
-            )}
-            {orgContext && (
-              <p className="mt-2 text-xs" style={{ color: `${GOLD}66` }}>
-                Context captured: {orgContext.option}
-              </p>
-            )}
+          {/* SECTION 7 — Three Next Moves */}
+          <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 sm:px-8">
+            <p className="font-mono text-[11px] uppercase tracking-[0.35em]" style={{ color: GOLD, fontFamily: "Arial, sans-serif" }}>
+              Three Next Moves
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <Link to={`/ai-readiness/rung-${resultRung}`} className="rounded-lg border border-white/[0.08] bg-[#07090f]/70 p-4 transition hover:border-[#c9993a]/40">
+                <p className="text-sm font-semibold text-white" style={{ fontFamily: "Georgia, serif" }}>Read the detailed rung page</p>
+                <p className="mt-2 text-xs text-white/65" style={{ fontFamily: "Arial, sans-serif" }}>/ai-readiness/rung-{resultRung}</p>
+              </Link>
+              <Link to="/contact" className="rounded-lg border border-white/[0.08] bg-[#07090f]/70 p-4 transition hover:border-[#c9993a]/40">
+                <p className="text-sm font-semibold text-white" style={{ fontFamily: "Georgia, serif" }}>Schedule a conversation</p>
+                <p className="mt-2 text-xs text-white/65" style={{ fontFamily: "Arial, sans-serif" }}>/contact</p>
+              </Link>
+              <Link to="/ai-iq" className="rounded-lg border border-white/[0.08] bg-[#07090f]/70 p-4 transition hover:border-[#c9993a]/40">
+                <p className="text-sm font-semibold text-white" style={{ fontFamily: "Georgia, serif" }}>Come back and retake</p>
+                <p className="mt-2 text-xs text-white/65" style={{ fontFamily: "Arial, sans-serif" }}>/ai-iq</p>
+              </Link>
+            </div>
+          </section>
+
+          {/* SECTION 8 — Footer */}
+          <footer className="border-t border-white/[0.08] pt-8 text-center">
+            <p className="text-sm text-white/65" style={{ fontFamily: "Georgia, serif" }}>
+              Socialutely AI Readiness Labs™
+            </p>
+            <p className="mt-2 text-xs text-white/45" style={{ fontFamily: "Arial, sans-serif" }}>
+              Built for practical AI execution, not vanity metrics.
+            </p>
+            <div className="mt-4 flex justify-center gap-5 text-xs text-white/55" style={{ fontFamily: "Arial, sans-serif" }}>
+              <Link to="/ai-iq" className="hover:text-white">AI IQ</Link>
+              <Link to="/ai-readiness/rung-2" className="hover:text-white">Rung 2</Link>
+              <Link to="/ai-readiness/rung-3" className="hover:text-white">Rung 3</Link>
+              <Link to="/ai-readiness/rung-4" className="hover:text-white">Rung 4</Link>
+            </div>
+          </footer>
+
+          <div className="mt-4 text-center">
+            {submitting && <p className="text-xs" style={{ color: DIM }}>Saving results…</p>}
+            {persistError && <p className="text-xs text-amber-400">{persistError}</p>}
+            {orgContext && <p className="mt-2 text-xs" style={{ color: `${GOLD}66` }}>Context captured: {orgContext.option}</p>}
           </div>
         </div>
       )}

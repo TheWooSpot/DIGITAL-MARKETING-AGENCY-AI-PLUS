@@ -58,7 +58,7 @@ const DOOR_HOME_CARD_COPY: Record<
     eyebrow: "D-4 · THE COMPASS",
     header: "Find Out Exactly Where Your AI Stands",
     challenge: "You don't know where your organization stands on AI readiness.",
-    benefit: "A real score across 7 dimensions and a clear path to where you go next.",
+    benefit: "A real score across 10 dimensions and a clear path to where you go next.",
   },
   "D-5": {
     eyebrow: "D-5 · THE WORKBENCH",

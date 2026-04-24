@@ -94,7 +94,7 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
     window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     vapi?.start(assistantId, {
-      maxDurationSeconds: 600,
+      maxDurationSeconds: 1500,
       variableValues: {
         partner_name: (window as Record<string, unknown>)._pbPartnerName as string || "",
       },

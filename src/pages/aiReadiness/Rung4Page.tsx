@@ -212,9 +212,47 @@ export default function Rung4Page() {
               />
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
-            <button type="submit" disabled={busy} className="anydoor-btn-gold sm:w-auto sm:min-w-[240px]">
-              {busy ? "Submitting…" : "Request Your Discovery Call"}
-            </button>
+            <p
+              style={{
+                fontFamily: "Georgia, serif",
+                color: "rgba(232, 238, 245, 0.75)",
+                marginBottom: "1.5rem",
+              }}
+            >
+              Two ways to start. Schedule a Discovery Call with our team, or — coming soon — tap to talk with our Stewardship
+              AI advisor for same-day pre-qualification and package walkthrough. Either path leads to a Stewardship Portrait
+              within 48 hours.
+            </p>
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4">
+              <button type="submit" disabled={busy} className="anydoor-btn-gold w-full sm:w-auto sm:min-w-[200px]">
+                {busy ? "Submitting…" : "Book Discovery Call →"}
+              </button>
+              <div className="flex w-full flex-col sm:max-w-[340px]">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full rounded-lg border px-4 py-2.5 text-left text-sm font-semibold transition"
+                  style={{
+                    cursor: "not-allowed",
+                    opacity: 0.6,
+                    color: "#c9993a",
+                    backgroundColor: "transparent",
+                    borderWidth: 1,
+                    borderStyle: "solid",
+                    borderColor: "#c9993a",
+                    fontFamily: "var(--font-dm-sans), Arial, sans-serif",
+                  }}
+                >
+                  Tap to Talk with a Stewardship Advisor →
+                </button>
+                <p
+                  className="mt-2 text-center text-xs sm:text-left"
+                  style={{ color: "rgba(232, 238, 245, 0.55)", fontFamily: "Arial, sans-serif" }}
+                >
+                  Coming soon — AI agent pre-qualification
+                </p>
+              </div>
+            </div>
           </form>
         )}
       </section>

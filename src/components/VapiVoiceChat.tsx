@@ -103,7 +103,6 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
       client.removeListener('message', onMessage);
       client.removeListener('error', onError);
       client.removeListener('call-start-failed', onCallStartFailed);
-      client.stop();
     };
   }, []);
 
@@ -126,7 +125,10 @@ export function VapiVoiceChat({ onClose }: VapiVoiceChatProps) {
     window.setTimeout(() => setStartLocked(false), 3000);
     const greeting = WELCOME_GREETINGS[Math.floor(Math.random() * WELCOME_GREETINGS.length)];
     try {
-      vapi.start(assistantId, { firstMessage: greeting });
+      vapi.start(assistantId, {
+        firstMessage: greeting,
+        maxDurationSeconds: 1080,
+      });
     } catch (e) {
       console.error('[VapiVoiceChat] vapi.start() threw:', e);
       setError('Voice connection unavailable. Please try again in a moment.');

@@ -1,13 +1,60 @@
-import { useCallback, useRef, useState } from "react";
-import { Conversation } from "@elevenlabs/client";
-import type { VoiceConversation } from "@elevenlabs/client";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, PhoneOff } from "lucide-react";
 import { useSession } from "@/context/SessionContext";
 import { invokeVisionReport } from "@/lib/dreamscape/invokeVisionReport";
+import { hasVapiPublicKey, vapi } from "@/lib/vapiClient";
+import { logEvent } from "@/lib/diagnosticEvents";
 
-/** Door 7 — DreamScape™ Amelia (ElevenLabs ConvAI). Set in `.env` / Vercel. */
-const DREAMSCAPE_AGENT_ID =
-  (import.meta.env.VITE_DREAMSCAPE_ELEVENLABS_AGENT_ID as string | undefined)?.trim() ?? "";
+const DEFAULT_AMELIA_ASSISTANT_ID = "0693b0d9-6e89-436f-bdbd-9fe25cc1bf3c";
+
+type EmailDomainContext = {
+  domain_type: "business" | "consumer" | "unknown";
+  business_name: string | null;
+  industry: string | null;
+  recent_observation: string | null;
+  name_guardrail: "ok" | "flagged";
+  name_initial: string;
+};
+
+function getEmailDomainContextUrl(): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+  const anon = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+  if (!base || !anon) return "";
+  return `${base.replace(/\/$/, "")}/functions/v1/email-domain-context`;
+}
+
+async function fetchEmailDomainContext(name: string, email: string): Promise<EmailDomainContext> {
+  const url = getEmailDomainContextUrl();
+  if (!url) {
+    return {
+      domain_type: "unknown",
+      business_name: null,
+      industry: null,
+      recent_observation: null,
+      name_guardrail: "ok",
+      name_initial: name.trim().charAt(0).toUpperCase() || "U",
+    };
+  }
+  const anon = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ?? "";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${anon}`,
+    },
+    body: JSON.stringify({ name, email }),
+  });
+  if (!res.ok) throw new Error(`email-domain-context failed (${res.status})`);
+  const data = (await res.json()) as Partial<EmailDomainContext>;
+  return {
+    domain_type: data.domain_type === "business" || data.domain_type === "consumer" ? data.domain_type : "unknown",
+    business_name: data.business_name ?? null,
+    industry: data.industry ?? null,
+    recent_observation: data.recent_observation ?? null,
+    name_guardrail: data.name_guardrail === "flagged" ? "flagged" : "ok",
+    name_initial: ((data.name_initial ?? name.trim().charAt(0)) || "U").toUpperCase(),
+  };
+}
 
 /**
  * Door 7 — DreamScape™ entry: pre-gate form, ElevenLabs voice session, Vision Report™ generation.
@@ -15,7 +62,9 @@ const DREAMSCAPE_AGENT_ID =
 export default function DreamScapeEntry() {
   const { mergeSession, name: sessionName, email: sessionEmail, url: sessionUrl } = useSession();
 
-  const hasAgentId = DREAMSCAPE_AGENT_ID.length > 0;
+  const ameliaAssistantId =
+    (import.meta.env.VITE_DREAMSCAPE_ASSISTANT_ID as string | undefined)?.trim() || DEFAULT_AMELIA_ASSISTANT_ID;
+  const hasAgentId = hasVapiPublicKey && !!ameliaAssistantId;
 
   const [firstName, setFirstName] = useState(() => sessionName.split(/\s+/)[0] || sessionName || "");
   const [email, setEmail] = useState(sessionEmail);
@@ -27,10 +76,7 @@ export default function DreamScapeEntry() {
   const [showPostCall, setShowPostCall] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const conversationRef = useRef<VoiceConversation | null>(null);
   const fallbackTranscriptRef = useRef<string[]>([]);
-  const dreamConvIdRef = useRef<string | null>(null);
-  const [dreamConversationId, setDreamConversationId] = useState<string | null>(null);
 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportHtml, setReportHtml] = useState<string | null>(null);
@@ -42,6 +88,46 @@ export default function DreamScapeEntry() {
     setIsCallActive(false);
     setShowPostCall(true);
   }, []);
+
+  useEffect(() => {
+    const client = vapi;
+    if (!client) return;
+
+    const onMessage = (message: {
+      type?: string;
+      transcript?: string;
+      transcriptType?: string;
+      role?: string;
+      message?: { content?: string };
+    }) => {
+      if (message.type === "transcript" && message.transcript && message.transcriptType !== "partial") {
+        const role = message.role === "assistant" ? "Amelia" : "Client";
+        fallbackTranscriptRef.current.push(`${role}: ${message.transcript.trim()}`);
+      }
+    };
+
+    const onCallEnd = () => {
+      showGenerateReportButton();
+    };
+
+    const onError = (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Voice connection error";
+      setIsCallActive(false);
+      setError(`Voice session error: ${msg}`);
+      setStartLocked(false);
+      releaseDreamTapLockEarly();
+    };
+
+    client.on("message", onMessage);
+    client.on("call-end", onCallEnd);
+    client.on("error", onError);
+
+    return () => {
+      client.removeListener("message", onMessage);
+      client.removeListener("call-end", onCallEnd);
+      client.removeListener("error", onError);
+    };
+  }, [showGenerateReportButton]);
 
   const buildFallbackConversationSummary = useCallback((): string => {
     const parts: string[] = [
@@ -74,8 +160,6 @@ export default function DreamScapeEntry() {
       url: sessionUrl,
     });
     fallbackTranscriptRef.current = [];
-    dreamConvIdRef.current = null;
-    setDreamConversationId(null);
     setSessionReady(true);
     return true;
   }, [email, firstName, mergeSession, sessionUrl]);
@@ -83,7 +167,7 @@ export default function DreamScapeEntry() {
   const start = useCallback(async () => {
     if (!prepareSession()) return;
     if (!hasAgentId) {
-      setError("Add VITE_DREAMSCAPE_ELEVENLABS_AGENT_ID to your environment and rebuild.");
+      setError("Add VITE_VAPI_PUBLIC_KEY to your environment and rebuild.");
       return;
     }
 
@@ -98,106 +182,38 @@ export default function DreamScapeEntry() {
     setReportNotice(null);
     setReportNoticeKind("info");
     fallbackTranscriptRef.current = [];
-    dreamConvIdRef.current = null;
-    setDreamConversationId(null);
 
     console.log("[DreamScape] Starting Amelia session...");
-    console.log("[DreamScape] Agent ID:", DREAMSCAPE_AGENT_ID);
-    console.log("[DreamScape] Agent ID length:", DREAMSCAPE_AGENT_ID.length);
-
-    const sessionOptions = {
-      agentId: DREAMSCAPE_AGENT_ID,
-      connectionType: "websocket" as const,
-      onConnect: ({ conversationId }: { conversationId?: string }) => {
-        console.log("[DreamScape] Amelia connected, conversationId:", conversationId);
-        const id = conversationId ?? null;
-        dreamConvIdRef.current = id;
-        setDreamConversationId(id);
-      },
-      onMessage: (msg: { source: "user" | "ai"; message: string }) => {
-        console.log("[DreamScape] Message:", msg);
-        if (msg.message.trim()) {
-          const role = msg.source === "ai" ? "Amelia" : "Client";
-          fallbackTranscriptRef.current.push(`${role}: ${msg.message.trim()}`);
-        }
-      },
-      onDisconnect: () => {
-        console.log("[DreamScape] Amelia disconnected");
-        conversationRef.current = null;
-        showGenerateReportButton();
-      },
-      onError: (err: unknown) => {
-        const msg = typeof err === "string" ? err : (err as Error)?.message ?? "Unknown error";
-        console.error("[DreamScape] Amelia session error:", err);
-        console.error("[DreamScape] Error name:", (err as Error)?.name);
-        console.error("[DreamScape] Error closeCode:", (err as { closeCode?: unknown })?.closeCode);
-        console.error("[DreamScape] Error closeReason:", (err as { closeReason?: unknown })?.closeReason);
-        try { console.error("[DreamScape] Error JSON:", JSON.stringify(err)); } catch { /* not serialisable */ }
-        conversationRef.current = null;
-        setIsCallActive(false);
-        setError(`Voice session error: ${msg}`);
-      },
-    };
-
-    const attemptStart = async (isRetry = false): Promise<void> => {
-      try {
-        const conv = await Conversation.startSession(sessionOptions);
-        console.log("[DreamScape] startSession resolved, conv:", conv);
-        conversationRef.current = conv;
-        setIsCallActive(true);
-
-        window.setTimeout(() => {
-          if (!dreamConvIdRef.current && typeof (conv as { getId?: () => string }).getId === "function") {
-            const id = (conv as { getId: () => string }).getId();
-            if (id) {
-              dreamConvIdRef.current = id;
-              setDreamConversationId(id);
-            }
-          }
-        }, 3000);
-      } catch (e) {
-        const err = e as Error & { closeCode?: number; closeReason?: string };
-        console.error("[DreamScape] startSession threw:", e);
-        console.error("[DreamScape] Error name:", err?.name);
-        console.error("[DreamScape] Error message:", err?.message);
-        console.error("[DreamScape] Error closeCode:", err?.closeCode);
-        console.error("[DreamScape] Error closeReason:", err?.closeReason);
-        try { console.error("[DreamScape] Error JSON:", JSON.stringify(e)); } catch { /* not serialisable */ }
-
-        // Retry once on transient WebSocket close errors (e.g. first-connection failures)
-        const isTransient =
-          err?.name === "SessionConnectionError" &&
-          typeof err?.closeCode === "number" &&
-          err.closeCode !== 1000 &&
-          err.closeCode !== 4000 &&  // 4000 = bad agent ID / auth — not retryable
-          err.closeCode !== 4001 &&
-          err.closeCode !== 4003;
-
-        if (!isRetry && isTransient) {
-          console.warn("[DreamScape] Transient connection error (closeCode:", err?.closeCode, ") — retrying in 2s...");
-          setError("Connecting...");
-          await new Promise<void>(res => window.setTimeout(res, 2000));
-          setError(null);
-          return attemptStart(true);
-        }
-
-        const msg = err?.message ?? String(e);
-        setError(`Could not start the voice session. ${msg}`);
-        setStartLocked(false);
-        releaseDreamTapLockEarly();
-      }
-    };
-
-    await attemptStart();
-  }, [hasAgentId, prepareSession, showGenerateReportButton]);
+    try {
+      const ctx = await fetchEmailDomainContext(firstName.trim(), email.trim());
+      vapi?.start(ameliaAssistantId, {
+        variableValues: {
+          user_name: firstName.trim(),
+          user_name_initial: ctx.name_initial,
+          name_guardrail: ctx.name_guardrail,
+          domain_type: ctx.domain_type,
+          business_name: ctx.business_name ?? "",
+          industry: ctx.industry ?? "",
+          recent_observation: ctx.recent_observation ?? "",
+          email: email.trim(),
+        },
+      });
+      void logEvent("voice_launched", { door: "door-7", event_data: { agent: "amelia" } });
+      setIsCallActive(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not start Amelia.";
+      setError(`Could not start the voice session. ${msg}`);
+      setStartLocked(false);
+      releaseDreamTapLockEarly();
+    }
+  }, [ameliaAssistantId, email, firstName, hasAgentId, prepareSession]);
 
   const end = useCallback(async () => {
     try {
-      await conversationRef.current?.endSession();
+      await vapi?.stop();
     } catch {
       /* ignore */
     } finally {
-      conversationRef.current = null;
       setIsCallActive(false);
       setShowPostCall(true);
     }
@@ -209,12 +225,11 @@ export default function DreamScapeEntry() {
     setReportNotice(null);
     setReportNoticeKind("info");
 
-    const id = dreamConvIdRef.current || dreamConversationId || undefined;
     const summary = buildFallbackConversationSummary();
     const payload = {
       name: firstName.trim(),
       email: email.trim(),
-      conversation_id: id,
+      conversation_id: undefined,
       conversation_summary: summary,
     };
 
@@ -229,7 +244,7 @@ export default function DreamScapeEntry() {
     }
     console.warn("Vision Report generation failed:", res.error);
     setReportError(res.error ?? "Something went wrong generating your report.");
-  }, [buildFallbackConversationSummary, dreamConversationId, email, firstName]);
+  }, [buildFallbackConversationSummary, email, firstName]);
 
   const canStart = hasAgentId;
 
@@ -322,8 +337,8 @@ export default function DreamScapeEntry() {
 
         {sessionReady && !canStart ? (
           <p className="mt-6 text-xs text-amber-400/90">
-            Voice session unavailable: set <span className="font-mono">VITE_DREAMSCAPE_ELEVENLABS_AGENT_ID</span>, then
-            rebuild.
+            Voice session unavailable: set <span className="font-mono">VITE_VAPI_PUBLIC_KEY</span> and{" "}
+            <span className="font-mono">VITE_DREAMSCAPE_ASSISTANT_ID</span>, then rebuild.
           </p>
         ) : null}
 

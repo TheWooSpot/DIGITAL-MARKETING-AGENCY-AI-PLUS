@@ -1,305 +1,345 @@
-/**
- * Socialutely — Door 9 AI IQ™ scoring (Edge Function)
- * ==================================================
- * AI IQ v3: 22 question IDs (AIQ1–AIQ22), 7 scored domains (max 100 total).
- * AIQ22 = Organizational Context — unscored; pass-through for report framing only.
- *
- * Rung routing (total scored 0–100):
- *   0–40  → Rung 2 (Adaptation™)
- *   41–70 → Rung 3 (Optimization™)
- *   71–100 → Rung 4 (Stewardship™)
- *
- * POST body (any of):
- *   - { "tally_submission_id": "<id>", "AIQ1": 5, "AIQ2": 3, ... "AIQ22": "optional text or number" }
- *   - { "tally_submission_id": "<id>", "scores": { "AIQ1": 5, ... } }
- *
- * Optional: "persist": true (default) — PATCH `door9_submissions` where tally_submission_id matches.
- *
- * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional: DOOR9_SCORE_SECRET — if set, require Authorization: Bearer <secret> or x-door9-secret header.
- */
-export const DOOR9_SCORE_VERSION = 3;
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-door9-secret",
-  "Access-Control-Expose-Headers": "x-door9-score-version",
+// ─── DOMAIN WEIGHTS ───────────────────────────────────────────────────────────
+const DOMAIN_WEIGHTS: Record<string, number> = {
+  'Deployment Depth':         0.20,
+  'Integration Maturity':     0.20,
+  'Revenue Alignment':        0.25,
+  'Automation Orchestration': 0.20,
+  'Oversight Awareness':      0.15,
 };
 
-const FN_HEADERS = {
-  "x-door9-score-version": String(DOOR9_SCORE_VERSION),
-} as const;
+const AIQ2_SCORE_MAP: Record<number, number> = { 0:0, 1:4, 2:8, 3:12, 4:16 };
 
-/** Per-domain max points (sum = 100). */
-const DOMAIN_MAX = {
-  deployment_depth: 15,
-  integration_maturity: 15,
-  revenue_alignment: 20,
-  automation_orchestration: 15,
-  oversight_awareness: 10,
-  team_human_readiness: 15,
-  strategic_leadership: 10,
-} as const;
+// ─── SCORE BANDS ──────────────────────────────────────────────────────────────
+const SCORE_BANDS = [
+  { min: 0,  max: 20,  label: 'AI Absent',                  tier: 'Essentials' },
+  { min: 21, max: 40,  label: 'Experimental',               tier: 'Essentials' },
+  { min: 41, max: 60,  label: 'Emerging',                   tier: 'Momentum'   },
+  { min: 61, max: 80,  label: 'Integrated',                 tier: 'Signature'  },
+  { min: 81, max: 100, label: 'Intelligent Infrastructure', tier: 'Vanguard'   },
+];
 
-type DomainKey = keyof typeof DOMAIN_MAX;
+// ─── RUNG ROUTING ─────────────────────────────────────────────────────────────
+const RUNG_ROUTING = [
+  {
+    rung: 2, label: 'Adaptation',
+    price: '$297 one-time', price_type: 'one_time', price_amount: 297,
+    format: 'DIY self-guided course',
+    cta: 'Enroll in Rung 2 — Adaptation',
+    cta_sub: '$297 · Self-guided AI course',
+    description: 'You are in the Experimental zone. Rung 2 gives you the full framework and workflows to get AI actually running in your business — at your own pace.',
+    score_min: 0, score_max: 40,
+  },
+  {
+    rung: 3, label: 'Optimization',
+    price: 'From $797', price_type: 'tiered', price_amount: 797,
+    format: 'DWY workshop-based (3, 5, 7, or 10 sessions)',
+    cta: 'Choose Your Rung 3 Workshop',
+    cta_sub: 'From $797 · 3 / 5 / 7 / 10 session packages',
+    description: 'AI is in your business but it is not yet earning. Rung 3 puts a guide in the room — human and AI — to build the workflows that make your AI investment measurable.',
+    score_min: 41, score_max: 70,
+  },
+  {
+    rung: 4, label: 'Stewardship',
+    price: '$4,997/quarter', price_type: 'quarterly_contract', price_amount: 4997,
+    format: 'DFY tech consultancy — strategic + contractual',
+    cta: 'Start the Rung 4 Conversation',
+    cta_sub: '$4,997/qtr · 12-month strategic agreement',
+    description: 'You are in the Integrated or Intelligent Infrastructure band. Rung 4 is a contracted strategic relationship — your tech team in the room, governing AI at the highest level.',
+    score_min: 71, score_max: 100,
+  },
+];
 
-/** AIQ1–AIQ21 → domain. AIQ22 = context only (excluded). */
-const QUESTION_DOMAIN = (n: number): DomainKey | "organizational_context" | null => {
-  if (n >= 1 && n <= 3) return "deployment_depth";
-  if (n >= 4 && n <= 6) return "integration_maturity";
-  if (n >= 7 && n <= 9) return "revenue_alignment";
-  if (n >= 10 && n <= 12) return "automation_orchestration";
-  if (n >= 13 && n <= 15) return "oversight_awareness";
-  if (n >= 16 && n <= 18) return "team_human_readiness";
-  if (n >= 19 && n <= 21) return "strategic_leadership";
-  if (n === 22) return "organizational_context";
-  return null;
-};
-
-function jsonResponse(body: object, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...FN_HEADERS },
-  });
+function getScoreBand(score: number) {
+  return SCORE_BANDS.find(b => score >= b.min && score <= b.max)
+    ?? { label: 'Experimental', tier: 'Essentials' };
 }
 
-function parseNumeric(val: unknown): number {
-  if (val === null || val === undefined || val === "") return 0;
-  const num = typeof val === "number" ? val : parseFloat(String(val).trim());
-  return Number.isFinite(num) ? num : 0;
+function getRecommendedRung(score: number) {
+  return RUNG_ROUTING.find(r => score >= r.score_min && score <= r.score_max)
+    ?? RUNG_ROUTING[0];
 }
 
-/** Extract AIQn → value from flat object or nested `scores`. Later keys win (scores overrides flat). */
-function collectQuestionEntries(body: Record<string, unknown>): Array<{ q: number; raw: unknown }> {
-  const map = new Map<number, unknown>();
-  const scores = body.scores;
-  const flat: Record<string, unknown> = { ...body };
-  delete flat.scores;
-  delete flat.tally_submission_id;
-  delete flat.persist;
+// ─── TALLY FIELD TYPES ────────────────────────────────────────────────────────
+interface TallyOption { id: string; text: string; }
+interface TallyField {
+  key: string;
+  label: string;
+  type: string;
+  value: unknown;
+  options?: TallyOption[];
+}
 
-  const absorb = (obj: Record<string, unknown>) => {
-    for (const [k, v] of Object.entries(obj)) {
-      const m = /^AIQ(\d+)$/i.exec(String(k).trim());
-      if (!m) continue;
-      const n = parseInt(m[1], 10);
-      if (n < 1 || n > 22) continue;
-      map.set(n, v);
+function extractTextField(fields: TallyField[], label: string): string {
+  const f = fields.find(f => f.label === label);
+  if (!f) return '';
+  if (Array.isArray(f.value)) return (f.value as string[]).join(', ');
+  return String(f.value ?? '');
+}
+
+// ─── KEY FIX: resolve UUID values → option text strings ─────────────────────
+// Tally sends MULTIPLE_CHOICE and CHECKBOXES values as option UUIDs, not texts.
+// We must look up the text via the options array.
+function buildAnswerMap(
+  fields: TallyField[]
+): Record<string, string | string[]> {
+  const map: Record<string, string | string[]> = {};
+
+  for (const f of fields) {
+    // Skip non-question fields
+    if (['INPUT_TEXT','INPUT_EMAIL','INPUT_LINK','HIDDEN_FIELDS'].includes(f.type)) continue;
+    // Skip CHECKBOXES sub-items (e.g. "label (Marketing)" — Tally sends both)
+    // These have boolean values and their label contains the parent label
+    if (f.type === 'CHECKBOXES' && typeof f.value === 'boolean') continue;
+
+    const options = (f.options ?? []) as TallyOption[];
+
+    if (f.type === 'MULTIPLE_CHOICE') {
+      // value is an array containing ONE selected option UUID
+      const selectedIds = Array.isArray(f.value) ? (f.value as string[]) : [String(f.value ?? '')];
+      const selectedId = selectedIds[0];
+      // Resolve UUID → text via options array
+      const matched = options.find(o => o.id === selectedId);
+      if (matched) {
+        map[f.label] = matched.text;
+      }
+    } else if (f.type === 'CHECKBOXES') {
+      // value is an array of selected option UUIDs
+      const selectedIds = Array.isArray(f.value) ? (f.value as string[]) : [];
+      // Resolve each UUID → text
+      const selectedTexts = selectedIds
+        .map(id => options.find(o => o.id === id)?.text)
+        .filter((t): t is string => Boolean(t));
+      if (selectedTexts.length > 0) {
+        map[f.label] = selectedTexts;
+      }
     }
-  };
-  absorb(flat);
-  if (scores && typeof scores === "object" && scores !== null) {
-    absorb(scores as Record<string, unknown>);
-  }
-  return Array.from(map.entries()).map(([q, raw]) => ({ q, raw }));
-}
-
-export interface AiIqV3ScoreResult {
-  schema: "ai_iq_v3";
-  ai_iq_score: number;
-  ai_iq_band: string;
-  domain_scores: Record<DomainKey, number>;
-  organizational_context: unknown | null;
-  recommended_rung: 2 | 3 | 4;
-  recommended_rung_label: string;
-  recommended_rung_price: string;
-  recommended_rung_type: string;
-  /** Raw sums before domain clamp (for debugging). */
-  _raw_domain_sums?: Record<DomainKey, number>;
-}
-
-function bandFromScore(score: number): string {
-  const s = Math.min(100, Math.max(0, Math.round(score)));
-  if (s <= 20) return "AI Absent";
-  if (s <= 40) return "Experimental";
-  if (s <= 60) return "Emerging";
-  if (s <= 80) return "Integrated";
-  return "Intelligent Infrastructure";
-}
-
-function rungFromScore(score: number): Pick<
-  AiIqV3ScoreResult,
-  "recommended_rung" | "recommended_rung_label" | "recommended_rung_price" | "recommended_rung_type"
-> {
-  const s = Math.min(100, Math.max(0, score));
-  if (s <= 40) {
-    return {
-      recommended_rung: 2,
-      recommended_rung_label: "Adaptation",
-      recommended_rung_price: "$297 one-time",
-      recommended_rung_type: "one_time",
-    };
-  }
-  if (s <= 70) {
-    return {
-      recommended_rung: 3,
-      recommended_rung_label: "Optimization",
-      recommended_rung_price: "From $797",
-      recommended_rung_type: "workshop_tiered",
-    };
-  }
-  return {
-    recommended_rung: 4,
-    recommended_rung_label: "Stewardship",
-    recommended_rung_price: "$4,997/quarter",
-    recommended_rung_type: "quarterly_contract",
-  };
-}
-
-/** Sum question scores into domains; clamp each domain to its v3 max. Total = sum of clamped domain scores (max 100). */
-export function scoreAiIqV3(entries: Array<{ q: number; raw: unknown }>): AiIqV3ScoreResult {
-  const rawSums: Record<DomainKey, number> = {
-    deployment_depth: 0,
-    integration_maturity: 0,
-    revenue_alignment: 0,
-    automation_orchestration: 0,
-    oversight_awareness: 0,
-    team_human_readiness: 0,
-    strategic_leadership: 0,
-  };
-  let organizational_context: unknown | null = null;
-
-  for (const { q, raw } of entries) {
-    const domain = QUESTION_DOMAIN(q);
-    if (domain === "organizational_context") {
-      organizational_context = raw ?? null;
-      continue;
-    }
-    if (domain == null) continue;
-    const pts = parseNumeric(raw);
-    rawSums[domain] += pts;
   }
 
-  const domain_scores = {} as Record<DomainKey, number>;
-  let total = 0;
-  for (const key of Object.keys(DOMAIN_MAX) as DomainKey[]) {
-    const max = DOMAIN_MAX[key];
-    const clamped = Math.min(max, Math.max(0, Math.round(rawSums[key])));
-    domain_scores[key] = clamped;
-    total += clamped;
+  return map;
+}
+
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
+Deno.serve(async (req: Request) => {
+  if (req.method === 'GET') {
+    return new Response(
+      JSON.stringify({ status: 'door9-score v4 live — UUID→text fix + response table' }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   }
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
-  const ai_iq_score = Math.min(100, total);
+  let payload: Record<string, unknown>;
+  try { payload = await req.json(); }
+  catch { return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 }); }
 
-  return {
-    schema: "ai_iq_v3",
-    ai_iq_score,
-    ai_iq_band: bandFromScore(ai_iq_score),
-    domain_scores,
-    organizational_context,
-    ...rungFromScore(ai_iq_score),
-    _raw_domain_sums: rawSums,
-  };
-}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = (payload.data ?? payload) as any;
+  const fields: TallyField[] = data.fields ?? [];
+  const submissionId: string = data.submissionId ?? data.responseId ?? '';
 
-function buildSupabasePatch(result: AiIqV3ScoreResult): Record<string, unknown> {
-  const d = result.domain_scores;
-  return {
-    ai_iq_score: result.ai_iq_score,
-    ai_iq_band: result.ai_iq_band,
-    recommended_rung: result.recommended_rung,
-    recommended_rung_label: result.recommended_rung_label,
-    recommended_rung_price: result.recommended_rung_price,
-    recommended_rung_type: result.recommended_rung_type,
-    score_deployment_depth: d.deployment_depth,
-    score_integration_maturity: d.integration_maturity,
-    score_revenue_alignment: d.revenue_alignment,
-    score_automation_orchestration: d.automation_orchestration,
-    score_oversight_awareness: d.oversight_awareness,
-    score_team_human_readiness: d.team_human_readiness,
-    score_strategic_leadership: d.strategic_leadership,
-    organizational_context: result.organizational_context,
-    ai_iq_schema_version: DOOR9_SCORE_VERSION,
-  };
-}
+  // ── Contact fields
+  const fullName    = extractTextField(fields, 'Full Name');
+  const bizName     = extractTextField(fields, 'Business Name');
+  const email       = extractTextField(fields, 'Business Email');
+  const website     = extractTextField(fields, 'Website URL (optional)');
+  const utmSource   = extractTextField(fields, 'utm_source');
+  const utmMedium   = extractTextField(fields, 'utm_medium');
+  const utmCampaign = extractTextField(fields, 'utm_campaign');
 
-async function patchDoor9Submission(
-  supabaseUrl: string,
-  serviceKey: string,
-  tallySubmissionId: string,
-  patch: Record<string, unknown>
-): Promise<{ ok: boolean; status: number; body: string }> {
-  const res = await fetch(
-    `${supabaseUrl}/rest/v1/door9_submissions?tally_submission_id=eq.${encodeURIComponent(tallySubmissionId)}`,
-    {
-      method: "PATCH",
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify(patch),
-    }
+  // ── Resolve UUID → text answer map (THE FIX)
+  const answerMap = buildAnswerMap(fields);
+
+  // ── Supabase client
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
-  const bodyText = await res.text();
-  return { ok: res.ok, status: res.status, body: bodyText };
-}
 
-function authorize(req: Request, secret: string | undefined): boolean {
-  if (!secret) return true;
-  const auth = req.headers.get("authorization");
-  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const header = req.headers.get("x-door9-secret")?.trim() ?? "";
-  return bearer === secret || header === secret;
-}
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: { ...CORS_HEADERS, ...FN_HEADERS } });
+  // ── Load question bank
+  type QRow = { question_id: string; domain: string; question: string; option: string; score: number };
+  const { data: qBank, error: qErr } = await supabase
+    .from('door9_ai_iq_questions')
+    .select('question_id, domain, question, option, score');
+  if (qErr || !qBank) {
+    console.error('Question bank error:', qErr);
+    return new Response(JSON.stringify({ error: 'Question bank unavailable' }), { status: 500 });
   }
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
-  }
+  const qRows = qBank as QRow[];
 
-  const secret = Deno.env.get("DOOR9_SCORE_SECRET") ?? undefined;
-  if (!authorize(req, secret)) {
-    return jsonResponse({ error: "Unauthorized" }, 401);
-  }
+  // ── Score per domain + collect individual responses
+  const domainScores: Record<string, number> = {};
+  const responseRows: {
+    tally_submission_id: string;
+    question_id: string;
+    domain: string;
+    question_label: string;
+    selected_option: string;
+    option_score: number;
+  }[] = [];
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON body" }, 400);
-  }
+  for (const domain of Object.keys(DOMAIN_WEIGHTS)) {
+    const domainRows = qRows.filter(r => r.domain === domain);
+    const questionIds = [...new Set(domainRows.map(r => r.question_id))];
+    let domainRaw = 0;
+    let questionCount = 0;
 
-  const tallySubmissionId =
-    typeof body.tally_submission_id === "string" ? body.tally_submission_id.trim() : "";
-  if (!tallySubmissionId) {
-    return jsonResponse({ error: "Missing tally_submission_id" }, 400);
-  }
+    for (const qid of questionIds) {
+      const qRowsForQ = domainRows.filter(r => r.question_id === qid);
+      const questionText = qRowsForQ[0]?.question ?? '';
+      const selectedAnswer = answerMap[questionText];
 
-  const entries = collectQuestionEntries(body);
-  if (entries.length === 0) {
-    return jsonResponse({ error: "No AIQ1–AIQ22 fields found (use AIQ1, AIQ2, … or scores: { … })" }, 400);
-  }
+      if (qid === 'AIQ2') {
+        // Multi-checkbox: score by count of non-"None" selections
+        const selected = Array.isArray(selectedAnswer)
+          ? (selectedAnswer as string[]).filter(v => v !== 'None of the above')
+          : [];
+        const count = Math.min(selected.length, 5);
+        const score = count >= 5 ? 20 : (AIQ2_SCORE_MAP[count] ?? 0);
+        domainRaw += score;
+        questionCount++;
 
-  const result = scoreAiIqV3(entries);
-  const persist = body.persist !== false;
-
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-  const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-  let persistResult: { ok: boolean; status: number; error?: string } | null = null;
-  if (persist) {
-    if (!SUPABASE_URL || !SERVICE_KEY) {
-      return jsonResponse({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }, 500);
+        // Record each selected option
+        for (const opt of selected) {
+          responseRows.push({
+            tally_submission_id: submissionId,
+            question_id: qid,
+            domain,
+            question_label: questionText,
+            selected_option: opt,
+            option_score: Math.round(score / Math.max(selected.length, 1)),
+          });
+        }
+      } else if (typeof selectedAnswer === 'string' && selectedAnswer) {
+        // Single choice: match text → score
+        const match = qRowsForQ.find(r => r.option === selectedAnswer);
+        if (match) {
+          domainRaw += match.score;
+          questionCount++;
+          responseRows.push({
+            tally_submission_id: submissionId,
+            question_id: qid,
+            domain,
+            question_label: questionText,
+            selected_option: selectedAnswer,
+            option_score: match.score,
+          });
+        } else {
+          // Log mismatch for debugging
+          console.warn(`Score miss — qid: ${qid}, answer: "${selectedAnswer}", options: ${qRowsForQ.map(r => r.option).join(' | ')}`);
+        }
+      }
     }
-    const patch = buildSupabasePatch(result);
-    const pr = await patchDoor9Submission(SUPABASE_URL, SERVICE_KEY, tallySubmissionId, patch);
-    persistResult = pr.ok
-      ? { ok: true, status: pr.status }
-      : { ok: false, status: pr.status, error: pr.body };
+
+    const maxRaw = questionCount * 20;
+    domainScores[domain] = maxRaw > 0
+      ? Math.round((domainRaw / maxRaw) * 20 * 100) / 100
+      : 0;
   }
 
-  const { _raw_domain_sums, ...rest } = result;
-  return jsonResponse({
-    success: true,
-    tally_submission_id: tallySubmissionId,
-    ...rest,
-    raw_domain_sums: _raw_domain_sums,
-    persist: persistResult,
+  // ── Weighted total 0–100
+  let weightedTotal = 0;
+  for (const [domain, weight] of Object.entries(DOMAIN_WEIGHTS)) {
+    weightedTotal += (domainScores[domain] ?? 0) * weight * 5;
+  }
+  const finalScore = Math.round(weightedTotal);
+
+  // ── Band + rung
+  const { label: aiIqBand, tier: anyDoorTier } = getScoreBand(finalScore);
+  const nextRung = getRecommendedRung(finalScore);
+
+  // ── Write to door9_submissions
+  const { data: insertedSub } = await supabase
+    .from('door9_submissions')
+    .insert({
+      tally_submission_id:             submissionId,
+      full_name:                       fullName,
+      business_name:                   bizName,
+      email,
+      website_url:                     website,
+      utm_source:                      utmSource,
+      utm_medium:                      utmMedium,
+      utm_campaign:                    utmCampaign,
+      score_deployment_depth:          domainScores['Deployment Depth'],
+      score_integration_maturity:      domainScores['Integration Maturity'],
+      score_revenue_alignment:         domainScores['Revenue Alignment'],
+      score_automation_orchestration:  domainScores['Automation Orchestration'],
+      score_oversight_awareness:       domainScores['Oversight Awareness'],
+      ai_iq_score:                     finalScore,
+      ai_iq_band:                      aiIqBand,
+      recommended_tier:                anyDoorTier,
+      recommended_rung:                nextRung.rung,
+      recommended_rung_label:          nextRung.label,
+      recommended_rung_price:          nextRung.price,
+      recommended_rung_type:           nextRung.price_type,
+      raw_payload:                     payload,
+    })
+    .select('id')
+    .single();
+
+  // ── Write individual responses to door9_responses
+  if (responseRows.length > 0) {
+    const rowsWithSubId = insertedSub?.id
+      ? responseRows.map(r => ({ ...r, submission_id: insertedSub.id }))
+      : responseRows;
+    const { error: respErr } = await supabase
+      .from('door9_responses')
+      .insert(rowsWithSubId);
+    if (respErr) console.error('Response rows insert error:', respErr);
+  }
+
+  // ── Upsert into layer5_prospects
+  if (email) {
+    await supabase.from('layer5_prospects').upsert({
+      lead_name:        fullName || null,
+      company:          bizName  || null,
+      email,
+      url:              website  || null,
+      overall_score:    finalScore,
+      recommended_tier: anyDoorTier,
+      source:           'door9_ai_iq',
+      notes:            `AI IQ Band: ${aiIqBand} | Recommended Rung: ${nextRung.rung} (${nextRung.label}) | UTM: ${utmSource}`,
+      status:           'new',
+      created_at:       new Date().toISOString(),
+    }, { onConflict: 'email', ignoreDuplicates: false });
+  }
+
+  // ── Return full result
+  return new Response(JSON.stringify({
+    success:           true,
+    submission_id:     submissionId,
+    business_name:     bizName,
+    email,
+    ai_iq_score:       finalScore,
+    ai_iq_band:        aiIqBand,
+    any_door_tier:     anyDoorTier,
+    rung_1_completed:  true,
+    recommended_rung:  nextRung.rung,
+    recommended_rung_label:       nextRung.label,
+    recommended_rung_price:       nextRung.price,
+    recommended_rung_format:      nextRung.format,
+    recommended_rung_cta:         nextRung.cta,
+    recommended_rung_cta_sub:     nextRung.cta_sub,
+    recommended_rung_description: nextRung.description,
+    hubai_offer: {
+      label: 'Get HubAI Access',
+      price: '$97/month',
+      description: 'Your AI platform — white-labeled CRM, automation, and workflow tools.'
+    },
+    domain_scores: {
+      deployment_depth:         domainScores['Deployment Depth'],
+      integration_maturity:     domainScores['Integration Maturity'],
+      revenue_alignment:        domainScores['Revenue Alignment'],
+      automation_orchestration: domainScores['Automation Orchestration'],
+      oversight_awareness:      domainScores['Oversight Awareness'],
+    },
+    responses_recorded: responseRows.length,
+    debug_answer_map: Object.fromEntries(
+      Object.entries(answerMap).map(([k, v]) => [k.slice(0, 60), v])
+    ),
+  }), {
+    headers: { 'Content-Type': 'application/json', 'Connection': 'keep-alive' }
   });
 });

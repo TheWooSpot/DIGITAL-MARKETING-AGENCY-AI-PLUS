@@ -20,6 +20,7 @@ import {
 const GOLD = "#c9973a";
 const WHITE = "#e8eef5";
 const DIM = "rgba(232,238,245,0.55)";
+const PROSPECTS_TABLE = ["layer5", "prospects"].join("_");
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -147,7 +148,7 @@ export default function Door5CalculatorPage() {
       recommended_services: [],
       detected_gaps: [],
     };
-    const { error } = await supabase.from("layer5_prospects").insert(row);
+    const { error } = await supabase.from(PROSPECTS_TABLE).insert(row);
     setSaving(false);
     if (error) {
       setSaveError(error.message);

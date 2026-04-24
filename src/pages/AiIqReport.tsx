@@ -26,8 +26,8 @@ function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3;
 }
 
-interface Door9Submission {
-  tally_submission_id: string;
+interface Door4Submission {
+  id: number;
   full_name: string | null;
   business_name: string | null;
   email: string | null;
@@ -36,15 +36,33 @@ interface Door9Submission {
   ai_iq_band: string | null;
   recommended_rung: number | null;
   recommended_rung_label: string | null;
-  recommended_rung_price: string | null;
-  recommended_rung_type: string | null;
-  score_deployment_depth: number | null;
-  score_integration_maturity: number | null;
-  score_revenue_alignment: number | null;
-  score_automation_orchestration: number | null;
-  score_oversight_awareness: number | null;
+  recommended_rung_price?: number | null;
+  recommended_rung_type?: string | null;
+  deployment_depth_score: number | null;
+  integration_maturity_score: number | null;
+  revenue_alignment_score: number | null;
+  automation_orchestration_score: number | null;
+  oversight_awareness_score: number | null;
+  team_human_readiness_score: number | null;
+  strategic_leadership_score: number | null;
+  data_foundation_score: number | null;
+  customer_intelligence_score: number | null;
+  investment_posture_score: number | null;
   created_at: string;
 }
+
+const DOMAINS: Array<{ key: keyof Door4Submission; label: string; max: number }> = [
+  { key: "deployment_depth_score", label: "Deployment Depth", max: 15 },
+  { key: "integration_maturity_score", label: "Integration Maturity", max: 15 },
+  { key: "revenue_alignment_score", label: "Revenue Alignment", max: 15 },
+  { key: "automation_orchestration_score", label: "Automation Orchestration", max: 15 },
+  { key: "oversight_awareness_score", label: "Oversight Awareness", max: 15 },
+  { key: "team_human_readiness_score", label: "Team & Human Readiness", max: 15 },
+  { key: "strategic_leadership_score", label: "Strategic Leadership", max: 15 },
+  { key: "data_foundation_score", label: "Data Foundation", max: 45 },
+  { key: "customer_intelligence_score", label: "Customer Intelligence", max: 45 },
+  { key: "investment_posture_score", label: "Investment Posture", max: 45 },
+];
 
 const BAND_HEADLINES: Record<string, string> = {
   "AI Absent": "AI hasn't entered the building yet",
@@ -94,17 +112,21 @@ function normalizeBandKey(raw: string | null | undefined): string {
   return t;
 }
 
-function domainImplication(score: number): string {
-  if (score >= 14) {
+function domainImplication(score: number, max: number): string {
+  const ratio = max > 0 ? score / max : 0;
+  if (ratio >= 0.66) {
     return "This reads as a clear strength you can build on — it is creating lift for the teams who rely on it every week.";
   }
-  if (score >= 8) {
+  if (ratio >= 0.33) {
     return "You have a foundation here, but it is inconsistently applied — tightening ownership and repetition would unlock the next step-change.";
   }
   return "This is an early-stage signal — small upgrades in process and accountability tend to move the number quickly and reduce downside risk.";
 }
 
 function rungBody(rung: number): string {
+  if (rung === 1) {
+    return "With your current score, your organization is at the start of the AI readiness ladder. Rung 1 is Awareness — free orientation resources to align your team on what matters before deeper implementation.";
+  }
   if (rung === 2) {
     return "Adaptation™ is built for operators who want clarity fast: a practical path to adopt AI without boiling the ocean. You will leave with a grounded plan you can execute without waiting for a perfect stack.";
   }
@@ -118,6 +140,7 @@ function rungBody(rung: number): string {
 }
 
 function rungCtaLabel(rung: number): string {
+  if (rung === 1) return "Start with Awareness";
   if (rung === 2) return "Start Adaptation™";
   if (rung === 3) return "Explore workshop packages";
   if (rung === 4) return "Discuss Stewardship™";
@@ -125,15 +148,17 @@ function rungCtaLabel(rung: number): string {
 }
 
 function rungSubLabel(rung: number): string {
+  if (rung === 1) return "Free orientation resources to establish AI readiness fundamentals.";
   if (rung === 2) return "$297 one-time · Self-guided AI course — learn at your own pace";
   if (rung === 3) return "From $797 · 3 / 5 / 7 / 10 session workshop packages — live + guided";
   if (rung === 4) return "$4,997/qtr · 12-month strategic agreement — DFY tech consultancy";
   return "Pick the delivery model that matches your pace and risk tolerance.";
 }
 
-function scoreChipColor(score: number): string {
-  if (score >= 14) return GREEN;
-  if (score >= 8) return AMBER;
+function scoreChipColor(score: number, max: number): string {
+  const ratio = max > 0 ? score / max : 0;
+  if (ratio >= 0.66) return GREEN;
+  if (ratio >= 0.33) return AMBER;
   return RED;
 }
 
@@ -141,7 +166,7 @@ function extractVapiErr(e: unknown): string {
   return appendVapiAssistantKeyHint(extractVapiErrorMessage(e));
 }
 
-function useAiIqVapi(submission: Door9Submission | null) {
+function useAiIqVapi(submission: Door4Submission | null) {
   const publicKey = (import.meta.env.VITE_VAPI_PUBLIC_KEY as string | undefined)?.trim() ?? "";
   const hasPublicKey = publicKey.length > 0;
   const [isCallActive, setIsCallActive] = useState(false);
@@ -177,7 +202,6 @@ function useAiIqVapi(submission: Door9Submission | null) {
       client.removeListener("call-end", onCallEnd);
       client.removeListener("error", onError);
       client.removeListener("call-start-failed", onCallStartFailed);
-      client.stop();
     };
   }, [hasPublicKey]);
 
@@ -191,7 +215,7 @@ function useAiIqVapi(submission: Door9Submission | null) {
     window.setTimeout(() => setStartLocked(false), 3000);
     setError(null);
     const variableValues: Record<string, string> = {
-      context: "AI_IQ_Door9_Report",
+      context: "AI_IQ_Door4_Report",
       business_name: submission?.business_name ?? "your business",
       full_name: submission?.full_name ?? "",
       ai_iq_score: String(submission?.ai_iq_score ?? 0),
@@ -199,7 +223,7 @@ function useAiIqVapi(submission: Door9Submission | null) {
       recommended_rung: String(submission?.recommended_rung ?? 0),
     };
     vapi?.start(AI_IQ_VAPI_ASSISTANT_ID, {
-      maxDurationSeconds: 420,
+      maxDurationSeconds: 1080,
       variableValues,
     });
   }, [hasPublicKey, submission]);
@@ -290,7 +314,7 @@ export default function AiIqReport() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [row, setRow] = useState<Door9Submission | null>(null);
+  const [row, setRow] = useState<Door4Submission | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -313,10 +337,17 @@ export default function AiIqReport() {
         }
         return;
       }
+      const idAsNumber = Number(submissionId);
+      if (!Number.isFinite(idAsNumber)) {
+        setNotFound(true);
+        setRow(null);
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
-        .from("door9_submissions")
+        .from("door4_submissions")
         .select("*")
-        .eq("tally_submission_id", submissionId)
+        .eq("id", idAsNumber)
         .maybeSingle();
 
       if (cancelled) return;
@@ -332,7 +363,7 @@ export default function AiIqReport() {
         setLoading(false);
         return;
       }
-      setRow(data as Door9Submission);
+      setRow(data as Door4Submission);
       setLoading(false);
     })();
 
@@ -349,24 +380,27 @@ export default function AiIqReport() {
 
   const domains = useMemo(() => {
     if (!row) return [];
-    const items = [
-      { key: "Deployment Depth", score: row.score_deployment_depth },
-      { key: "Integration Maturity", score: row.score_integration_maturity },
-      { key: "Revenue Alignment", score: row.score_revenue_alignment },
-      { key: "Automation Orchestration", score: row.score_automation_orchestration },
-      { key: "Oversight Awareness", score: row.score_oversight_awareness },
-    ];
-    return items.map((d) => ({
-      ...d,
-      score: Math.min(20, Math.max(0, Math.round(Number(d.score ?? 0)))),
-    }));
+    return DOMAINS.map((d) => {
+      const raw = Number(row[d.key] ?? 0);
+      return {
+        key: d.label,
+        max: d.max,
+        score: Math.min(d.max, Math.max(0, Math.round(raw))),
+      };
+    });
   }, [row]);
 
-  const rung = Math.min(4, Math.max(2, Math.round(Number(row?.recommended_rung ?? 2))));
-  const rungLabel = row?.recommended_rung_label?.trim() || (rung === 3 ? "Optimization" : rung === 4 ? "Stewardship" : "Adaptation");
+  const rung = Math.min(4, Math.max(1, Math.round(Number(row?.recommended_rung ?? 1))));
+  const rungLabel = row?.recommended_rung_label?.trim() || `Rung ${rung}`;
   const priceLine =
-    row?.recommended_rung_price?.trim() ||
-    (rung === 2 ? "$297 one-time" : rung === 3 ? "From $797" : "$4,997/quarter");
+    (typeof row?.recommended_rung_price === "number" ? `$${row.recommended_rung_price.toLocaleString()}` : "") ||
+    (rung === 1
+      ? "Free"
+      : rung === 2
+        ? "$297 one-time"
+        : rung === 3
+          ? "From $797"
+          : "$4,997/quarter");
 
   const completedDate = row?.created_at
     ? new Date(row.created_at).toLocaleDateString(undefined, {
@@ -439,7 +473,7 @@ export default function AiIqReport() {
         eyebrow="SOCIALUTELY · AI IQ™ REPORT"
         titleAccent="Your AI IQ™ Report"
         titleRest={biz}
-        subtitle={`Completed ${completedDate} · 15 questions across 5 domains · Rung 1 complete`}
+        subtitle={`Completed ${completedDate} · 22 questions across 11 domains · Rung 1 complete`}
       />
 
       <div className="mx-auto max-w-3xl pb-16 text-[#e8eef5]">
@@ -482,11 +516,11 @@ export default function AiIqReport() {
 
         {/* 5. Domain breakdown */}
         <section className="mt-12">
-          <p className="anydoor-exp-eyebrow text-left">Score by Domain · 5 Areas Assessed</p>
+          <p className="anydoor-exp-eyebrow text-left">Score by Domain · 10 Scored Areas</p>
           <div className="mt-6 grid gap-4">
             {domains.map((d) => {
-              const chip = scoreChipColor(d.score);
-              const pct = (d.score / 20) * 100;
+              const chip = scoreChipColor(d.score, d.max);
+              const pct = (d.score / d.max) * 100;
               return (
                 <div key={d.key} className="anydoor-surface-card border p-4" style={{ borderColor: BORDER }}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -495,17 +529,17 @@ export default function AiIqReport() {
                       className="rounded px-2 py-0.5 text-xs font-semibold tabular-nums"
                       style={{
                         fontFamily: "'DM Mono', monospace",
-                        backgroundColor: `${chip}22`,
+                        backgroundColor: `${scoreChipColor(d.score, d.max)}22`,
                         color: chip,
                       }}
                     >
-                      {d.score}/20
+                      {d.score}/{d.max}
                     </span>
                   </div>
                   <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(240,242,248,0.08)" }}>
                     <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: chip }} />
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-white/55">{domainImplication(d.score)}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-white/55">{domainImplication(d.score, d.max)}</p>
                 </div>
               );
             })}
@@ -537,11 +571,13 @@ export default function AiIqReport() {
                   {rungLabel}
                 </h2>
                 <p className="text-sm text-white/55">
-                  {row.recommended_rung_type === "one_time"
-                    ? "One-time delivery — learn at your own pace."
-                    : row.recommended_rung_type === "quarterly_contract"
-                      ? "Quarterly strategic partnership — done-with-you execution."
-                      : "Tiered live workshops — choose depth and cadence."}
+                  {rung === 1
+                    ? "Awareness stage — orient your team and define a practical starting point."
+                    : rung === 2
+                      ? "One-time delivery — learn at your own pace."
+                      : rung === 3
+                        ? "Tiered live workshops — choose depth and cadence."
+                        : "Quarterly strategic partnership — done-with-you execution."}
                 </p>
                 <p className="text-sm leading-relaxed text-[#e8eef5]/90">{rungBody(rung)}</p>
                 <p className="text-3xl font-light tabular-nums text-[#c9973a]" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>
@@ -628,7 +664,7 @@ export default function AiIqReport() {
         {/* 9. Footer */}
         <footer className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row">
           <p className="text-center text-xs text-white/45 sm:text-left" style={{ fontFamily: "var(--font-dm-mono), ui-monospace, monospace" }}>
-            Socialutely | AI Marketing Platform · AI IQ™ v1 · Door 9
+            Socialutely | AI Marketing Platform · AI IQ™ v1 · Door 4
           </p>
           <button
             type="button"
