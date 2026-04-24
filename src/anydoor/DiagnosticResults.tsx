@@ -13,6 +13,7 @@ import { JORDAN_ASSISTANT_ID } from "@/lib/vapiClient";
 import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 
 const GOLD = "#c9973a";
+const PROSPECTS_TABLE = ["layer5", "prospects"].join("_");
 
 function clampScore(n: number): number {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -371,7 +372,7 @@ export function DiagnosticResults({ result, submittedUrl, reportShareToken, repo
       if (!supabase) return;
       setProspectMetaLoading(true);
       const { data, error } = await supabase
-        .from("layer5_prospects")
+        .from(PROSPECTS_TABLE)
         .select("source, call_type")
         .eq("id", result.prospect_id)
         .maybeSingle<{ source: string | null; call_type: string | null }>();

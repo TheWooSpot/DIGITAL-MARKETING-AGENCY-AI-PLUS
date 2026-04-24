@@ -6,7 +6,7 @@ export function normalizeReportPathToken(raw: string): string {
   return raw.trim();
 }
 
-/** URL-safe share token for layer5_prospects.share_token (client-generated). */
+/** URL-safe share token for prospects.share_token (client-generated). */
 export function generateShareToken(): string {
   const raw = btoa(`${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`);
   let s = raw.replace(/[^a-zA-Z0-9]/g, "");

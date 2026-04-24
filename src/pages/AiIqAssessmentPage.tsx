@@ -79,6 +79,7 @@ const AI_IQ_CONTEXT_URL =
   "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-context";
 const DOOR4_SCORE_URL =
   "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/door4-score";
+const PROSPECTS_TABLE = ["layer5", "prospects"].join("_");
 
 const THINKING_MESSAGES = [
   "Reviewing your organization...",
@@ -336,7 +337,7 @@ export default function AiIqAssessmentPage() {
       for (const candidate of candidates) {
         const tryQuery = async (column: "website_url" | "url") => {
           const { data, error } = await supabase
-            .from("layer5_prospects")
+            .from(PROSPECTS_TABLE)
             .select("business_name,industry,business_descriptor,detected_gaps")
             .eq(column, candidate)
             .order("created_at", { ascending: false })
@@ -661,24 +662,9 @@ export default function AiIqAssessmentPage() {
     }
 
     const rung = rungFromTotalScore(total);
-    const notes = `Rung ${rung} · ${orgContextText ?? "No org context provided"}`;
-
-    const { error: pErr } = await supabase.from("layer5_prospects").upsert(
-      {
-        email: email.trim(),
-        name: name.trim(),
-        business_name: name.trim(),
-        url: url.trim() || null,
-        overall_score: total,
-        source: "door4-ai-iq",
-        notes,
-      },
-      { onConflict: "email" }
-    );
 
     const parts: string[] = [];
     if (scoreErrMessage) parts.push(`door4-score: ${scoreErrMessage}`);
-    if (pErr) parts.push(`layer5_prospects: ${pErr.message}`);
     if (parts.length > 0) setPersistError(parts.join(" · "));
 
     setSubmitting(false);
@@ -1191,9 +1177,7 @@ export default function AiIqAssessmentPage() {
             <p className="mt-2 text-sm" style={{ color: DIM }}>
               {headline}
             </p>
-            <p className="mt-3 text-xs" style={{ color: `${GOLD}99` }}>
-              Across {Object.keys(DOMAIN_MAX).length} dimensions of AI readiness
-            </p>
+            <p className="mt-3 text-xs" style={{ color: `${GOLD}99` }}>Across 10 dimensions of AI readiness</p>
 
             {/* Personalized summary — appears async */}
             {personalizedSummary && (

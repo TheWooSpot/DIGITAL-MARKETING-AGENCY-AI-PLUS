@@ -36,7 +36,7 @@ interface Door4Submission {
   ai_iq_band: string | null;
   recommended_rung: number | null;
   recommended_rung_label: string | null;
-  recommended_rung_price?: string | null;
+  recommended_rung_price?: number | null;
   recommended_rung_type?: string | null;
   deployment_depth_score: number | null;
   integration_maturity_score: number | null;
@@ -50,6 +50,19 @@ interface Door4Submission {
   investment_posture_score: number | null;
   created_at: string;
 }
+
+const DOMAINS: Array<{ key: keyof Door4Submission; label: string; max: number }> = [
+  { key: "deployment_depth_score", label: "Deployment Depth", max: 15 },
+  { key: "integration_maturity_score", label: "Integration Maturity", max: 15 },
+  { key: "revenue_alignment_score", label: "Revenue Alignment", max: 15 },
+  { key: "automation_orchestration_score", label: "Automation Orchestration", max: 15 },
+  { key: "oversight_awareness_score", label: "Oversight Awareness", max: 15 },
+  { key: "team_human_readiness_score", label: "Team & Human Readiness", max: 15 },
+  { key: "strategic_leadership_score", label: "Strategic Leadership", max: 15 },
+  { key: "data_foundation_score", label: "Data Foundation", max: 45 },
+  { key: "customer_intelligence_score", label: "Customer Intelligence", max: 45 },
+  { key: "investment_posture_score", label: "Investment Posture", max: 45 },
+];
 
 const BAND_HEADLINES: Record<string, string> = {
   "AI Absent": "AI hasn't entered the building yet",
@@ -99,17 +112,21 @@ function normalizeBandKey(raw: string | null | undefined): string {
   return t;
 }
 
-function domainImplication(score: number): string {
-  if (score >= 14) {
+function domainImplication(score: number, max: number): string {
+  const ratio = max > 0 ? score / max : 0;
+  if (ratio >= 0.66) {
     return "This reads as a clear strength you can build on — it is creating lift for the teams who rely on it every week.";
   }
-  if (score >= 8) {
+  if (ratio >= 0.33) {
     return "You have a foundation here, but it is inconsistently applied — tightening ownership and repetition would unlock the next step-change.";
   }
   return "This is an early-stage signal — small upgrades in process and accountability tend to move the number quickly and reduce downside risk.";
 }
 
 function rungBody(rung: number): string {
+  if (rung === 1) {
+    return "With your current score, your organization is at the start of the AI readiness ladder. Rung 1 is Awareness — free orientation resources to align your team on what matters before deeper implementation.";
+  }
   if (rung === 2) {
     return "Adaptation™ is built for operators who want clarity fast: a practical path to adopt AI without boiling the ocean. You will leave with a grounded plan you can execute without waiting for a perfect stack.";
   }
@@ -123,6 +140,7 @@ function rungBody(rung: number): string {
 }
 
 function rungCtaLabel(rung: number): string {
+  if (rung === 1) return "Start with Awareness";
   if (rung === 2) return "Start Adaptation™";
   if (rung === 3) return "Explore workshop packages";
   if (rung === 4) return "Discuss Stewardship™";
@@ -130,15 +148,17 @@ function rungCtaLabel(rung: number): string {
 }
 
 function rungSubLabel(rung: number): string {
+  if (rung === 1) return "Free orientation resources to establish AI readiness fundamentals.";
   if (rung === 2) return "$297 one-time · Self-guided AI course — learn at your own pace";
   if (rung === 3) return "From $797 · 3 / 5 / 7 / 10 session workshop packages — live + guided";
   if (rung === 4) return "$4,997/qtr · 12-month strategic agreement — DFY tech consultancy";
   return "Pick the delivery model that matches your pace and risk tolerance.";
 }
 
-function scoreChipColor(score: number): string {
-  if (score >= 14) return GREEN;
-  if (score >= 8) return AMBER;
+function scoreChipColor(score: number, max: number): string {
+  const ratio = max > 0 ? score / max : 0;
+  if (ratio >= 0.66) return GREEN;
+  if (ratio >= 0.33) return AMBER;
   return RED;
 }
 
@@ -360,29 +380,27 @@ export default function AiIqReport() {
 
   const domains = useMemo(() => {
     if (!row) return [];
-    const items = [
-      { key: "Deployment Depth", score: row.deployment_depth_score },
-      { key: "Integration Maturity", score: row.integration_maturity_score },
-      { key: "Revenue Alignment", score: row.revenue_alignment_score },
-      { key: "Automation Orchestration", score: row.automation_orchestration_score },
-      { key: "Oversight Awareness", score: row.oversight_awareness_score },
-      { key: "Team & Human Readiness", score: row.team_human_readiness_score },
-      { key: "Strategic Leadership", score: row.strategic_leadership_score },
-      { key: "Data Foundation", score: row.data_foundation_score },
-      { key: "Customer Intelligence", score: row.customer_intelligence_score },
-      { key: "Investment Posture", score: row.investment_posture_score },
-    ];
-    return items.map((d) => ({
-      ...d,
-      score: Math.min(20, Math.max(0, Math.round(Number(d.score ?? 0)))),
-    }));
+    return DOMAINS.map((d) => {
+      const raw = Number(row[d.key] ?? 0);
+      return {
+        key: d.label,
+        max: d.max,
+        score: Math.min(d.max, Math.max(0, Math.round(raw))),
+      };
+    });
   }, [row]);
 
-  const rung = Math.min(4, Math.max(2, Math.round(Number(row?.recommended_rung ?? 2))));
-  const rungLabel = row?.recommended_rung_label?.trim() || (rung === 3 ? "Optimization" : rung === 4 ? "Stewardship" : "Adaptation");
+  const rung = Math.min(4, Math.max(1, Math.round(Number(row?.recommended_rung ?? 1))));
+  const rungLabel = row?.recommended_rung_label?.trim() || `Rung ${rung}`;
   const priceLine =
-    row?.recommended_rung_price?.trim() ||
-    (rung === 2 ? "$297 one-time" : rung === 3 ? "From $797" : "$4,997/quarter");
+    (typeof row?.recommended_rung_price === "number" ? `$${row.recommended_rung_price.toLocaleString()}` : "") ||
+    (rung === 1
+      ? "Free"
+      : rung === 2
+        ? "$297 one-time"
+        : rung === 3
+          ? "From $797"
+          : "$4,997/quarter");
 
   const completedDate = row?.created_at
     ? new Date(row.created_at).toLocaleDateString(undefined, {
@@ -501,8 +519,8 @@ export default function AiIqReport() {
           <p className="anydoor-exp-eyebrow text-left">Score by Domain · 10 Scored Areas</p>
           <div className="mt-6 grid gap-4">
             {domains.map((d) => {
-              const chip = scoreChipColor(d.score);
-              const pct = (d.score / 20) * 100;
+              const chip = scoreChipColor(d.score, d.max);
+              const pct = (d.score / d.max) * 100;
               return (
                 <div key={d.key} className="anydoor-surface-card border p-4" style={{ borderColor: BORDER }}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -511,17 +529,17 @@ export default function AiIqReport() {
                       className="rounded px-2 py-0.5 text-xs font-semibold tabular-nums"
                       style={{
                         fontFamily: "'DM Mono', monospace",
-                        backgroundColor: `${chip}22`,
+                        backgroundColor: `${scoreChipColor(d.score, d.max)}22`,
                         color: chip,
                       }}
                     >
-                      {d.score}/20
+                      {d.score}/{d.max}
                     </span>
                   </div>
                   <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(240,242,248,0.08)" }}>
                     <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: chip }} />
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-white/55">{domainImplication(d.score)}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-white/55">{domainImplication(d.score, d.max)}</p>
                 </div>
               );
             })}
@@ -553,11 +571,13 @@ export default function AiIqReport() {
                   {rungLabel}
                 </h2>
                 <p className="text-sm text-white/55">
-                  {row.recommended_rung_type === "one_time"
-                    ? "One-time delivery — learn at your own pace."
-                    : row.recommended_rung_type === "quarterly_contract"
-                      ? "Quarterly strategic partnership — done-with-you execution."
-                      : "Tiered live workshops — choose depth and cadence."}
+                  {rung === 1
+                    ? "Awareness stage — orient your team and define a practical starting point."
+                    : rung === 2
+                      ? "One-time delivery — learn at your own pace."
+                      : rung === 3
+                        ? "Tiered live workshops — choose depth and cadence."
+                        : "Quarterly strategic partnership — done-with-you execution."}
                 </p>
                 <p className="text-sm leading-relaxed text-[#e8eef5]/90">{rungBody(rung)}</p>
                 <p className="text-3xl font-light tabular-nums text-[#c9973a]" style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}>

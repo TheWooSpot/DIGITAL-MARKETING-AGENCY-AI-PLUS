@@ -9,11 +9,12 @@ import {
   prospectRowToDiagnosticResult,
 } from "@/anydoor/lib/supabaseProspect";
 import type { DiagnosticResult } from "@/anydoor/DiagnosticForm";
+import { logEvent } from "@/lib/diagnosticEvents";
 
 /**
  * Public shared report:
  * - `/report/{share_token}` — loaded via `getProspectByShareToken` in `@/anydoor/lib/supabaseProspect.ts`
- *   using **@supabase/supabase-js** + **anon** key: `.from('layer5_prospects').select('*').eq('share_token', token).single()`.
+ *   using **@supabase/supabase-js** + **anon** key with the public share-token RPC.
  * - Legacy: `/report/{row_uuid}?k={report_access_key}` — `getProspectByPublicAccess` (RPC + anon).
  */
 export default function SharedReportPage() {
@@ -25,6 +26,7 @@ export default function SharedReportPage() {
   const usePublicAccessRpc = Boolean(routeToken && accessKey && isProspectRowUuid(routeToken));
 
   const [result, setResult] = useState<DiagnosticResult | null>(null);
+  const [prospectRow, setProspectRow] = useState<Record<string, unknown> | null>(null);
   const [submittedUrl, setSubmittedUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +35,7 @@ export default function SharedReportPage() {
     if (!routeToken) return;
 
     setResult(null);
+    setProspectRow(null);
     setSubmittedUrl("");
     (async () => {
       setError(null);
@@ -50,6 +53,7 @@ export default function SharedReportPage() {
         return;
       }
       setResult(r);
+      setProspectRow(row);
       setSubmittedUrl(typeof row.url === "string" ? row.url : "");
     })();
 
@@ -57,6 +61,15 @@ export default function SharedReportPage() {
       cancelled = true;
     };
   }, [routeToken, accessKey, usePublicAccessRpc]);
+
+  useEffect(() => {
+    if (!routeToken || !result) return;
+    void logEvent("report_viewed", {
+      share_token: routeToken,
+      prospect_id: result.prospect_id,
+      door: "door-2",
+    });
+  }, [routeToken, result]);
 
   if (!routeToken) {
     return (
@@ -104,7 +117,12 @@ export default function SharedReportPage() {
 
   return (
     <AnyDoorPageShell backHref="/doors/url-diagnostic" backLabel="← URL diagnostic" narrow={false}>
-      <DiagnosticResults result={result} submittedUrl={submittedUrl} reportShareToken={routeToken} />
+      <DiagnosticResults
+        result={result}
+        submittedUrl={submittedUrl}
+        reportShareToken={routeToken}
+        reportProspect={prospectRow}
+      />
     </AnyDoorPageShell>
   );
 }

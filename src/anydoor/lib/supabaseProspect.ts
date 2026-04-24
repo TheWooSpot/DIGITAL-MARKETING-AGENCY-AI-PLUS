@@ -76,15 +76,15 @@ export async function getProspectByPublicAccess(
  *
  * **Query (equivalent):**
  * ```ts
- * const { data, error } = await supabase
- *   .from('layer5_prospects')
- *   .select('*')
- *   .eq('share_token', token)
- *   .single();
+ * const { data, error } = await supabase.rpc('get_report_by_share_token', {
+ *   p_token: token
+ * });
+ * const prospect = data?.[0] ?? null;
  * ```
  *
  * `token` must be the raw `useParams().token` string (no decoding).
- * Requires RLS (or policies) that allow `anon` to `SELECT` the matching row.
+ * Uses security-definer RPC `get_report_by_share_token` so anon clients can fetch the
+ * report-safe projection even when broad anon `SELECT` on the prospects table is locked down.
  */
 export async function getProspectByShareToken(pathToken: string): Promise<Record<string, unknown> | null> {
   const token = pathToken;
@@ -93,11 +93,9 @@ export async function getProspectByShareToken(pathToken: string): Promise<Record
   const supabase = getSupabaseBrowserClient();
   if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from("layer5_prospects")
-    .select("*")
-    .eq("share_token", token)
-    .single();
+  const { data, error } = await supabase.rpc("get_report_by_share_token", {
+    p_token: token,
+  });
 
   if (error) {
     console.error("[getProspectByShareToken] Supabase error", {
@@ -109,12 +107,17 @@ export async function getProspectByShareToken(pathToken: string): Promise<Record
     return null;
   }
 
-  if (!data || typeof data !== "object") return null;
-  return data as Record<string, unknown>;
+  const prospect =
+    Array.isArray(data) && data.length > 0 && data[0] && typeof data[0] === "object"
+      ? (data[0] as Record<string, unknown>)
+      : null;
+  return prospect;
 }
 
 export function prospectRowToDiagnosticResult(row: Record<string, unknown>): DiagnosticResult | null {
   const raw = row.raw_result;
+  const rawObject =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Partial<DiagnosticResult> & Record<string, unknown>) : null;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const r = raw as Partial<DiagnosticResult>;
     if (r.business_name && r.scores) {
@@ -159,6 +162,9 @@ export function prospectRowToDiagnosticResult(row: Record<string, unknown>): Dia
   return {
     business_name: String(row.business_name ?? "Business"),
     industry: String(row.industry ?? "Unknown"),
+    business_descriptor:
+      typeof rawObject?.business_descriptor === "string" ? rawObject.business_descriptor : undefined,
+    tier_statement: typeof rawObject?.tier_statement === "string" ? rawObject.tier_statement : undefined,
     scores,
     detected_gaps: (row.detected_gaps as DiagnosticResult["detected_gaps"]) ?? [],
     recommended_services: (row.recommended_services as DiagnosticResult["recommended_services"]) ?? [],

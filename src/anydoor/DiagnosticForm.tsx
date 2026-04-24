@@ -3,13 +3,7 @@ import { useSession } from "@/context/SessionContext";
 import { DiagnosticLoadingOverlay, runLoadingStages } from "./DiagnosticLoadingOverlay";
 import { getReportShareBaseUrl } from "./lib/diagnosticShare";
 import { generateReportLink } from "@/utils/urls";
-
-/** Same-origin proxy on Vercel by default; override with VITE_DIAGNOSTIC_URL (full Edge Function URL). */
-function getProspectDiagnosticUrl(): string {
-  const fromEnv = (import.meta.env.VITE_DIAGNOSTIC_URL as string | undefined)?.trim();
-  if (fromEnv) return fromEnv;
-  return "/api/prospect-diagnostic";
-}
+import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 
 /** Optional row when API returns full category breakdown (otherwise derived client-side). */
 export interface DiagnosticCategoryReport {
@@ -68,7 +62,7 @@ export interface DiagnosticResult {
   share_token?: string;
   /** Canonical public report URL from the API (production host), not derived from window.location. */
   share_url?: string;
-  /** layer5_prospects.id — used with permanent /report/{id}?k= links */
+  /** prospects table row id — used with permanent /report/{id}?k= links */
   prospect_id?: string;
 }
 
@@ -99,14 +93,12 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
     setLoadingProgress(0);
     onError("");
 
-    const apiPromise = fetch(getProspectDiagnosticUrl(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: trimmedUrl,
-        ...(email.trim() ? { email: email.trim() } : {}),
-      }),
-    }).then(async (res) => {
+    const payload = {
+      url: trimmedUrl,
+      ...(email.trim() ? { email: email.trim() } : {}),
+    };
+
+    const apiPromise = invokeSupabaseEdgeFunction("prospect-diagnostic", payload).then(async (res) => {
       const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       return { ok: res.ok, data };
     });
@@ -122,7 +114,7 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
           typeof out.data === "object" && out.data && "error" in out.data
             ? String((out.data as { error?: string }).error ?? "")
             : "";
-        onError(msg || "Request failed");
+        onError(msg || "Request failed (diagnostic service unavailable)");
         return;
       }
 
@@ -150,6 +142,17 @@ export function DiagnosticForm({ onResult, onError, initialUrl = "" }: Diagnosti
         },
         { submittedUrl: trimmedUrl, email: email.trim() || undefined }
       );
+
+      // Best-effort diagnostic email delivery (does not block UI).
+      if (email.trim() && fallbackShareUrl) {
+        void invokeSupabaseEdgeFunction("send-diagnostic-report", {
+          email: email.trim(),
+          business_name: data.business_name ?? "Your business",
+          share_url: fallbackShareUrl,
+          share_token: st,
+          submitted_url: trimmedUrl,
+        });
+      }
     } catch (err) {
       onError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
