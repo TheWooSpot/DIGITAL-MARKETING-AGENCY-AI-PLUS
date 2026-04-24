@@ -1,23 +1,10 @@
-/**
- * Socialutely — ai-iq-context Edge Function
- * ==========================================
- * Lightweight business context extractor for AI IQ™ adaptive assessment.
- * NOT the full prospect-diagnostic — fast, focused, and always returns usable output.
- *
- * POST { url: string }
- * Returns { success: true, business_context: {...}, url_scanned: string, fallback: boolean }
- *
- * Secrets: ANTHROPIC_API_KEY
- * JWT: none required
- */
-
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+const CORS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, x-client-info',
 };
 
-const DEFAULT_DOMAIN_MAX = {
+const DEFAULT_WEIGHTS = {
   deployment_depth: 15,
   integration_maturity: 15,
   revenue_alignment: 20,
@@ -25,91 +12,162 @@ const DEFAULT_DOMAIN_MAX = {
   oversight_awareness: 10,
   team_human_readiness: 15,
   strategic_leadership: 10,
+  data_foundation: 0,
+  customer_intelligence: 0,
+  investment_posture: 0,
 };
 
-const FALLBACK_CONTEXT = {
-  industry: "unknown",
-  business_type: "b2b",
-  size_signal: "small",
-  tech_maturity: "basic",
-  ai_signals: [],
-  primary_value_proposition: "Unknown",
-  likely_pain_points: [],
-  domain_max_adjustments: { ...DEFAULT_DOMAIN_MAX },
+const DEFAULT_RESPONSE = {
+  success: true,
+  fallback: true,
+  url_scanned: '',
+  business_context: {
+    industry: 'unknown',
+    industry_label: 'General Business',
+    industry_confidence: 'low',
+    business_type: 'unknown',
+    size_signal: 'unknown',
+    tech_maturity: 'basic',
+    ai_signals: [],
+    primary_value_proposition: '',
+    likely_pain_points: [],
+    synopsis: 'We were unable to gather enough information from your website to personalize your assessment. Please confirm your industry below.',
+    industry_options: [
+      { id: 'professional_services', label: 'Professional Services', primary: true },
+      { id: 'retail_consumer', label: 'Retail / Consumer Services' },
+      { id: 'technology', label: 'Technology / SaaS' },
+      { id: 'healthcare', label: 'Healthcare / Wellness' },
+      { id: 'nonprofit', label: 'Nonprofit / Mission-Driven' },
+      { id: 'other', label: 'Other' },
+    ],
+    domain_max_adjustments: DEFAULT_WEIGHTS,
+    domain_weight_recommendations: DEFAULT_WEIGHTS,
+  },
 };
 
-function jsonResponse(body: object, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
+function normalizeWeights(weights: Record<string, number>): Record<string, number> {
+  const normalized = {
+    ...DEFAULT_WEIGHTS,
+    ...weights,
+  };
+  const weightKeys = [
+    'deployment_depth',
+    'integration_maturity',
+    'revenue_alignment',
+    'automation_orchestration',
+    'oversight_awareness',
+    'team_human_readiness',
+    'strategic_leadership',
+  ];
+  const total = weightKeys.reduce((sum, key) => sum + (normalized[key] ?? 0), 0);
+  if (total === 100) return normalized;
+  const diff = 100 - total;
+  const largest = weightKeys.reduce((a, b) => (normalized[a] > normalized[b] ? a : b));
+  normalized[largest] += diff;
+  return normalized;
 }
 
-/** Fetch a URL with a 6-second timeout. Returns null on any failure. */
-async function fetchWithTimeout(url: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
+function ensureWeightAliases(parsed: Record<string, unknown>) {
+  const maxAdjustments = normalizeWeights(
+    (parsed.domain_max_adjustments as Record<string, number>) ??
+    (parsed.domain_weight_recommendations as Record<string, number>) ??
+    DEFAULT_WEIGHTS
+  );
+  parsed.domain_max_adjustments = maxAdjustments;
+  parsed.domain_weight_recommendations = maxAdjustments;
+}
+
+async function fetchPageContent(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const normalized = url.startsWith('http') ? url : `https://${url}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(normalized, {
       signal: controller.signal,
-      headers: { "User-Agent": "Socialutely-AIIQBot/1.0" },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Socialutely/1.0)' }
     });
+    clearTimeout(timer);
     if (!res.ok) return null;
-    return await res.text();
+    const html = await res.text();
+    const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() || '';
+    const desc = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1]?.trim() || '';
+    const og = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)?.[1]?.trim() || '';
+    const body = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+      .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 2000);
+    return `Title: ${title}\nDescription: ${desc || og}\nContent: ${body}`;
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
-/** Extract useful text from raw HTML — title, meta description, OG tags, first 2000 chars of body text. */
-function extractPageContent(html: string): string {
-  const clean = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS });
 
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? clean(titleMatch[1]) : "";
+  const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+  if (!ANTHROPIC_API_KEY) {
+    return new Response(JSON.stringify({ ...DEFAULT_RESPONSE, error: 'Missing API key' }), {
+      status: 200, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
 
-  const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
-    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
-  const metaDesc = metaDescMatch ? metaDescMatch[1].trim() : "";
+  let body: { url?: string };
+  try { body = await req.json(); }
+  catch { body = {}; }
 
-  const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
-  const ogDescMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i);
-  const ogTitle = ogTitleMatch ? ogTitleMatch[1].trim() : "";
-  const ogDesc = ogDescMatch ? ogDescMatch[1].trim() : "";
+  const url = (body.url || '').trim();
+  const pageContent = url ? await fetchPageContent(url) : null;
 
-  // Strip scripts, styles, nav, footer before extracting body text
-  const stripped = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
-    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
-    .replace(/<header[\s\S]*?<\/header>/gi, " ");
+  if (!pageContent) {
+    return new Response(JSON.stringify({ ...DEFAULT_RESPONSE, url_scanned: url }), {
+      status: 200, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
 
-  const bodyMatch = stripped.match(/<body[\s\S]*?<\/body>/i);
-  const bodyText = bodyMatch ? clean(bodyMatch[0]).slice(0, 2000) : clean(stripped).slice(0, 2000);
+  const domainPool = `1. Deployment Depth
+2. Integration Maturity
+3. Revenue Alignment
+4. Automation Orchestration
+5. Oversight Awareness
+6. Team & Human Readiness
+7. Strategic Leadership
+8. Organizational Context (unscored segmentation — always included)
+9. Data Foundation
+10. Customer Intelligence
+11. Investment Posture`;
 
-  const parts = [
-    title && `Title: ${title}`,
-    metaDesc && `Meta description: ${metaDesc}`,
-    ogTitle && `OG title: ${ogTitle}`,
-    ogDesc && `OG description: ${ogDesc}`,
-    bodyText && `Body text: ${bodyText}`,
-  ].filter(Boolean);
+  const systemPrompt = `You are analyzing a business website to calibrate an AI readiness assessment. Extract business context and generate industry confirmation options for the user.
 
-  return parts.join("\n");
-}
+The available domain pool is exactly:
+${domainPool}
 
-const CLAUDE_SYSTEM_PROMPT = `You are extracting business context from a website to calibrate an AI readiness assessment. The assessment uses 7 scored domains plus qualitative organizational context. Return ONLY valid JSON — no markdown:
+Return ONLY valid JSON with this exact structure:
 {
-  "industry": "healthcare|retail|saas|nonprofit|education|finance|legal|real_estate|hospitality|construction|media|professional_services|other",
+  "industry": "one of: healthcare|retail|saas|nonprofit|education|finance|legal|real_estate|hospitality|construction|media|professional_services|food_beverage|pet_services|beauty_wellness|automotive|manufacturing|logistics|other",
+  "industry_label": "Human-readable label for the detected industry",
+  "industry_confidence": "high|medium|low",
   "business_type": "b2b|b2c|nonprofit|government|hybrid",
   "size_signal": "solo|small|mid|enterprise",
   "tech_maturity": "basic|moderate|advanced",
-  "ai_signals": ["array of observed AI/automation signals"],
-  "primary_value_proposition": "one sentence",
-  "likely_pain_points": ["up to 3 strings"],
+  "ai_signals": ["array of observed AI/automation signals, empty if none"],
+  "primary_value_proposition": "one sentence describing what this business does",
+  "likely_pain_points": ["up to 3 likely business challenges"],
+  "synopsis": "2-3 conversational sentences describing what the system found: what the business does, who it serves, and what the assessment will focus on. Warm, direct, plain language. Start with: Based on your website...",
+  "industry_options": [
+    { "id": "detected_industry_id", "label": "Primary detected industry label", "primary": true },
+    { "id": "adjacent_1", "label": "Adjacent industry 1" },
+    { "id": "adjacent_2", "label": "Adjacent industry 2" },
+    { "id": "adjacent_3", "label": "Adjacent industry 3" },
+    { "id": "other", "label": "Other" }
+  ],
   "domain_max_adjustments": {
     "deployment_depth": 15,
     "integration_maturity": 15,
@@ -117,127 +175,98 @@ const CLAUDE_SYSTEM_PROMPT = `You are extracting business context from a website
     "automation_orchestration": 15,
     "oversight_awareness": 10,
     "team_human_readiness": 15,
-    "strategic_leadership": 10
+    "strategic_leadership": 10,
+    "data_foundation": 0,
+    "customer_intelligence": 0,
+    "investment_posture": 0
+  },
+  "domain_weight_recommendations": {
+    "deployment_depth": 15,
+    "integration_maturity": 15,
+    "revenue_alignment": 20,
+    "automation_orchestration": 15,
+    "oversight_awareness": 10,
+    "team_human_readiness": 15,
+    "strategic_leadership": 10,
+    "data_foundation": 0,
+    "customer_intelligence": 0,
+    "investment_posture": 0
   }
 }
-Adjust domain_max_adjustments based on industry context. All 7 values must sum to exactly 100.
-For nonprofits: increase oversight_awareness to 15, decrease revenue_alignment to 15.
-For SaaS/tech: increase integration_maturity to 20, increase automation_orchestration to 20, decrease team_human_readiness to 10, decrease strategic_leadership to 5.
-For healthcare: increase oversight_awareness to 15, increase strategic_leadership to 15, decrease deployment_depth to 10.
-For solo/micro: increase team_human_readiness to 20, decrease strategic_leadership to 5, decrease deployment_depth to 10.`;
 
-/** Call Claude to extract business context from page content. Returns null on any failure. */
-async function callClaude(
-  apiKey: string,
-  pageContent: string,
-  url: string,
-): Promise<Record<string, unknown> | null> {
+Rules for industry_options:
+- First option is always the primary detected industry with primary: true
+- Include 3 contextually adjacent/related industries (not random)
+- Always include Other as last option
+- Labels should be human-friendly (e.g. Pet Grooming / Animal Care not pet_services)
+
+Rules for domain_max_adjustments:
+- All 7 values must sum to exactly 100
+- Adjust based on industry context:
+  - nonprofits: oversight_awareness +5, revenue_alignment -5
+  - saas/tech: integration_maturity +5, automation_orchestration +5, team_human_readiness -5, strategic_leadership -5
+  - healthcare: oversight_awareness +5, strategic_leadership +5, deployment_depth -5, team_human_readiness -5
+  - solo/micro: team_human_readiness +5, strategic_leadership -5
+  - service businesses (pet, beauty, food): revenue_alignment +5, integration_maturity -5
+- education: team_human_readiness +5, strategic_leadership +5, automation_orchestration -5, deployment_depth -5
+
+Rules for domain_weight_recommendations:
+- Mirror the same values from domain_max_adjustments
+- Keep data_foundation, customer_intelligence, and investment_posture present for compatibility`;
+
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
         temperature: 0,
-        system: CLAUDE_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: `Extract business context from this website (${url}):\n\n${pageContent || "(No page content available — use URL domain clues only.)"}`,
-          },
-        ],
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `Website content for ${url}:\n\n${pageContent}` }],
       }),
     });
 
-    if (!res.ok) return null;
+    if (!claudeRes.ok) throw new Error(`Claude error: ${claudeRes.status}`);
 
-    const data = await res.json() as {
-      content?: Array<{ type: string; text?: string }>;
-    };
+    const claudeData = await claudeRes.json() as { content: Array<{ type: string; text?: string }> };
+    let text = claudeData.content?.[0]?.text ?? '';
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
 
-    const text = data.content?.find((b) => b.type === "text")?.text ?? "";
-    if (!text) return null;
+    const objStart = text.indexOf('{');
+    const objEnd = text.lastIndexOf('}');
+    const parsed = JSON.parse(text.slice(objStart, objEnd + 1));
 
-    // Strip any accidental markdown fences
-    const cleaned = text.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    // Validate and normalize weights, then ensure both response keys are present.
+    ensureWeightAliases(parsed);
 
-    // Validate domain_max_adjustments sums to 100
-    const adj = parsed.domain_max_adjustments as Record<string, number> | undefined;
-    if (adj && typeof adj === "object") {
-      const sum = Object.values(adj).reduce((a, v) => a + (Number(v) || 0), 0);
-      if (Math.round(sum) !== 100) {
-        // Normalise to 100 by adjusting the largest domain
-        const keys = Object.keys(adj) as string[];
-        const diff = 100 - sum;
-        const largest = keys.reduce((a, b) => (adj[a] >= adj[b] ? a : b));
-        adj[largest] = Math.round((adj[largest] + diff) * 10) / 10;
-      }
+    // Ensure industry_options exists and has Other
+    if (!Array.isArray(parsed.industry_options) || parsed.industry_options.length === 0) {
+      parsed.industry_options = [
+        { id: parsed.industry || 'other', label: parsed.industry_label || 'General Business', primary: true },
+        { id: 'other', label: 'Other' },
+      ];
+    }
+    const hasOther = parsed.industry_options.some((o: { id: string }) => o.id === 'other');
+    if (!hasOther) {
+      parsed.industry_options.push({ id: 'other', label: 'Other' });
     }
 
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
-  }
-
-  let url = "";
-  try {
-    const body = await req.json() as { url?: unknown };
-    url = typeof body.url === "string" ? body.url.trim() : "";
-  } catch {
-    // fall through — url stays empty, will use fallback
-  }
-
-  if (!url) {
-    return jsonResponse({
+    return new Response(JSON.stringify({
       success: true,
-      business_context: { ...FALLBACK_CONTEXT },
-      url_scanned: "",
-      fallback: true,
+      fallback: false,
+      url_scanned: url,
+      business_context: parsed,
+    }), { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } });
+
+  } catch (err) {
+    console.error('[ai-iq-context] Claude error:', err);
+    return new Response(JSON.stringify({ ...DEFAULT_RESPONSE, url_scanned: url }), {
+      status: 200, headers: { 'Content-Type': 'application/json', ...CORS }
     });
   }
-
-  // Normalise URL
-  const normalised = url.startsWith("http") ? url : `https://${url}`;
-
-  // STEP 1 — Fetch page
-  const html = await fetchWithTimeout(normalised);
-  const pageContent = html ? extractPageContent(html) : "";
-
-  // STEP 2 — Claude extraction
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
-  let business_context: Record<string, unknown> | null = null;
-  let fallback = false;
-
-  if (apiKey) {
-    business_context = await callClaude(apiKey, pageContent, normalised);
-  }
-
-  if (!business_context) {
-    business_context = { ...FALLBACK_CONTEXT };
-    fallback = true;
-  }
-
-  // STEP 3 — Return
-  return jsonResponse({
-    success: true,
-    business_context,
-    url_scanned: normalised,
-    fallback,
-  });
 });
