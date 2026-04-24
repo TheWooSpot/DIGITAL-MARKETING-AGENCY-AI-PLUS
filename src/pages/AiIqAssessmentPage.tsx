@@ -242,7 +242,6 @@ export default function AiIqAssessmentPage() {
   const [searchParams] = useSearchParams();
   const partnerToken = searchParams.get("partner_token");
   const [partnerGateStatus, setPartnerGateStatus] = useState<PartnerGateStatus>("checking");
-  const [invitingPartner, setInvitingPartner] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<
     | "loading"
@@ -317,8 +316,6 @@ export default function AiIqAssessmentPage() {
         setPartnerGateStatus("denied");
         return;
       }
-      const firstName = String((row as { partner_first_name?: string | null }).partner_first_name ?? "").trim();
-      setInvitingPartner(firstName || null);
       setPartnerGateStatus("allowed");
     })();
     return () => {
@@ -984,14 +981,6 @@ export default function AiIqAssessmentPage() {
     <AnyDoorPageShell narrow={false}>
       {phase === "gate" && (
         <div className="mx-auto w-full max-w-[580px]">
-          {invitingPartner ? (
-            <p
-              className="mb-3 text-center text-xs sm:text-[13px]"
-              style={{ color: "rgba(201,153,58,0.85)", fontFamily: "var(--font-dm-sans), Arial, sans-serif" }}
-            >
-              Invited by {invitingPartner} — welcome.
-            </p>
-          ) : null}
           <AnyDoorEntryScreen
             eyebrow="ANYDOOR ENGINE · D-4 · THE COMPASS"
             heading="Find Out Exactly Where Your AI Stands"
