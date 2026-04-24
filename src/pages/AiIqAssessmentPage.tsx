@@ -152,6 +152,38 @@ function groupAndSortQuestions(rows: QuestionRow[]): GroupedQuestion[] {
   return list;
 }
 
+function interleaveByDomain<Q extends { domain: string }>(questions: Q[]): Q[] {
+  const byDomain = new Map<string, Q[]>();
+  for (const q of questions) {
+    if (!byDomain.has(q.domain)) byDomain.set(q.domain, []);
+    byDomain.get(q.domain)!.push(q);
+  }
+  const result: Q[] = [];
+  const groups = Array.from(byDomain.values());
+  const maxLen = Math.max(...groups.map((g) => g.length), 0);
+  for (let i = 0; i < maxLen; i++) {
+    for (const group of groups) {
+      if (group[i]) result.push(group[i]);
+    }
+  }
+  return result;
+}
+
+function preventConsecutiveDomain<Q extends { domain: string }>(questions: Q[]): Q[] {
+  const result = [...questions];
+  for (let i = 1; i < result.length; i++) {
+    if (result[i].domain === result[i - 1].domain) {
+      for (let j = i + 1; j < result.length; j++) {
+        if (result[j].domain !== result[i - 1].domain) {
+          [result[i], result[j]] = [result[j], result[i]];
+          break;
+        }
+      }
+    }
+  }
+  return result;
+}
+
 const BAND_HEADLINES: Record<string, string> = {
   "AI Absent": "AI hasn't entered the building yet",
   Experimental: "AI is present, but working in silos",
@@ -352,7 +384,8 @@ export default function AiIqAssessmentPage() {
         return na - nb;
       });
       const grouped = groupAndSortQuestions(rows);
-      setQuestions(grouped);
+      const interleaved = preventConsecutiveDomain(interleaveByDomain(grouped));
+      setQuestions(interleaved);
       setLoadError(rows.length === 0 ? "No questions loaded. Seed `door4_ai_iq_questions` in Supabase." : null);
       setPhase("gate");
     })();
