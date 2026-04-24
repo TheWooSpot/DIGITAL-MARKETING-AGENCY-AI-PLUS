@@ -2,17 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { getSupabaseBrowserClient } from "@/anydoor/lib/supabaseBrowserClient";
+import { invokeSupabaseEdgeFunction } from "@/lib/door3/invokeEdge";
 import { AnyDoorEntryScreen, AnyDoorPageShell } from "@/components/anydoor/AnyDoorExperience";
 import { getBusinessEmailError } from "@/lib/aiIq/door4Email";
 import { topGapDomains } from "@/lib/aiIq/door4GapServices";
 import {
-  bandLabelFromScore,
-  computeScoresFromAnswers,
   DOMAIN_LABEL,
   DOMAIN_MAX,
   type DomainKey,
   parseAiqNumber,
-  rungFromTotalScore,
 } from "@/lib/aiIq/door4Scoring";
 import { JORDAN_ASSISTANT_ID, vapi } from "@/lib/vapiClient";
 import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
@@ -78,8 +76,6 @@ function useAiIqJordanVapi(score: number, rung: 1 | 2 | 3 | 4, band: string) {
 
 const AI_IQ_CONTEXT_URL =
   "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-context";
-const DOOR4_SCORE_URL =
-  "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/door4-score";
 const PROSPECTS_TABLE = ["layer5", "prospects"].join("_");
 
 const THINKING_MESSAGES = [
@@ -194,8 +190,7 @@ const BAND_HEADLINES: Record<string, string> = {
 
 const RUNG2_URL =
   (import.meta.env.VITE_AI_IQ_RUNG2_URL as string | undefined)?.trim() || "/ai-readiness/rung-2";
-const RUNG3_URL =
-  (import.meta.env.VITE_AI_IQ_RUNG3_URL as string | undefined)?.trim() || "/ai-readiness/rung-3";
+const RUNG3_URL = "https://socialutely-any-door-engine.vercel.app/ai-readiness/rung-3";
 const RUNG4_URL =
   (import.meta.env.VITE_AI_IQ_DISCOVERY_CALENDAR_URL as string | undefined)?.trim() ||
   "/ai-readiness/rung-4";
@@ -660,50 +655,31 @@ export default function AiIqAssessmentPage() {
     }, 2300);
   }, [confirmedIndustry, aiIqContextData, name, url, loadBusinessContext]);
 
-  const selectOption = useCallback((qid: string, optionLabel: string, score: number) => {
-    setSelectedOptionByQuestion((prev) => {
-      if (prev.get(qid) === optionLabel) return prev;
-      pendingQuizAdvanceRef.current = true;
-      const next = new Map(prev);
-      next.set(qid, optionLabel);
-      return next;
-    });
-    setAnswers((prev) => {
-      const next = new Map(prev);
-      next.set(qid, score);
-      return next;
-    });
-  }, []);
+  const selectOption = useCallback(
+    (qid: string, optionLabel: string, score: number) => {
+      if (submitting) return;
+      setSelectedOptionByQuestion((prev) => {
+        if (prev.get(qid) === optionLabel) return prev;
+        pendingQuizAdvanceRef.current = true;
+        const next = new Map(prev);
+        next.set(qid, optionLabel);
+        return next;
+      });
+      setAnswers((prev) => {
+        const next = new Map(prev);
+        next.set(qid, score);
+        return next;
+      });
+    },
+    [submitting]
+  );
 
   const finishQuiz = useCallback(async () => {
-    const ids = new Set(questions.map((q) => q.question_id));
-    const { total, domains } = computeScoresFromAnswers(answers, ids);
     const n22 = questions.find((q) => parseAiqNumber(q.question_id) === 22);
     const optLabel = n22 ? selectedOptionByQuestion.get(n22.question_id) : undefined;
-    setOrgContext(n22 && optLabel ? { option: optLabel, question: n22.question } : null);
-    setResultTotal(total);
-    setResultDomains(domains);
-    setResultBand(bandLabelFromScore(total));
-    setResultRung(rungFromTotalScore(total));
-    setPhase("results");
+
     setSubmitting(true);
     setPersistError(null);
-
-    mergeSession({
-      name: name.trim(),
-      email: email.trim(),
-      url: url.trim(),
-      diagnostic_score: total,
-    });
-
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setPersistError("Could not save — Supabase is not configured.");
-      setSubmitting(false);
-      return;
-    }
-
-    const orgContextText = optLabel?.trim() || null;
 
     const scorePayloadFields = [
       { key: "full_name", label: "Full Name", type: "INPUT_TEXT", value: name.trim() },
@@ -722,77 +698,95 @@ export default function AiIqAssessmentPage() {
       };
     });
 
-    const scoreRes = await fetch(DOOR4_SCORE_URL, {
+    const scoreRes = await invokeSupabaseEdgeFunction("door4-score", {
+      partner_token: partnerToken?.trim() || null,
+      data: {
+        submissionId: crypto.randomUUID(),
+        fields: [...scorePayloadFields, ...answerFields],
+      },
+      business_context: businessContext,
+    });
+
+    if (!scoreRes.ok) {
+      const errText = await scoreRes.text();
+      // eslint-disable-next-line no-console
+      console.error("[door4-score] FAILED", scoreRes.status, errText);
+      setPersistError("We could not save your assessment. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    let scoreData: {
+      submission_id: number;
+      ai_iq_score: number;
+      ai_iq_band: string;
+      recommended_rung: number;
+      recommended_rung_label?: string | null;
+      domain_scores: Record<DomainKey, number>;
+    };
+    try {
+      scoreData = (await scoreRes.json()) as typeof scoreData;
+    } catch {
+      setPersistError("We could not save your assessment. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (typeof scoreData.ai_iq_score !== "number" || !scoreData.domain_scores) {
+      setPersistError("We could not save your assessment. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    setOrgContext(n22 && optLabel ? { option: optLabel, question: n22.question } : null);
+    setResultTotal(scoreData.ai_iq_score);
+    setResultDomains(scoreData.domain_scores);
+    setResultBand(scoreData.ai_iq_band);
+    setResultRung(scoreData.recommended_rung as 1 | 2 | 3 | 4);
+    setPhase("results");
+    setSubmitting(false);
+
+    mergeSession({
+      name: name.trim(),
+      email: email.trim(),
+      url: url.trim(),
+      diagnostic_score: scoreData.ai_iq_score,
+    });
+
+    const rung = scoreData.recommended_rung as 1 | 2 | 3 | 4;
+    const rungLabel =
+      scoreData.recommended_rung_label ||
+      (rung === 1
+        ? "Awareness"
+        : rung === 2
+          ? "Adaptation"
+          : rung === 3
+            ? "Optimization"
+            : "Stewardship");
+
+    void fetch("https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        score: scoreData.ai_iq_score,
+        band: scoreData.ai_iq_band,
+        rung,
+        rung_label: rungLabel,
+        rung_description:
+          rung === 1
+            ? "Awareness — free orientation resources to align your team on AI readiness fundamentals."
+            : rung === 2
+              ? "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."
+              : rung === 3
+                ? "Workshop-style facilitation so adoption matches how your business actually runs."
+                : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
+        domain_scores: scoreData.domain_scores,
         partner_token: partnerToken?.trim() || null,
-        data: {
-          submissionId: crypto.randomUUID(),
-          fields: [...scorePayloadFields, ...answerFields],
-        },
       }),
     });
-    let scoreErrMessage: string | null = null;
-    if (!scoreRes.ok) {
-      const bodyText = await scoreRes.text();
-      scoreErrMessage = bodyText || `door4-score failed with status ${scoreRes.status}`;
-    } else {
-      // Trust the server — override local computation with authoritative values
-      try {
-        const scoreData = await scoreRes.json();
-        if (typeof scoreData.ai_iq_score === "number") {
-          setResultTotal(scoreData.ai_iq_score);
-        }
-        if (typeof scoreData.ai_iq_band === "string") {
-          setResultBand(scoreData.ai_iq_band);
-        }
-        if (typeof scoreData.recommended_rung === "number") {
-          setResultRung(scoreData.recommended_rung as 1 | 2 | 3 | 4);
-        }
-        if (scoreData.domain_scores && typeof scoreData.domain_scores === "object") {
-          setResultDomains(scoreData.domain_scores as Record<DomainKey, number>);
-        }
-      } catch {
-        // Fall back to client-computed values already in state
-      }
-    }
-
-    const rung = rungFromTotalScore(total);
-
-    const parts: string[] = [];
-    if (scoreErrMessage) parts.push(`door4-score: ${scoreErrMessage}`);
-    if (parts.length > 0) setPersistError(parts.join(" · "));
-
-    setSubmitting(false);
-
-    // Fire-and-forget — never blocks UX
-    void fetch(
-      "https://aagggflwhadxjjhcaohc.supabase.co/functions/v1/ai-iq-notify",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          score: total,
-          band: bandLabelFromScore(total),
-          rung,
-          rung_label: rung === 1 ? "Awareness" : rung === 2 ? "Adaptation" : rung === 3 ? "Optimization" : "Stewardship",
-          rung_description:
-            rung === 1
-              ? "Awareness — free orientation resources to align your team on AI readiness fundamentals."
-              : rung === 2
-                ? "Practical path to adopt AI without boiling the ocean — clarity and a plan you can execute."
-                : rung === 3
-                  ? "Workshop-style facilitation so adoption matches how your business actually runs."
-                  : "Strategic sequencing and done-with-you implementation as AI becomes infrastructure.",
-          domain_scores: domains,
-          partner_token: partnerToken?.trim() || null,
-        }),
-      }
-    );
-  }, [answers, email, mergeSession, name, partnerToken, questions, selectedOptionByQuestion, url, businessContext]);
+  }, [email, mergeSession, name, partnerToken, questions, selectedOptionByQuestion, url, businessContext]);
 
   const goBack = useCallback(() => {
     pendingQuizAdvanceRef.current = false;
@@ -1289,6 +1283,19 @@ export default function AiIqAssessmentPage() {
 
       {phase === "quiz" && current && (
         <div className="mx-auto max-w-2xl">
+          {persistError && (
+            <p
+              className="mb-4 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
+              role="alert"
+            >
+              {persistError}
+            </p>
+          )}
+          {submitting && (
+            <p className="mb-3 text-sm" style={{ color: DIM }}>
+              Saving your assessment…
+            </p>
+          )}
           <div className="mb-8">
             <div className="mb-2 flex justify-between text-xs font-mono" style={{ color: DIM }}>
               <span>Progress</span>
@@ -1327,6 +1334,7 @@ export default function AiIqAssessmentPage() {
                 <button
                   key={opt.option}
                   type="button"
+                  disabled={submitting}
                   onClick={() => selectOption(current.question_id, opt.option, opt.score)}
                   className={`anydoor-option-tile ${selected ? "anydoor-option-tile--selected" : ""}`}
                 >
