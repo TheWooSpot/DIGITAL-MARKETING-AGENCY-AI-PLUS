@@ -7,7 +7,7 @@ import { vapi } from "@/lib/vapiClient";
 import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiErrors";
 import { acquireVapiTapLock, releaseVapiTapLockEarly } from "@/lib/vapiTapLock";
 
-/** Evaluation Specialist (Jordan) — Door 9 AI IQ™ Talk to Jordan strip. */
+/** Evaluation Specialist (Jordan) — AI IQ Talk to Jordan strip. */
 const AI_IQ_VAPI_ASSISTANT_ID = "e48ee900-bfb0-4ee6-a645-e89a08233365";
 
 const GOLD = "#c9973a";
@@ -224,6 +224,10 @@ function useAiIqVapi(submission: Door4Submission | null) {
     };
     vapi?.start(AI_IQ_VAPI_ASSISTANT_ID, {
       maxDurationSeconds: 1080,
+      backgroundSpeechDenoisingPlan: {
+        smartDenoisingPlan: { enabled: false },
+        fourierDenoisingPlan: { enabled: false },
+      },
       variableValues,
     });
   }, [hasPublicKey, submission]);
