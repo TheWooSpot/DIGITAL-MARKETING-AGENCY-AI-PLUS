@@ -13,7 +13,8 @@
     "export-claude": "npx -y claude-code-exporter --prompts --markdown --period 7d -o ./docs/exports",
     "notion:live-links": "node scripts/publish-live-links-to-notion.mjs",
     "docs:live-links-docx": "node scripts/generate-live-links-docx.mjs",
-    "patch:amelia-prompt": "node scripts/patch-amelia-dreamscape-prompt.mjs"
+    "patch:amelia-prompt": "node scripts/patch-amelia-dreamscape-prompt.mjs",
+    "setup:roundtable-eventtype": "node scripts/setup-roundtable-eventtype.mjs"
   },
   "dependencies": {
     "@elevenlabs/client": "1.1.2",

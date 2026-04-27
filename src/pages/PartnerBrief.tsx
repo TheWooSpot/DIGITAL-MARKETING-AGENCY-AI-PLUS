@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePartnerBriefVapiCall } from "@/lib/usePartnerBriefVapiCall";
+import RoundtableSection from "@/anydoor/components/RoundtableSection";
 
 /** Partner Brief: Supabase gate (PB_INIT) + Vapi Tap to Talk (same stack as /diagnostic). */
 
@@ -47,6 +48,7 @@ function MackleberryVoiceButton() {
 
 export default function PartnerBrief() {
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
+  const [roundtableTarget, setRoundtableTarget] = useState<Element | null>(null);
 
   // Trap the browser back button so recipients stay on /partner-brief
   useEffect(() => {
@@ -86,6 +88,8 @@ export default function PartnerBrief() {
       (window as Record<string, unknown>)._pbOnUnlock = () => {
         const target = document.getElementById("pb-voice-mount");
         if (target) setPortalTarget(target);
+        const rt = document.getElementById("pb-roundtable-mount");
+        if (rt) setRoundtableTarget(rt);
       };
       init.textContent = PB_INIT;
       document.body.appendChild(init);
@@ -105,6 +109,8 @@ export default function PartnerBrief() {
     <>
       <div dangerouslySetInnerHTML={{ __html: PB_BODY }} />
       {portalTarget && createPortal(<MackleberryVoiceButton />, portalTarget)}
+      {roundtableTarget &&
+        createPortal(<RoundtableSection />, roundtableTarget)}
     </>
   );
 }
@@ -503,6 +509,8 @@ const PB_BODY = `
   </ul>
   <div id="pb-voice-mount"></div>
 </div>
+
+<div id="pb-roundtable-mount"></div>
 
 <div class="pb-footer">
   <div class="ft-b">Socialutely · AI Readiness Labs™</div>
