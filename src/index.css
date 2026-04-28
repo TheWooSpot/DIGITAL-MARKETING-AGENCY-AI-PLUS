@@ -1043,18 +1043,18 @@ All colors MUST be HSL.
   --rt-tile-bg: #161922;
   --rt-tile-border: rgba(255, 255, 255, 0.06);
   --rt-tile-text: #8a8f9b;
-  --rt-coral: #c15937;
+  --rt-coral: 193, 89, 55;
   --rt-coral-text: #f5d4c1;
   --rt-pending-border: #5b8fbf;
   --rt-pending-bg: #1a2433;
   --rt-pending-text: #b8d4ed;
-  --rt-confirmed-border: #c9993a;
-  --rt-confirmed-bg: #1f1a12;
-  --rt-confirmed-text: #f0d294;
-  --rt-consensus-border: #6b9b5e;
-  --rt-consensus-bg: #1a2419;
-  --rt-consensus-text: #c8e0bf;
-  --rt-consensus-glow-rgb: 107, 155, 94;
+  --rt-confirmed-border: #e8dcc4;
+  --rt-confirmed-bg: #1c1b18;
+  --rt-confirmed-text: #f5ecd9;
+  --rt-consensus-border: #8fae8f;
+  --rt-consensus-bg: #1d251d;
+  --rt-consensus-text: #d6e1d6;
+  --rt-consensus-glow: 143, 174, 143;
 }
 
 .rt-wrap {
@@ -1291,7 +1291,7 @@ All colors MUST be HSL.
 .rt-tile.coral-fill.cf-1 .rt-battery {
   background: linear-gradient(
     0deg,
-    rgba(193, 89, 55, 0.4) 25%,
+    rgba(var(--rt-coral), 0.4) 25%,
     transparent 25%
   );
 }
@@ -1299,7 +1299,7 @@ All colors MUST be HSL.
 .rt-tile.coral-fill.cf-2 .rt-battery {
   background: linear-gradient(
     0deg,
-    rgba(193, 89, 55, 0.45) 45%,
+    rgba(var(--rt-coral), 0.45) 45%,
     transparent 45%
   );
 }
@@ -1307,7 +1307,7 @@ All colors MUST be HSL.
 .rt-tile.coral-fill.cf-3 .rt-battery {
   background: linear-gradient(
     0deg,
-    rgba(193, 89, 55, 0.5) 65%,
+    rgba(var(--rt-coral), 0.5) 65%,
     transparent 65%
   );
 }
@@ -1315,7 +1315,7 @@ All colors MUST be HSL.
 .rt-tile.coral-fill.cf-4 .rt-battery {
   background: linear-gradient(
     0deg,
-    rgba(193, 89, 55, 0.6) 85%,
+    rgba(var(--rt-coral), 0.6) 85%,
     transparent 85%
   );
 }
@@ -1328,7 +1328,7 @@ All colors MUST be HSL.
 
 .rt-tile.confirmed {
   background: var(--rt-confirmed-bg);
-  border: 5px solid var(--rt-confirmed-border);
+  border: 2px solid var(--rt-confirmed-border);
   color: var(--rt-confirmed-text);
   cursor: default;
 }
@@ -1337,14 +1337,14 @@ All colors MUST be HSL.
   background: var(--rt-consensus-bg);
   border: 8px solid var(--rt-consensus-border);
   color: var(--rt-consensus-text);
-  box-shadow: 0 0 18px rgba(var(--rt-consensus-glow-rgb), 0.24);
+  box-shadow: 0 0 22px rgba(var(--rt-consensus-glow), 0.32);
   cursor: default;
   animation: rt-consensus-breathe 3s ease-in-out infinite;
 }
 
 .rt-tile.consensus:hover {
   transform: none;
-  box-shadow: 0 0 18px rgba(var(--rt-consensus-glow-rgb), 0.24);
+  box-shadow: 0 0 22px rgba(var(--rt-consensus-glow), 0.32);
 }
 
 .rt-battery {
@@ -1506,14 +1506,14 @@ All colors MUST be HSL.
 }
 
 .rt-legend-box.confirmed {
-  border: 5px solid var(--rt-confirmed-border);
+  border: 2px solid var(--rt-confirmed-border);
   background: var(--rt-confirmed-bg);
 }
 
 .rt-legend-box.consensus {
-  border: 8px solid var(--rt-consensus-border);
+  border: 4px solid var(--rt-consensus-border);
   background: var(--rt-consensus-bg);
-  box-shadow: 0 0 18px rgba(var(--rt-consensus-glow-rgb), 0.24);
+  box-shadow: 0 0 10px rgba(var(--rt-consensus-glow), 0.42);
 }
 
 .rt-foot {
@@ -1659,10 +1659,10 @@ All colors MUST be HSL.
 @keyframes rt-consensus-breathe {
   0%,
   100% {
-    box-shadow: 0 0 18px rgba(var(--rt-consensus-glow-rgb), 0.24);
+    box-shadow: 0 0 22px rgba(var(--rt-consensus-glow), 0.32);
   }
   50% {
-    box-shadow: 0 0 28px rgba(var(--rt-consensus-glow-rgb), 0.48);
+    box-shadow: 0 0 36px rgba(var(--rt-consensus-glow), 0.64);
   }
 }
 
