@@ -1048,13 +1048,13 @@ All colors MUST be HSL.
   --rt-pending-border: #5b8fbf;
   --rt-pending-bg: #1a2433;
   --rt-pending-text: #b8d4ed;
-  --rt-confirmed-border: #e8dcc4;
-  --rt-confirmed-bg: #1c1b18;
-  --rt-confirmed-text: #f5ecd9;
-  --rt-consensus-border: #8fae8f;
-  --rt-consensus-bg: #1d251d;
-  --rt-consensus-text: #d6e1d6;
-  --rt-consensus-glow: 143, 174, 143;
+  --rt-confirmed-border: #b87333;
+  --rt-confirmed-bg: #1e160f;
+  --rt-confirmed-text: #e0a878;
+  --rt-consensus-border: #6b9b5e;
+  --rt-consensus-bg: #1a2419;
+  --rt-consensus-text: #c8e0bf;
+  --rt-consensus-glow: 107, 155, 94;
 }
 
 .rt-wrap {
@@ -1486,9 +1486,9 @@ All colors MUST be HSL.
 }
 
 .rt-legend-cell.l0 { background: var(--rt-tile-bg); }
-.rt-legend-cell.l1 { background: linear-gradient(0deg, rgba(193, 89, 55, 0.4) 25%, transparent 25%), var(--rt-tile-bg); }
-.rt-legend-cell.l2 { background: linear-gradient(0deg, rgba(193, 89, 55, 0.5) 50%, transparent 50%), var(--rt-tile-bg); }
-.rt-legend-cell.l3 { background: linear-gradient(0deg, rgba(193, 89, 55, 0.6) 85%, transparent 85%), var(--rt-tile-bg); }
+.rt-legend-cell.l1 { background: linear-gradient(0deg, rgba(var(--rt-coral), 0.4) 25%, transparent 25%), var(--rt-tile-bg); }
+.rt-legend-cell.l2 { background: linear-gradient(0deg, rgba(var(--rt-coral), 0.5) 50%, transparent 50%), var(--rt-tile-bg); }
+.rt-legend-cell.l3 { background: linear-gradient(0deg, rgba(var(--rt-coral), 0.6) 85%, transparent 85%), var(--rt-tile-bg); }
 
 .rt-legend-box {
   width: 16px;
