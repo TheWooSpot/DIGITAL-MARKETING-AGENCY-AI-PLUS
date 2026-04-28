@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type GridCell = {
   day_key: string;
   hour_local: number;
-  available: boolean;
-  slot_start_utc: string | null;
+  is_available: boolean;
+  slot_start_utc: string;
   overlap_count: number;
   is_own_tap: boolean;
 };
@@ -142,9 +142,7 @@ export default function RoundtableSection() {
 
       setPayload(data);
       const own = new Set<string>();
-      for (const c of data.cells ?? []) {
-        if (c.is_own_tap && c.slot_start_utc) own.add(c.slot_start_utc);
-      }
+      for (const c of data.cells ?? []) if (c.is_own_tap) own.add(c.slot_start_utc);
       setLastSaved(own);
       setDraft(own);
 
@@ -186,7 +184,7 @@ export default function RoundtableSection() {
   }, [draft, lastSaved]);
 
   const toggleTile = (cell: GridCell) => {
-    if (!cell.available || !cell.slot_start_utc || !session) return;
+    if (!cell.is_available || !session) return;
     if (session.status !== "open") return;
     const key = cell.slot_start_utc;
     setDraft((prev) => {
@@ -356,21 +354,26 @@ export default function RoundtableSection() {
 
   const hrLeft = hoursRemaining(session.expires_at);
   const hasUnsaved = !setsEqual(draft, lastSaved);
+  const strongestSignal = Math.max(...(payload.cells ?? []).map((c) => c.overlap_count), 0);
 
   return (
     <section className="rt-wrap">
       {banner && <p className="rt-banner">{banner}</p>}
 
-      <div className="rt-eyebrow">The Roundtable</div>
+      <div className="rt-eyebrow-wrap">
+        <span className="rt-eyebrow-line" />
+        <div className="rt-eyebrow">The Roundtable</div>
+        <span className="rt-eyebrow-line" />
+      </div>
       <h2 className="rt-title">Lock in our working session</h2>
       <p className="rt-sub">
         Tap times that work, then confirm — the others are doing the same.
       </p>
       <p className="rt-meta">
         <strong>{session.duration_minutes} min</strong>
-        {" · "}Window{" "}
+        <span className="rt-meta-dot">·</span>Window{" "}
         <strong>{formatWindow(session.window_start, session.window_end, tz)}</strong>
-        {" · "}
+        <span className="rt-meta-dot">·</span>
         <strong>
           {quorum} of {total}
         </strong>{" "}
@@ -382,6 +385,15 @@ export default function RoundtableSection() {
           </>
         )}
       </p>
+
+      <div className="rt-status-bar">
+        <div className="rt-status-item">
+          <span className={`rt-status-dot ${session.status === "locked" ? "locked" : "open"}`} />
+          {session.status === "locked" ? "SESSION LOCKED" : "SESSION OPEN"}
+        </div>
+        <div className="rt-status-item">Partners engaged: {lastSaved.size} of {total}</div>
+        <div className="rt-status-item">Strongest signal: {strongestSignal} of {total}</div>
+      </div>
 
       <div className="rt-grid-wrap">
         <div
@@ -430,11 +442,11 @@ export default function RoundtableSection() {
                   (c) => c.day_key === dk && c.hour_local === h,
                 ) ?? null;
               if (!cell) {
-                return <div key={`${dk}-${h}`} className="rt-tile unavailable" />;
+                return <div key={`${dk}-${h}`} className="rt-unavailable-mark">—</div>;
               }
-              if (!cell.available || !cell.slot_start_utc) {
+              if (!cell.is_available) {
                 return (
-                  <div key={`${dk}-${h}`} className="rt-tile unavailable" />
+                  <div key={`${dk}-${h}`} className="rt-unavailable-mark">—</div>
                 );
               }
 
@@ -481,14 +493,6 @@ export default function RoundtableSection() {
 
       {pendingTray.length > 0 && (
         <div className="rt-pending-tray visible">
-          <div className="rt-pending-head">
-            <span className="rt-pending-dot" />
-            <span>
-              {pendingTray.length === 1
-                ? "1 selection — not yet confirmed"
-                : `${pendingTray.length} selections — not yet confirmed`}
-            </span>
-          </div>
           <div className="rt-pending-list">
             {pendingTray.map((k) => (
               <div key={k} className="rt-chip">
@@ -511,29 +515,55 @@ export default function RoundtableSection() {
               </div>
             ))}
           </div>
-          <div className="rt-pending-actions">
-            <button
-              type="button"
-              className="rt-btn-discard"
-              onClick={() => setDraft(new Set(lastSaved))}
-            >
-              Clear all
-            </button>
-            <button
-              type="button"
-              className="rt-btn-confirm"
-              onClick={confirmSelections}
-              disabled={!hasUnsaved}
-            >
-              Confirm my availability
-            </button>
-          </div>
         </div>
       )}
 
-      <p className="rt-foot">
-        Hover any tile for exact count · Lime glow = all partners free.
-      </p>
+      {hasUnsaved && (
+        <div className="rt-confirm-wrap">
+          <button
+            type="button"
+            className="rt-btn-confirm"
+            onClick={confirmSelections}
+            disabled={!hasUnsaved}
+          >
+            Confirm my availability
+          </button>
+          <button
+            type="button"
+            className="rt-btn-discard"
+            onClick={() => setDraft(new Set(lastSaved))}
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
+      <div className="rt-legend">
+        <div className="rt-legend-item">
+          <span className="rt-legend-battery">
+            <span className="rt-legend-cell l0" />
+            <span className="rt-legend-cell l1" />
+            <span className="rt-legend-cell l2" />
+            <span className="rt-legend-cell l3" />
+            <span className="rt-legend-cell l4" />
+          </span>
+          None → almost all
+        </div>
+        <div className="rt-legend-item">
+          <span className="rt-legend-box pending" />
+          Pending (you)
+        </div>
+        <div className="rt-legend-item">
+          <span className="rt-legend-box confirmed" />
+          Confirmed (you)
+        </div>
+        <div className="rt-legend-item">
+          <span className="rt-legend-box consensus" />
+          Consensus reached
+        </div>
+      </div>
+
+      <p className="rt-foot">Hover any tile for exact count.</p>
 
       <div ref={tooltipRef} className="rt-tooltip" />
 

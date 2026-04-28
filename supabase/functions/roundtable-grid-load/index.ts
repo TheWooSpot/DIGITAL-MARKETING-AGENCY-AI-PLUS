@@ -31,6 +31,65 @@ function hourInTz(iso: string, tz: string): number {
   return parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
 }
 
+function dayKeyInTz(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+function parseDayKey(dayKey: string): { y: number; m: number; d: number } {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  return { y, m, d };
+}
+
+function addDaysToDayKey(dayKey: string, days: number): string {
+  const { y, m, d } = parseDayKey(dayKey);
+  const utc = new Date(Date.UTC(y, m - 1, d + days));
+  const yy = utc.getUTCFullYear();
+  const mm = String(utc.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(utc.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function dayKeysInclusive(startIso: string, endIso: string, tz: string, maxDays = 10): string[] {
+  const startKey = dayKeyInTz(startIso, tz);
+  const endKey = dayKeyInTz(endIso, tz);
+  const out: string[] = [];
+  let cursor = startKey;
+  while (out.length < maxDays) {
+    out.push(cursor);
+    if (cursor === endKey) break;
+    cursor = addDaysToDayKey(cursor, 1);
+  }
+  return out;
+}
+
+function tzOffsetMinutesForDay(dayKey: string, tz: string): number {
+  const { y, m, d } = parseDayKey(dayKey);
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    timeZoneName: "shortOffset",
+  }).formatToParts(probe);
+  const token = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+0";
+  const match = token.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) return 0;
+  const sign = match[1] === "-" ? -1 : 1;
+  const hh = Number(match[2] ?? "0");
+  const mm = Number(match[3] ?? "0");
+  return sign * (hh * 60 + mm);
+}
+
+function localDayHourToUtcIso(dayKey: string, hour: number, tz: string): string {
+  const { y, m, d } = parseDayKey(dayKey);
+  const offsetMin = tzOffsetMinutesForDay(dayKey, tz);
+  const utcMs = Date.UTC(y, m - 1, d, hour, 0, 0) - offsetMin * 60_000;
+  return new Date(utcMs).toISOString();
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -138,27 +197,12 @@ Deno.serve(async (req: Request) => {
 
   calSlots.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-  const fmtDay = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  const byDay = new Map<string, CalSlotRange[]>();
-  for (const slot of calSlots) {
-    const dayKey = fmtDay.format(new Date(slot.start));
-    if (!byDay.has(dayKey)) byDay.set(dayKey, []);
-    const arr = byDay.get(dayKey)!;
-    if (arr.length < 4) arr.push(slot);
-  }
-
-  const dayKeys = [...byDay.keys()].slice(0, 10);
-  const slotList = dayKeys.flatMap((k) => byDay.get(k) ?? []);
+  const dayKeys = dayKeysInclusive(windowStart, windowEnd, tz, 10);
 
   const slotMap = new Map<string, CalSlotRange>();
-  for (const slot of slotList) {
-    const dk = fmtDay.format(new Date(slot.start));
+  for (const slot of calSlots) {
+    const dk = dayKeyInTz(slot.start, tz);
+    if (!dayKeys.includes(dk)) continue;
     const h = hourInTz(slot.start, tz);
     slotMap.set(`${dk}-${h}`, slot);
   }
@@ -166,9 +210,9 @@ Deno.serve(async (req: Request) => {
   const cells = [] as Array<{
     day_key: string;
     hour_local: number;
-    available: boolean;
-    slot_start_utc: string | null;
-    slot_end_utc: string | null;
+      is_available: boolean;
+      slot_start_utc: string;
+      slot_end_utc: string;
     overlap_count: number;
     is_own_tap: boolean;
   }>;
@@ -195,26 +239,33 @@ Deno.serve(async (req: Request) => {
   for (const dk of dayKeys) {
     for (const hour of CANONICAL_HOURS) {
       const found = slotMap.get(`${dk}-${hour}`);
-      const ns = found ? normalizeIso(found.start) : null;
+      const canonicalStart = localDayHourToUtcIso(dk, hour, tz);
+      const canonicalEnd = new Date(
+        new Date(canonicalStart).getTime() + Number(session.duration_minutes ?? 60) * 60_000,
+      ).toISOString();
+      const effectiveStart = found ? normalizeIso(found.start) : canonicalStart;
+      const effectiveEnd = found ? normalizeIso(found.end) : canonicalEnd;
+      const isPast = new Date(effectiveStart).getTime() < Date.now();
+      const isAvailable = Boolean(found) && !isPast;
       cells.push({
         day_key: dk,
         hour_local: hour,
-        available: Boolean(found),
-        slot_start_utc: ns,
-        slot_end_utc: found ? normalizeIso(found.end) : null,
-        overlap_count: ns ? overlapMap.get(ns) ?? 0 : 0,
-        is_own_tap: ns ? mine.has(ns) : false,
+        is_available: isAvailable,
+        slot_start_utc: effectiveStart,
+        slot_end_utc: effectiveEnd,
+        overlap_count: isAvailable ? overlapMap.get(effectiveStart) ?? 0 : 0,
+        is_own_tap: isAvailable ? mine.has(effectiveStart) : false,
       });
     }
   }
 
-  const tiles = slotList.map((slot) => {
-    const ns = normalizeIso(slot.start);
+  const tiles = cells.map((cell) => {
     return {
-      slot_start_utc: ns,
-      slot_end_utc: normalizeIso(slot.end),
-      overlap_count: overlapMap.get(ns) ?? 0,
-      is_own_tap: mine.has(ns),
+      slot_start_utc: cell.slot_start_utc,
+      slot_end_utc: cell.slot_end_utc,
+      is_available: cell.is_available,
+      overlap_count: cell.overlap_count,
+      is_own_tap: cell.is_own_tap,
     };
   });
 
