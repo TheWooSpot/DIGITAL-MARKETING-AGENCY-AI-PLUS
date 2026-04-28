@@ -1,12 +1,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import {
-  fetchAvailableSlots,
-  filterCanonicalSlots,
-} from "../_shared/calcom.ts";
 
-const CANONICAL_HOURS = [10, 12, 14, 16];
+const CAL_BOOKING_URL = "https://api.cal.com/v2/bookings";
+
+function redactAuthHeader(h: Record<string, string>): Record<string, string> {
+  const out = { ...h };
+  const auth = out.Authorization;
+  if (auth && auth.startsWith("Bearer ")) {
+    out.Authorization = "Bearer [REDACTED]";
+  }
+  return out;
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -94,40 +99,17 @@ Deno.serve(async (req: Request) => {
   }
 
   const tz = (partnerRow.partner_timezone as string) || "America/Los_Angeles";
-  const windowStart = String(session.window_start);
-  const windowEnd = String(session.window_end);
   const durationMinutes = Number(session.duration_minutes ?? 60);
 
   const slotStartMs = new Date(slot_start_utc).getTime();
-  const narrowStart = new Date(slotStartMs - 60 * 60 * 1000).toISOString();
-  const narrowEnd = new Date(
-    slotStartMs + (durationMinutes + 120) * 60 * 1000,
-  ).toISOString();
 
-  let calSlots = await fetchAvailableSlots({
-    apiKey: calKey,
-    apiVersion: "2024-06-14",
+  console.log("[roundtable-lock] skip precheck - proceeding directly to Cal.com booking", {
+    session_id: sid,
+    brief_token_suffix: brief_token.slice(-8),
+    slot_start_utc,
+    durationMinutes,
     eventTypeId,
-    rangeStartIso: narrowStart,
-    rangeEndIso: narrowEnd,
-    timeZone: tz,
   });
-  calSlots = filterCanonicalSlots(calSlots, tz, CANONICAL_HOURS);
-
-  const stillThere = calSlots.some((s) => {
-    const diff = Math.abs(new Date(s.start).getTime() - slotStartMs);
-    return diff < 120 * 1000;
-  });
-
-  if (!stillThere) {
-    await supabase.from("roundtable_sessions").update({ status: "open" }).eq("id", sid);
-    return json({
-      success: false,
-      reason: "slot_taken",
-      message:
-        "That slot just filled on the calendar. Pick another — your other selections are still saved.",
-    });
-  }
 
   const { data: allPartners } = await supabase
     .from("roundtable_partners")
@@ -139,82 +121,197 @@ Deno.serve(async (req: Request) => {
     .map((p) => String(p.partner_email))
     .filter(Boolean);
 
-  const bookingRes = await fetch("https://api.cal.com/v2/bookings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${calKey}`,
-      "cal-api-version": "2024-08-13",
-      "Content-Type": "application/json",
+  const bookingHeaders: Record<string, string> = {
+    Authorization: `Bearer ${calKey}`,
+    "cal-api-version": "2024-08-13",
+    "Content-Type": "application/json",
+  };
+
+  const bookingBody = {
+    start: slot_start_utc,
+    eventTypeId,
+    attendee: {
+      name: partnerRow.partner_name,
+      email: partnerRow.partner_email,
+      timeZone: tz,
     },
-    body: JSON.stringify({
-      start: slot_start_utc,
-      eventTypeId,
-      attendee: {
-        name: partnerRow.partner_name,
-        email: partnerRow.partner_email,
-        timeZone: tz,
-      },
-      guests,
-      metadata: {
-        roundtable_session_id: sid,
-        brief_topic: "AI Readiness Labs",
-      },
-      lengthInMinutes: durationMinutes,
-    }),
+    guests,
+    metadata: {
+      roundtable_session_id: sid,
+      brief_topic: "AI Readiness Labs",
+    },
+  };
+
+  const bookingBodyStr = JSON.stringify(bookingBody);
+
+  console.log("[roundtable-lock] Cal.com booking request", {
+    url: CAL_BOOKING_URL,
+    method: "POST",
+    headers: redactAuthHeader(bookingHeaders),
+    body: bookingBody,
+    body_bytes: new TextEncoder().encode(bookingBodyStr).length,
+    note:
+      "Consensus slot - no availability precheck; Cal.com is source of truth",
   });
 
-  const bookingJson = (await bookingRes.json()) as Record<string, unknown>;
+  const bookingRes = await fetch(CAL_BOOKING_URL, {
+    method: "POST",
+    headers: bookingHeaders,
+    body: bookingBodyStr,
+  });
 
-  if (!bookingRes.ok) {
-    await supabase.from("roundtable_sessions").update({ status: "open" }).eq("id", sid);
-    return json({
-      success: false,
-      reason: "slot_taken",
-      message:
-        "That slot just filled on the calendar. Pick another — your other selections are still saved.",
+  const bookingText = await bookingRes.text();
+  let bookingJson: Record<string, unknown> = {};
+  try {
+    bookingJson = bookingText ? (JSON.parse(bookingText) as Record<string, unknown>) : {};
+  } catch (e) {
+    console.log("[roundtable-lock] Cal.com response JSON parse error", {
+      status: bookingRes.status,
+      raw_body_preview: bookingText.slice(0, 2000),
+      err: String(e),
     });
   }
 
-  const data = bookingJson?.data as Record<string, unknown> | undefined;
-  const uid =
-    (data?.uid as string) ??
-    (bookingJson?.uid as string) ??
-    String(data?.id ?? "");
-  const meetingUrl =
-    (data?.meetingUrl as string) ??
-    (data?.videoCallUrl as string) ??
-    ((data?.location as Record<string, unknown> | undefined)?.joinUrl as string) ??
-    "";
-
-  const slotEndUtc = new Date(slotStartMs + durationMinutes * 60 * 1000).toISOString();
-
-  await supabase
-    .from("roundtable_sessions")
-    .update({
-      status: "locked",
-      locked_slot_start: slot_start_utc,
-      locked_slot_end: slotEndUtc,
-      calcom_event_type_id: eventTypeId,
-      calcom_booking_uid: uid,
-      calcom_meeting_link: meetingUrl,
-    })
-    .eq("id", sid);
-
-  const finalizeUrl = `${supabaseUrl}/functions/v1/roundtable-finalize`;
-  queueMicrotask(() => {
-    fetch(finalizeUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({ session_id: sid }),
-    }).catch(() => {});
+  console.log("[roundtable-lock] Cal.com booking response", {
+    http_status: bookingRes.status,
+    http_ok: bookingRes.ok,
+    response_body_full: bookingText,
+    response_bytes: new TextEncoder().encode(bookingText).length,
   });
 
+  const rollbackOpen = async () => {
+    await supabase.from("roundtable_sessions").update({ status: "open" }).eq("id", sid);
+  };
+
+  const st = bookingRes.status;
+
+  // Success: any 2xx (typically 200 or 201 from Cal.com bookings)
+  if (bookingRes.ok) {
+    console.log("[roundtable-lock] branch=booking_http_success extract uid + meeting url");
+
+    const data = bookingJson?.data as Record<string, unknown> | undefined;
+    const uid =
+      (data?.uid as string) ??
+      (bookingJson?.uid as string) ??
+      String(data?.id ?? "");
+    const meetingUrl =
+      (data?.meetingUrl as string) ??
+      (data?.videoCallUrl as string) ??
+      ((data?.location as Record<string, unknown> | undefined)?.joinUrl as string) ??
+      "";
+
+    const slotEndUtc = new Date(slotStartMs + durationMinutes * 60 * 1000).toISOString();
+
+    console.log("[roundtable-lock] branch=success persist locked + queue finalize", {
+      session_id: sid,
+      calcom_booking_uid: uid,
+      meeting_link_present: Boolean(meetingUrl),
+      locked_slot_start: slot_start_utc,
+      locked_slot_end: slotEndUtc,
+    });
+
+    await supabase
+      .from("roundtable_sessions")
+      .update({
+        status: "locked",
+        locked_slot_start: slot_start_utc,
+        locked_slot_end: slotEndUtc,
+        calcom_event_type_id: eventTypeId,
+        calcom_booking_uid: uid,
+        calcom_meeting_link: meetingUrl,
+      })
+      .eq("id", sid);
+
+    const finalizeUrl = `${supabaseUrl}/functions/v1/roundtable-finalize`;
+    queueMicrotask(() => {
+      fetch(finalizeUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({ session_id: sid }),
+      }).catch(() => {});
+    });
+
+    return json({
+      success: true,
+      calcom_booking_uid: uid,
+      meeting_link: meetingUrl,
+    });
+  }
+
+  // Booking failed: rollback lock_pending -> open once, then classify
+  await rollbackOpen();
+
+  if (st === 409) {
+    console.log("[roundtable-lock] branch=slot_taken_at_calcom rollback session to open", {
+      session_id: sid,
+      http_status: st,
+      parsed: bookingJson,
+    });
+    return json({
+      success: false,
+      reason: "slot_taken_at_calcom",
+      message:
+        "That slot was taken on the calendar. Pick another - your other selections are still saved.",
+    });
+  }
+
+  if (st === 400) {
+    console.log("[roundtable-lock] branch=validation_error rollback session to open", {
+      session_id: sid,
+      http_status: st,
+      calcom_response: bookingJson,
+      response_body_full: bookingText,
+    });
+    return json({
+      success: false,
+      reason: "validation_error",
+      message: "Calendar rejected the booking request.",
+      calcom_response: bookingJson,
+      calcom_raw: bookingText,
+    });
+  }
+
+  if (st === 401 || st === 403) {
+    console.log("[roundtable-lock] branch=auth_error rollback session to open", {
+      session_id: sid,
+      http_status: st,
+      response_body_full: bookingText,
+    });
+    return json({
+      success: false,
+      reason: "auth_error",
+      message: "Calendar authentication failed. Please contact support.",
+    });
+  }
+
+  if (st >= 500 && st <= 599) {
+    console.log("[roundtable-lock] branch=calcom_unavailable rollback session to open", {
+      session_id: sid,
+      http_status: st,
+      response_body_full: bookingText,
+    });
+    return json({
+      success: false,
+      reason: "calcom_unavailable",
+      message: "Calendar service is unavailable. Please try again shortly.",
+    });
+  }
+
+  console.log("[roundtable-lock] branch=unknown_calcom_failure rollback session to open", {
+    session_id: sid,
+    http_status: st,
+    response_body_full: bookingText,
+    parsed: bookingJson,
+  });
   return json({
-    success: true,
-    calcom_booking_uid: uid,
-    meeting_link: meetingUrl,
+    success: false,
+    reason: "unknown",
+    message: "Could not complete the booking. Please try again.",
+    http_status: st,
+    calcom_response: bookingJson,
+    calcom_raw: bookingText,
   });
 });
