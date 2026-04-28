@@ -35,15 +35,12 @@ const LABEL_HOURS = [
   { h: 16, short: "4P" },
 ];
 
-function tierForRatio(count: number, total: number): number {
-  if (count <= 0 || total <= 0) return 0;
-  const ratio = count / total;
-  if (ratio >= 1) return 6;
-  if (ratio >= 0.9) return 5;
-  if (ratio >= 0.8) return 4;
-  if (ratio >= 0.7) return 3;
-  if (ratio >= 0.6) return 2;
-  return 1;
+function coralFillLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  if (count === 3) return 3;
+  return 4;
 }
 
 function formatWindow(startIso: string, endIso: string, tz: string): string {
@@ -417,7 +414,7 @@ export default function RoundtableSection() {
                 (!draft.has(c.slot_start_utc) && lastSaved.has(c.slot_start_utc)
                   ? 1
                   : 0);
-              return tierForRatio(inc, total) >= 6;
+              return inc >= quorum;
             });
             return (
               <div
@@ -459,16 +456,24 @@ export default function RoundtableSection() {
               let displayCount = cell.overlap_count;
               if (inDraft && !wasSaved) displayCount += 1;
               if (!inDraft && wasSaved) displayCount -= 1;
+              displayCount = Math.max(0, displayCount);
 
-              const tier = tierForRatio(displayCount, total);
-              const fillPct = Math.min(100, (displayCount / total) * 100);
+              const isConsensus = displayCount >= quorum;
+              const fillLevel = coralFillLevel(displayCount);
+              const showCoralFill = !pendingStyle && !confirmedStyle && !isConsensus && fillLevel > 0;
+              const tileStateClass = isConsensus
+                ? "consensus"
+                : pendingStyle
+                  ? "pending"
+                  : confirmedStyle
+                    ? "confirmed"
+                    : "untapped";
 
               return (
                 <button
                   key={key}
                   type="button"
-                  className={`rt-tile available t${tier}${pendingStyle ? " pending" : ""}${inDraft && wasSaved && !pendingStyle ? " confirmed" : ""}${tier === 6 ? " consensus" : ""}`}
-                  data-tier={tier > 0 && tier < 6 ? tier : ""}
+                  className={`rt-tile available ${tileStateClass}${showCoralFill ? ` coral-fill cf-${fillLevel}` : ""}`}
                   onClick={() => toggleTile(cell)}
                   onMouseEnter={(e) =>
                     showTooltip(e, cell, displayCount, pendingStyle, confirmedStyle)
@@ -476,14 +481,8 @@ export default function RoundtableSection() {
                   onMouseMove={positionTooltip}
                   onMouseLeave={hideTooltip}
                 >
-                  {tier > 0 && tier < 6 ? (
-                    <div
-                      className="rt-battery"
-                      style={{ height: `${fillPct}%` }}
-                    />
-                  ) : null}
-                  {tier === 6 ? <div className="rt-battery full" /> : null}
-                  {tier === 6 ? <span className="rt-consensus-mark">●</span> : null}
+                  {showCoralFill ? <div className="rt-battery" /> : null}
+                  {isConsensus ? <span className="rt-consensus-mark">●</span> : null}
                   <span className="rt-tile-time">{short}</span>
                 </button>
               );
@@ -546,7 +545,6 @@ export default function RoundtableSection() {
             <span className="rt-legend-cell l1" />
             <span className="rt-legend-cell l2" />
             <span className="rt-legend-cell l3" />
-            <span className="rt-legend-cell l4" />
           </span>
           None → almost all
         </div>
