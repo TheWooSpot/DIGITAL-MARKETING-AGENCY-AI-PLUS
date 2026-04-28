@@ -1053,6 +1053,7 @@ All colors MUST be HSL.
   max-width: 1160px;
   margin-left: auto;
   margin-right: auto;
+  overflow-x: hidden;
 }
 
 .rt-eyebrow-wrap {
@@ -1175,15 +1176,15 @@ All colors MUST be HSL.
 }
 
 .rt-grid-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
   margin-top: 12px;
 }
 
 .rt-grid {
   display: grid;
-  row-gap: 10px;
-  column-gap: 8px;
-  min-width: 960px;
+  row-gap: 7px;
+  column-gap: 7px;
+  min-width: 0;
 }
 
 .rt-corner {
@@ -1279,8 +1280,13 @@ All colors MUST be HSL.
 }
 
 .rt-tile.consensus {
-  border: 2px solid var(--rt-lime);
-  box-shadow: 0 0 16px rgba(168, 232, 92, 0.4);
+  border: 3px solid var(--rt-lime);
+  background: linear-gradient(
+    0deg,
+    rgba(168, 232, 92, 0.35) 0%,
+    rgba(168, 232, 92, 0.2) 100%
+  );
+  box-shadow: 0 0 24px rgba(168, 232, 92, 0.6);
   animation: rt-consensus-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1337,6 +1343,10 @@ All colors MUST be HSL.
   );
 }
 
+.rt-tile.consensus .rt-battery.full {
+  background: transparent;
+}
+
 .rt-tile-time {
   position: relative;
   z-index: 1;
@@ -1347,7 +1357,17 @@ All colors MUST be HSL.
 }
 
 .rt-tile.consensus .rt-tile-time {
-  color: var(--rt-lime-bright);
+  color: #0f1a2f;
+}
+
+.rt-consensus-mark {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  z-index: 2;
+  font-size: 9px;
+  color: #0f1a2f;
+  line-height: 1;
 }
 
 .rt-pending-tray {
@@ -1630,6 +1650,17 @@ All colors MUST be HSL.
   .rt-wrap {
     margin: 40px auto 52px;
     padding: 16px 0 24px;
+  }
+}
+
+@media (max-width: 767px) {
+  .rt-grid-wrap {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .rt-grid {
+    min-width: 860px;
   }
 }
 

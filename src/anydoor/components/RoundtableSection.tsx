@@ -483,6 +483,7 @@ export default function RoundtableSection() {
                     />
                   ) : null}
                   {tier === 6 ? <div className="rt-battery full" /> : null}
+                  {tier === 6 ? <span className="rt-consensus-mark">●</span> : null}
                   <span className="rt-tile-time">{short}</span>
                 </button>
               );
