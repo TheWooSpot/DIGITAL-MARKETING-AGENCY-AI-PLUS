@@ -290,9 +290,18 @@ Deno.serve(async (req: Request) => {
 
   const okCount = results.filter((r) => r.success).length;
   const failCount = results.length - okCount;
+
+  const surfaceSet = new Set<string>();
+  for (const raw of rawList) {
+    const inv = parseInvitation(raw);
+    for (const s of inv?.surfaces ?? []) surfaceSet.add(s);
+  }
+  const surfaces = Array.from(surfaceSet);
+
   await logAdminAction(supabase, sessionToken, "send_invitations", {
     invitation_count: rawList.length,
     results_summary: { success: okCount, failed: failCount },
+    surfaces,
     recipients_masked: results.map((r) => ({
       brief_token_suffix: r.brief_token_suffix,
       success: r.success,
