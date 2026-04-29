@@ -247,7 +247,9 @@ const PB_INIT = `
     if (gate) gate.classList.add('hidden');
     if (main) main.style.display = 'block';
 
-    window._pbPartnerName = data && (data.partner_first_name || data.partner_name) ? String(data.partner_first_name || data.partner_name).trim() : '';
+    window._pbPartnerName = data && (data.partner_name || data.partner_first_name) ? String(data.partner_name || data.partner_first_name).trim() : '';
+    window._pbPartnerFirstName = data && data.partner_first_name ? String(data.partner_first_name).trim() : '';
+    window._pbRoundtableActive = data && data.include_calendar ? 'true' : 'false';
 
     // Notify React to mount the Vapi voice button into #pb-voice-mount
     if (typeof window._pbOnUnlock === 'function') window._pbOnUnlock();
@@ -271,7 +273,7 @@ const PB_INIT = `
       }
       var sb = supaLib.createClient(SUPA_URL, SUPA_KEY);
       var result = await sb.from('partner_brief_tokens')
-        .select('id,call_count,max_calls,partner_name,partner_first_name,expires_at,is_active')
+        .select('id,call_count,max_calls,partner_name,partner_first_name,include_calendar,expires_at,is_active')
         .eq('token', token)
         .maybeSingle();
 

@@ -130,7 +130,7 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
       (import.meta.env.VITE_PARTNER_BRIEF_VAPI_ASSISTANT_ID as string | undefined)
         ?.replace(/[\r\n]/g, "").trim() ||
       (import.meta.env.VITE_VAPI_ASSISTANT_ID as string | undefined)?.trim() ||
-      "";
+      "afec7622-84c3-418d-b4c6-9d35653d6bc5";
     if (!assistantId) {
       setError("Voice assistant is not configured. Set VITE_PARTNER_BRIEF_VAPI_ASSISTANT_ID in Vercel and rebuild.");
       return;
@@ -143,8 +143,8 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
       maxDurationSeconds: 1500,
       variableValues: {
         partner_name: ((window as Record<string, unknown>)._pbPartnerName as string) || "",
-        partner_first_name: ((window as Record<string, unknown>)._pbPartnerName as string) || "",
-        roundtable_active: "true",
+        partner_first_name: ((window as Record<string, unknown>)._pbPartnerFirstName as string) || "",
+        roundtable_active: ((window as Record<string, unknown>)._pbRoundtableActive as string) || "false",
       },
     });
   }, [hasPublicKey]);
