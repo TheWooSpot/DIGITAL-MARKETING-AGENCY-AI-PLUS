@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { ROUNDTABLE_LOCK_HTML } from "./roundtable-lock-template.ts";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -27,6 +28,22 @@ function firstName(full: string): string {
   const t = full.trim();
   if (!t) return "there";
   return t.split(/\s+/)[0] ?? t;
+}
+
+/** Time + short generic zone label (e.g. "2:00 PM PT") for the partner's timezone. */
+function formatMeetingTimeLocal(lockedStart: Date, timeZone: string): string {
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone,
+  }).format(lockedStart);
+  const tzPart = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "shortGeneric",
+  })
+    .formatToParts(lockedStart)
+    .find((p) => p.type === "timeZoneName")?.value;
+  return tzPart ? `${time} ${tzPart}` : time;
 }
 
 function replaceVars(
@@ -91,19 +108,13 @@ Deno.serve(async (req: Request) => {
     .eq("session_id", session_id);
 
   const meetingLink = String(session.calcom_meeting_link ?? "").trim() || "#";
+  const calcomBookingUid = String(session.calcom_booking_uid ?? "").trim();
   const lockedStart = session.locked_slot_start
     ? new Date(String(session.locked_slot_start))
     : null;
 
-  const templateUrl = new URL("./roundtable-lock.html", import.meta.url);
-  let templateHtml: string;
-  try {
-    templateHtml = await fetch(templateUrl).then((r) => r.text());
-  } catch {
-    return json({ error: "Template missing." }, 500);
-  }
+  const templateHtml: string = ROUNDTABLE_LOCK_HTML;
 
-  const totalInvited = Number(session.total_partners_invited ?? 0);
   const fromHeader = formatResendFrom(resendFrom);
 
   for (const p of partners ?? []) {
@@ -118,22 +129,7 @@ Deno.serve(async (req: Request) => {
       }).format(lockedStart)
       : "";
 
-    const localTime = lockedStart
-      ? new Intl.DateTimeFormat("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: tz,
-        timeZoneName: "short",
-      }).format(lockedStart)
-      : "";
-
-    const others = Math.max(0, totalInvited - 1);
-    const partnerList =
-      others === 0
-        ? "You'll join the working session hosted by the team."
-        : others === 1
-        ? "One other partner from this group will join you."
-        : `${others} other partners from this group will join you.`;
+    const localTime = lockedStart ? formatMeetingTimeLocal(lockedStart, tz) : "";
 
     const html = replaceVars(templateHtml, {
       partner_first_name: firstName(String(p.partner_name ?? "")),
@@ -141,9 +137,8 @@ Deno.serve(async (req: Request) => {
       meeting_date_long: localLong,
       meeting_time_local: localTime,
       meeting_duration_min: String(session.duration_minutes ?? 60),
-      partner_list: partnerList,
       meeting_link: meetingLink,
-      organizer_name: "the team",
+      calcom_booking_uid: calcomBookingUid,
     });
 
     await fetch("https://api.resend.com/emails", {
@@ -155,7 +150,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         from: fromHeader,
         to: [String(p.partner_email)],
-        subject: "Working session set — AI Readiness Labs",
+        subject: "The Roundtable — working session set",
         html,
       }),
     });
