@@ -50,7 +50,23 @@ function extractErrorMessage(e: unknown): string {
   return extractVapiErrorMessage(e);
 }
 
+function extractEventType(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const obj = value as Record<string, unknown>;
+  const direct = typeof obj.type === "string" ? obj.type : "";
+  const nested = obj.error && typeof obj.error === "object"
+    ? typeof (obj.error as Record<string, unknown>).type === "string"
+      ? ((obj.error as Record<string, unknown>).type as string)
+      : ""
+    : "";
+  return (direct || nested).toLowerCase();
+}
+
 function toUserFriendlyMessage(msg: unknown): string {
+  const eventType = extractEventType(msg);
+  if (eventType === "daily-error" || eventType === "ejected") {
+    return "Your call has ended. Tap to start again.";
+  }
   const str = typeof msg === "string" ? msg : String(msg ?? "");
   const lower = str.toLowerCase();
   if (
@@ -59,7 +75,7 @@ function toUserFriendlyMessage(msg: unknown): string {
     lower.includes("\"daily-error\"") ||
     (lower.includes("daily") && lower.includes("ejected"))
   ) {
-    return "The conversation has ended. Refresh the page to start over with Mr. Mackleberry, or use the calendar below to schedule a working session.";
+    return "Your call has ended. Tap to start again.";
   }
   if (lower.includes("microphone") || lower.includes("permission") || lower.includes("not-allowed")) {
     return "Microphone access denied. Please allow microphone permission in your browser and try again.";
@@ -117,11 +133,17 @@ export function useDiagnosticVapiCall(result: DiagnosticResult, options?: UseDia
       setError(null);
       options?.onVoiceLaunched?.();
     };
-    const onCallEnd = () => {
+    const onCallEnd = (event?: unknown) => {
       const startedAt = callStartedAtRef.current;
       const durationSeconds = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : 0;
       callStartedAtRef.current = null;
       setIsCallActive(false);
+      const eventType = extractEventType(event);
+      if (eventType === "daily-error" || eventType === "ejected") {
+        setError("Your call has ended. Tap to start again.");
+      } else {
+        setError("Call complete.");
+      }
       options?.onVoiceEnded?.(durationSeconds);
     };
 

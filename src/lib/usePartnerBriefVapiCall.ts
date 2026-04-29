@@ -8,9 +8,33 @@ import { appendVapiAssistantKeyHint, extractVapiErrorMessage } from "@/lib/vapiE
  * VITE_VAPI_ASSISTANT_ID as the diagnostic page. No ElevenLabs ConvAI widget needed.
  */
 
+function extractEventType(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const obj = value as Record<string, unknown>;
+  const direct = typeof obj.type === "string" ? obj.type : "";
+  const nested = obj.error && typeof obj.error === "object"
+    ? typeof (obj.error as Record<string, unknown>).type === "string"
+      ? ((obj.error as Record<string, unknown>).type as string)
+      : ""
+    : "";
+  return (direct || nested).toLowerCase();
+}
+
 function toUserFriendlyMessage(e: unknown): string {
+  const eventType = extractEventType(e);
+  if (eventType === "daily-error" || eventType === "ejected") {
+    return "Your call has ended. Tap to start again.";
+  }
   const str = extractVapiErrorMessage(e);
   const lower = str.toLowerCase();
+  if (
+    lower.includes("meeting has ended") ||
+    lower.includes("\"type\":\"ejected\"") ||
+    lower.includes("\"daily-error\"") ||
+    (lower.includes("daily") && lower.includes("ejected"))
+  ) {
+    return "Your call has ended. Tap to start again.";
+  }
   if (lower.includes("microphone") || lower.includes("permission") || lower.includes("not-allowed")) {
     return "Microphone access denied — please allow microphone permission in your browser and try again.";
   }
@@ -45,7 +69,27 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
     if (!hasPublicKey || !client) return;
 
     const onCallStart = () => { setIsCallActive(true); setError(null); };
-    const onCallEnd = () => setIsCallActive(false);
+    const onCallEnd = (event?: unknown) => {
+      setIsCallActive(false);
+      const eventType = extractEventType(event);
+      if (eventType === "daily-error" || eventType === "ejected") {
+        setError("Your call has ended. Tap to start again.");
+      } else {
+        setError("Call complete.");
+      }
+    };
+    const onMessage = (payload: unknown) => {
+      const raw = typeof payload === "string" ? payload : JSON.stringify(payload ?? {});
+      const lower = raw.toLowerCase();
+      if (
+        lower.includes("meeting has ended") ||
+        lower.includes("\"type\":\"ejected\"") ||
+        lower.includes("\"daily-error\"") ||
+        (lower.includes("daily") && lower.includes("ejected"))
+      ) {
+        setError("Your call has ended. Tap to start again.");
+      }
+    };
     const onError = (e: unknown) => {
       setError(toUserFriendlyMessage(e));
       setIsCallActive(false);
@@ -61,12 +105,14 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
 
     client.on("call-start", onCallStart);
     client.on("call-end", onCallEnd);
+    client.on("message", onMessage);
     client.on("error", onError);
     client.on("call-start-failed", onCallStartFailed);
 
     return () => {
       client.removeListener("call-start", onCallStart);
       client.removeListener("call-end", onCallEnd);
+      client.removeListener("message", onMessage);
       client.removeListener("error", onError);
       client.removeListener("call-start-failed", onCallStartFailed);
       client.stop();
@@ -96,7 +142,9 @@ export function usePartnerBriefVapiCall(): PartnerBriefVapiCall {
     vapi?.start(assistantId, {
       maxDurationSeconds: 1500,
       variableValues: {
-        partner_name: (window as Record<string, unknown>)._pbPartnerName as string || "",
+        partner_name: ((window as Record<string, unknown>)._pbPartnerName as string) || "",
+        partner_first_name: ((window as Record<string, unknown>)._pbPartnerName as string) || "",
+        roundtable_active: "true",
       },
     });
   }, [hasPublicKey]);
