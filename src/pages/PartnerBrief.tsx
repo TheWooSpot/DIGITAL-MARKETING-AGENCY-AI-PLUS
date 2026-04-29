@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePartnerBriefVapiCall } from "@/lib/usePartnerBriefVapiCall";
+import { useSearchParams } from "react-router-dom";
 import RoundtableSection from "@/anydoor/components/RoundtableSection";
+import { usePartnerBriefVapiCall } from "@/lib/usePartnerBriefVapiCall";
+import { supabase } from "@/lib/supabase";
 
-/** Partner Brief: Supabase gate (PB_INIT) + Vapi Tap to Talk (same stack as /diagnostic). */
+/** Partner Brief: RPC gate + Vapi Tap to Talk (same stack as /diagnostic). */
 
 // ─── Mackleberry Voice Button ──────────────────────────────
 function MackleberryVoiceButton() {
@@ -46,23 +48,54 @@ function MackleberryVoiceButton() {
   );
 }
 
+type PartnerValidateRow = {
+  valid?: boolean;
+  at_limit?: boolean;
+  is_admin_token?: boolean;
+  remaining_calls?: number | null;
+  partner_name?: string | null;
+  partner_first_name?: string | null;
+};
+
+function gateMessageForReason(reason: string | null): string {
+  if (reason === "at_limit") {
+    return "This access link has reached its usage limit. Please contact the team.";
+  }
+  if (reason === "no_grant_for_surface") {
+    return "Access to this experience is not configured for your link yet. Please contact the team.";
+  }
+  if (reason === "token_expired" || reason === "token_inactive" || reason === "token_invalid") {
+    return "This link is not active. Please contact the team for a current invitation.";
+  }
+  if (!reason || reason === "config") {
+    return "We could not verify this link. Check your connection or contact hello@socialutely.com.";
+  }
+  return "This link is not active. Please contact the team for a current invitation.";
+}
+
 export default function PartnerBrief() {
-  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
-  const [roundtableTarget, setRoundtableTarget] = useState<Element | null>(null);
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token")?.trim() ?? "";
+
+  const [gate, setGate] = useState<"loading" | "ready" | "denied">("loading");
+  const [denyReason, setDenyReason] = useState<string | null>(null);
+  const [briefRow, setBriefRow] = useState<PartnerValidateRow | null>(null);
+
+  const [voiceMount, setVoiceMount] = useState<Element | null>(null);
+  const [roundtableMount, setRoundtableMount] = useState<Element | null>(null);
 
   // Trap the browser back button so recipients stay on /partner-brief
   useEffect(() => {
-    window.history.pushState(null, '', window.location.href);
+    window.history.pushState(null, "", window.location.href);
     const handlePopState = () => {
-      window.history.pushState(null, '', window.location.href);
+      window.history.pushState(null, "", window.location.href);
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
     document.title = "Partner Brief — AI Readiness Labs";
-    let cancelled = false;
 
     const fonts = document.createElement("link");
     fonts.id = "pb-fonts";
@@ -76,41 +109,159 @@ export default function PartnerBrief() {
     style.textContent = PB_STYLES;
     document.head.appendChild(style);
 
-    const s1 = document.createElement("script");
-    s1.id = "pb-supabase";
-    s1.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
-    s1.onerror = () => console.error("Partner Brief: Supabase failed to load.");
-    s1.onload = () => {
-      if (cancelled) return;
-      const init = document.createElement("script");
-      init.id = "pb-init";
-      // Expose callback so PB_INIT can tell React when gate is passed
-      (window as Record<string, unknown>)._pbOnUnlock = () => {
-        const target = document.getElementById("pb-voice-mount");
-        if (target) setPortalTarget(target);
-        const rt = document.getElementById("pb-roundtable-mount");
-        if (rt) setRoundtableTarget(rt);
-      };
-      init.textContent = PB_INIT;
-      document.body.appendChild(init);
-    };
-    document.body.appendChild(s1);
-
     return () => {
-      cancelled = true;
-      delete (window as Record<string, unknown>)._pbOnUnlock;
-      ["pb-fonts", "pb-styles", "pb-supabase", "pb-init"].forEach((id) => {
-        document.getElementById(id)?.remove();
-      });
+      document.getElementById("pb-fonts")?.remove();
+      document.getElementById("pb-styles")?.remove();
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!supabase) {
+      setGate("denied");
+      setDenyReason("config");
+      return;
+    }
+    if (!token) {
+      setGate("denied");
+      setDenyReason("token_invalid");
+      return;
+    }
+
+    (async () => {
+      const { data: proceedData, error: proceedErr } = await supabase.rpc("check_partner_token_can_proceed", {
+        p_token: token,
+        p_surface: "partner_brief_labs",
+      });
+      if (cancelled) return;
+      if (proceedErr) {
+        console.error("check_partner_token_can_proceed:", proceedErr);
+        setGate("denied");
+        setDenyReason("token_invalid");
+        return;
+      }
+      const prow = (Array.isArray(proceedData) ? proceedData[0] : proceedData) as {
+        can_proceed?: boolean;
+        reason?: string | null;
+      } | null;
+      if (!prow || prow.can_proceed !== true) {
+        setGate("denied");
+        setDenyReason(typeof prow?.reason === "string" ? prow.reason : "token_invalid");
+        return;
+      }
+
+      const { data: vData, error: vErr } = await supabase.rpc("validate_partner_token", { p_token: token });
+      if (cancelled) return;
+      if (vErr || !vData) {
+        console.error("validate_partner_token:", vErr);
+        setGate("denied");
+        setDenyReason("token_invalid");
+        return;
+      }
+      const vr = (Array.isArray(vData) ? vData[0] : vData) as PartnerValidateRow;
+      if (!vr || vr.valid !== true) {
+        setGate("denied");
+        setDenyReason("token_invalid");
+        return;
+      }
+      if (vr.at_limit === true && vr.is_admin_token !== true) {
+        setGate("denied");
+        setDenyReason("at_limit");
+        return;
+      }
+
+      const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
+      let rt = false;
+      if (base) {
+        try {
+          const portalRes = await fetch(
+            `${base}/functions/v1/portal-load?token=${encodeURIComponent(token)}&brief_token=${encodeURIComponent(token)}`,
+          );
+          if (portalRes.ok) {
+            const portalJson = (await portalRes.json()) as { roundtable_active?: boolean };
+            rt = portalJson.roundtable_active === true;
+          }
+        } catch {
+          rt = false;
+        }
+      }
+
+      const w = window as Record<string, unknown>;
+      const pname = (vr.partner_name || vr.partner_first_name || "").trim();
+      w._pbPartnerName = pname;
+      w._pbPartnerFirstName = (vr.partner_first_name || "").trim();
+      w._pbRoundtableActive = rt ? "true" : "false";
+
+      setBriefRow(vr);
+      setGate("ready");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useLayoutEffect(() => {
+    if (gate !== "ready") {
+      setVoiceMount(null);
+      setRoundtableMount(null);
+      return;
+    }
+    setVoiceMount(document.getElementById("pb-voice-mount"));
+    setRoundtableMount(document.getElementById("pb-roundtable-mount"));
+  }, [gate]);
+
+  useEffect(() => {
+    if (gate !== "ready" || !briefRow) return;
+    const badge = document.getElementById("pb-badge");
+    if (!badge) return;
+    const unlimited = briefRow.is_admin_token === true || briefRow.remaining_calls == null;
+    if (unlimited) {
+      badge.textContent = "unlimited access";
+    } else {
+      const rc = typeof briefRow.remaining_calls === "number" ? briefRow.remaining_calls : 0;
+      badge.textContent = `${rc} conversation${rc === 1 ? "" : "s"} remaining`;
+    }
+    badge.style.display = "block";
+  }, [gate, briefRow]);
+
   return (
     <>
-      <div dangerouslySetInnerHTML={{ __html: PB_BODY }} />
-      {portalTarget && createPortal(<MackleberryVoiceButton />, portalTarget)}
-      {roundtableTarget &&
-        createPortal(<RoundtableSection />, roundtableTarget)}
+      {gate === "loading" ? (
+        <div className="pb-gate-shell">
+          <div className="gate-logo">Socialutely · Partner Brief</div>
+          <div className="gate-title">
+            AI Readiness
+            <br />
+            <em>Labs™</em>
+          </div>
+          <p className="gate-sub">Verifying your link…</p>
+        </div>
+      ) : null}
+
+      {gate === "denied" ? (
+        <div className="pb-gate-shell">
+          <div className="gate-logo">Socialutely · Partner Brief</div>
+          <div className="gate-title">
+            AI Readiness
+            <br />
+            <em>Labs™</em>
+          </div>
+          <p className="gate-sub pb-gate-msg">{gateMessageForReason(denyReason)}</p>
+          <p className="pb-gate-contact">
+            Questions? <a href="mailto:hello@socialutely.com">hello@socialutely.com</a>
+          </p>
+        </div>
+      ) : null}
+
+      {gate === "ready" ? (
+        <div id="pb-main" className="partner-brief-page">
+          <div dangerouslySetInnerHTML={{ __html: PB_MAIN_HTML }} />
+          {voiceMount ? createPortal(<MackleberryVoiceButton />, voiceMount) : null}
+          {roundtableMount ? createPortal(<RoundtableSection />, roundtableMount) : null}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -120,21 +271,16 @@ const PB_STYLES = `
 :root{--bg:#07090f;--bg2:#0c0f1a;--bg4:#080b12;--gold:#c9993a;--gold2:#e8b84b;--white:#f0f4ff;--text:#d6deea;--muted:#9fb0c7;--dim:#7f92ac;--border:rgba(201,153,58,0.18);--border2:rgba(255,255,255,0.06);--green:#34c05a;--blue:#4a8fd4;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:#07090f;background-image:linear-gradient(rgba(201,153,58,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(201,153,58,0.07) 1px,transparent 1px);background-size:48px 48px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.7;min-height:100vh;}
-#pb-gate{position:fixed;inset:0;background:#07090f;background-image:linear-gradient(rgba(201,153,58,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(201,153,58,0.07) 1px,transparent 1px);background-size:48px 48px;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;}
-#pb-gate>*{max-width:480px;width:100%;}
-#pb-gate.hidden{display:none;}
+.pb-gate-shell{position:fixed;inset:0;background:#07090f;background-image:linear-gradient(rgba(201,153,58,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(201,153,58,0.07) 1px,transparent 1px);background-size:48px 48px;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;}
+.pb-gate-shell>*{max-width:480px;width:100%;}
 .gate-logo{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:48px;}
 .gate-title{font-family:'DM Serif Display',serif;font-size:clamp(38px,6vw,56px);color:var(--white);line-height:1.1;margin-bottom:12px;}
 .gate-title em{color:var(--gold);font-style:normal;}
 .gate-sub{font-size:16px;color:var(--muted);font-style:italic;font-family:'DM Serif Display',serif;margin-bottom:40px;max-width:400px;}
-#pb-phrase{width:100%;max-width:400px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 20px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--white);outline:none;margin-bottom:12px;letter-spacing:2px;}
-#pb-phrase:focus{border-color:var(--gold);}
-#pb-enter{width:100%;max-width:400px;background:var(--gold);border:none;border-radius:8px;padding:14px 20px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;color:#07090f;cursor:pointer;}
-#pb-enter:hover{background:var(--gold2);}
-#pb-err{color:#e04040;font-size:13px;margin-top:14px;min-height:20px;}
-#pb-contact{font-size:12px;color:var(--dim);margin-top:24px;display:none;}
-#pb-contact a{color:var(--gold);text-decoration:none;}
-#pb-main{display:none;position:relative;z-index:1;}
+.pb-gate-msg{color:var(--muted)!important;}
+.pb-gate-contact{font-size:12px;color:var(--dim);margin-top:24px;}
+.pb-gate-contact a{color:var(--gold);text-decoration:none;}
+#pb-main{position:relative;z-index:1;display:block;}
 #pb-badge{position:fixed;bottom:20px;right:20px;background:var(--bg2);border:1px solid var(--border);padding:6px 14px;font-size:11px;color:rgba(201,153,58,0.6);letter-spacing:1px;z-index:100;display:none;}
 .gold-bar{height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2),var(--gold));position:sticky;top:0;z-index:100;}
 .wrap{max-width:820px;margin:0 auto;padding:0 28px 120px;}
@@ -227,141 +373,8 @@ h3{font-size:18px;font-weight:600;color:var(--gold);margin-bottom:10px;}
 .mackleberry-voice-error{font-size:13px;color:#e04040;margin-top:4px;max-width:320px;text-align:center;line-height:1.5;}
 `;
 
-// ─── INIT SCRIPT ──────────────────────────────────────────
-const PB_INIT = `
-(function() {
-  var ACCESS_PHRASE = 'PARTNER';
-  var SUPA_URL = 'https://aagggflwhadxjjhcaohc.supabase.co';
-  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2dnZmx3aGFkeGpqaGNhb2hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NjIwMzMsImV4cCI6MjA4ODQzODAzM30.v4krDE31xAq9vt7Uq4eR2SmKvLLnkMk7MeGKT3SdGdA';
-
-  function showErr(msg) {
-    var e = document.getElementById('pb-err');
-    var c = document.getElementById('pb-contact');
-    if (e) e.textContent = msg || '';
-    if (c) c.style.display = msg ? 'block' : 'none';
-  }
-
-  function unlockContent(data) {
-    var gate = document.getElementById('pb-gate');
-    var main = document.getElementById('pb-main');
-    if (gate) gate.classList.add('hidden');
-    if (main) main.style.display = 'block';
-
-    window._pbPartnerName = data && (data.partner_name || data.partner_first_name) ? String(data.partner_name || data.partner_first_name).trim() : '';
-    window._pbPartnerFirstName = data && data.partner_first_name ? String(data.partner_first_name).trim() : '';
-    window._pbRoundtableActive = data && data.roundtable_active ? 'true' : 'false';
-
-    // Notify React to mount the Vapi voice button into #pb-voice-mount
-    if (typeof window._pbOnUnlock === 'function') window._pbOnUnlock();
-
-    if (data) {
-      var badge = document.getElementById('pb-badge');
-      if (badge) {
-        var unlimited = data.is_admin_token === true || data.remaining_calls == null;
-        if (unlimited) {
-          badge.textContent = 'unlimited access';
-        } else {
-          var rc = typeof data.remaining_calls === 'number' ? data.remaining_calls : 0;
-          badge.textContent = rc + ' conversation' + (rc === 1 ? '' : 's') + ' remaining';
-        }
-        badge.style.display = 'block';
-      }
-    }
-  }
-
-  async function validateToken(token) {
-    try {
-      var supaLib = window.supabase;
-      if (!supaLib) {
-        showErr('Loading… please try again in a second.');
-        return;
-      }
-      var sb = supaLib.createClient(SUPA_URL, SUPA_KEY);
-      var result = await sb.rpc('validate_partner_token', { p_token: token });
-      var rpcErr = result.error;
-      var raw = result.data;
-
-      if (rpcErr) {
-        console.error('validate_partner_token:', rpcErr);
-        showErr('Could not verify this link. Try again.');
-        return;
-      }
-
-      var data = Array.isArray(raw) ? raw[0] : raw;
-      if (!data || typeof data !== 'object') {
-        showErr('That access link is not valid or has expired. Please contact the team.');
-        return;
-      }
-      if (data.valid !== true) {
-        showErr('That access link is not valid or has expired. Please contact the team.');
-        return;
-      }
-      // Usage cap is ONLY `at_limit` from validate_partner_token — never infer from remaining_calls / max_calls.
-      // Admin tokens should always have at_limit false from the DB; we never block admins on this path.
-      if (data.at_limit === true && data.is_admin_token !== true) {
-        showErr('This access link has reached its usage limit. Please contact the team.');
-        return;
-      }
-      var roundtableActive = false;
-      try {
-        var portalRes = await fetch(
-          SUPA_URL + '/functions/v1/portal-load?token=' + encodeURIComponent(token) + '&brief_token=' + encodeURIComponent(token)
-        );
-        if (portalRes.ok) {
-          var portalData = await portalRes.json();
-          roundtableActive = !!(portalData && portalData.roundtable_active === true);
-        }
-      } catch (_) {
-        roundtableActive = false;
-      }
-      data.roundtable_active = roundtableActive;
-      unlockContent(data);
-    } catch (e) {
-      console.error('Token validation error:', e);
-      showErr('Could not verify this link. Try again.');
-    }
-  }
-
-  window.pbCheckPhrase = function () {
-    var input = document.getElementById('pb-phrase');
-    if (!input) return;
-    var val = input.value.trim().toUpperCase();
-    if (val === ACCESS_PHRASE) {
-      showErr('');
-      var t = new URLSearchParams(window.location.search).get('token');
-      var tok = t ? String(t).trim() : null;
-      if (tok) {
-        void validateToken(tok);
-      } else {
-        unlockContent(null);
-      }
-    } else {
-      showErr("That phrase doesn't match. Try again or contact your Socialutely liaison.");
-    }
-  };
-
-  var input = document.getElementById('pb-phrase');
-  if (input) {
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') window.pbCheckPhrase();
-    });
-  }
-})();
-`;
-
-// ─── BODY HTML ────────────────────────────────────────────
-const PB_BODY = `
-<div id="pb-gate">
-  <div class="gate-logo">Socialutely · Partner Brief</div>
-  <div class="gate-title">AI Readiness<br/><em>Labs™</em></div>
-  <div class="gate-sub">Enter the access phrase supplied by Socialutely to view this document.</div>
-  <input type="password" id="pb-phrase" placeholder="Access phrase" autocomplete="off"/>
-  <button id="pb-enter" type="button" onclick="window.pbCheckPhrase()">Enter</button>
-  <div id="pb-err"></div>
-  <div id="pb-contact">Questions? <a href="mailto:hello@socialutely.com">hello@socialutely.com</a></div>
-</div>
-
-<div id="pb-main">
+// ─── Brief HTML (injected under #pb-main; token gate is React + RPC) ───
+const PB_MAIN_HTML = `
 <div class="gold-bar"></div>
 <div id="pb-badge"></div>
 <div class="wrap">
@@ -538,6 +551,5 @@ const PB_BODY = `
   <div class="ft-n">Partner Brief · April 2026 · Not for public distribution</div>
 </div>
 
-</div>
 </div>
 `;
