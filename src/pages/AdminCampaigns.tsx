@@ -14,6 +14,7 @@ import {
   type CampaignSurface,
   campaignNeedsEmail,
 } from "@/lib/adminCampaignSurfaces";
+import { toast } from "sonner";
 
 const DEFAULT_SUBJECT = "AI Readiness Labs — Partner Brief";
 const DEFAULT_BRIEF_TOPIC = "AI Readiness Labs";
@@ -106,6 +107,14 @@ function AdminCampaignsInner() {
 
   const [sendBusy, setSendBusy] = useState(false);
   const [sendMessage, setSendMessage] = useState<string | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [addBusy, setAddBusy] = useState(false);
+  const [newFirst, setNewFirst] = useState("");
+  const [newLast, setNewLast] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newMaxCalls, setNewMaxCalls] = useState(5);
+  const [newNotes, setNewNotes] = useState("");
 
   const refresh = useCallback(async () => {
     if (!supabase) {
@@ -208,6 +217,50 @@ function AdminCampaignsInner() {
     if (!previewRecipientToken) return null;
     return partners.find((p) => p.token === previewRecipientToken) ?? null;
   }, [partners, previewRecipientToken]);
+
+  const submitNewPartner = async () => {
+    const fn = newFirst.trim();
+    const ln = newLast.trim();
+    const em = newEmail.trim().toLowerCase();
+    if (!fn) {
+      toast.error("First name is required.");
+      return;
+    }
+    if (!ln) {
+      toast.error("Last name is required.");
+      return;
+    }
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
+    setAddBusy(true);
+    const { data, error, status } = await postAdminJson<{ partner?: PartnerRow; error?: string }>({
+      action: "create_partner",
+      partner_first_name: fn,
+      partner_last_name: ln,
+      partner_email: em,
+      max_calls: Number.isFinite(newMaxCalls) ? newMaxCalls : 5,
+      notes: newNotes.trim() || undefined,
+    });
+    setAddBusy(false);
+    if (status === 401 || error) {
+      toast.error(status === 401 ? "Session expired. Sign in again." : error ?? "Could not create partner.");
+      return;
+    }
+    if (data?.partner) {
+      toast.success(`Partner added — token ends …${data.partner.token.slice(-8)}`);
+      setAddOpen(false);
+      setNewFirst("");
+      setNewLast("");
+      setNewEmail("");
+      setNewMaxCalls(5);
+      setNewNotes("");
+      await refresh();
+      return;
+    }
+    toast.error("Unexpected response from server.");
+  };
 
   const handleLogout = async () => {
     if (!supabase) return;
@@ -388,7 +441,18 @@ function AdminCampaignsInner() {
 
         {/* Recipients */}
         <section className="rounded-lg border border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-panel))] p-5 shadow-sm">
-          <h2 className="font-serif text-xl text-[hsl(var(--ac-heading))]">Recipients</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="font-serif text-xl text-[hsl(var(--ac-heading))]">Recipients</h2>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-[hsl(var(--ac-gold))]/50 text-[hsl(var(--ac-text))]"
+              onClick={() => setAddOpen(true)}
+            >
+              + Add new partner
+            </Button>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               type="button"
@@ -551,6 +615,76 @@ function AdminCampaignsInner() {
             <p className="mt-4 text-sm text-[hsl(var(--ac-muted))]">{sendMessage}</p>
           ) : null}
         </section>
+
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="max-w-md border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-panel))] text-[hsl(var(--ac-text))]">
+            <DialogHeader>
+              <DialogTitle className="font-serif text-[hsl(var(--ac-heading))]">Add new partner</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 pt-2">
+              <div className="space-y-2">
+                <Label className="text-[hsl(var(--ac-muted))]">First name</Label>
+                <Input
+                  value={newFirst}
+                  onChange={(e) => setNewFirst(e.target.value)}
+                  className="border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-bg))]"
+                  autoComplete="given-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[hsl(var(--ac-muted))]">Last name</Label>
+                <Input
+                  value={newLast}
+                  onChange={(e) => setNewLast(e.target.value)}
+                  className="border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-bg))]"
+                  autoComplete="family-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[hsl(var(--ac-muted))]">Email</Label>
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-bg))]"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[hsl(var(--ac-muted))]">Max calls (optional, default 5)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={newMaxCalls}
+                  onChange={(e) => setNewMaxCalls(Number(e.target.value) || 5)}
+                  className="border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-bg))]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[hsl(var(--ac-muted))]">Notes (optional)</Label>
+                <Textarea
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  rows={3}
+                  className="border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-bg))]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={addBusy}
+                  className="bg-[hsl(var(--ac-gold))] text-[hsl(var(--ac-bg))]"
+                  onClick={() => void submitNewPartner()}
+                >
+                  {addBusy ? "Saving…" : "Create token"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -70,6 +70,12 @@ function maskEmail(email: string): string {
   return `***${email.slice(at)}`;
 }
 
+function randomHex(bytes: number): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return [...buf].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 type InvitationPayload = {
   partner_email: string;
   partner_first_name: string;
@@ -156,6 +162,75 @@ Deno.serve(async (req: Request) => {
 
   const action = typeof body.action === "string" ? body.action.trim() : "";
 
+  if (action === "create_partner") {
+    const partner_first_name =
+      typeof body.partner_first_name === "string" ? body.partner_first_name.trim() : "";
+    const partner_last_name =
+      typeof body.partner_last_name === "string" ? body.partner_last_name.trim() : "";
+    const partner_email_raw =
+      typeof body.partner_email === "string" ? body.partner_email.trim().toLowerCase() : "";
+    let max_calls = 5;
+    if (typeof body.max_calls === "number" && Number.isFinite(body.max_calls)) {
+      max_calls = Math.max(0, Math.floor(body.max_calls));
+    }
+    const notes =
+      typeof body.notes === "string" && body.notes.trim() ? body.notes.trim() : undefined;
+
+    if (!partner_first_name || !partner_last_name || !partner_email_raw) {
+      return json({ error: "partner_first_name, partner_last_name, and partner_email are required." }, 400);
+    }
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(partner_email_raw);
+    if (!emailOk) {
+      return json({ error: "Invalid email address." }, 400);
+    }
+
+    const { data: dupRow } = await supabase
+      .from("partner_brief_tokens")
+      .select("token")
+      .eq("partner_email", partner_email_raw)
+      .limit(1)
+      .maybeSingle();
+
+    if (dupRow?.token) {
+      return json({ error: "A partner with this email already exists." }, 400);
+    }
+
+    const token = randomHex(8);
+    const expires_at = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const partner_name = `${partner_first_name} ${partner_last_name}`.trim();
+
+    const insertPayload: Record<string, unknown> = {
+      token,
+      partner_first_name,
+      partner_last_name,
+      partner_name,
+      partner_email: partner_email_raw,
+      max_calls,
+      call_count: 0,
+      is_active: true,
+      expires_at,
+    };
+    if (notes) insertPayload.notes = notes;
+
+    const { data: created, error: insErr } = await supabase
+      .from("partner_brief_tokens")
+      .insert(insertPayload)
+      .select("token, partner_first_name, partner_last_name, partner_name, partner_email")
+      .maybeSingle();
+
+    if (insErr) {
+      console.log(LOG_PREFIX, "create_partner insert", insErr.message);
+      return json({ error: insErr.message || "Could not create partner row." }, 500);
+    }
+
+    await logAdminAction(supabase, sessionToken, "create_partner", {
+      brief_token_suffix: token.slice(-8),
+      partner_email_masked: maskEmail(partner_email_raw),
+    });
+
+    return json({ partner: created });
+  }
+
   if (action === "preview") {
     const inv = parseInvitation(body.invitation ?? body);
     if (!inv) {
@@ -193,7 +268,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action !== "send_invitations") {
-    return json({ error: "Unknown action. Use preview or send_invitations." }, 400);
+    return json({ error: "Unknown action. Use preview, send_invitations, or create_partner." }, 400);
   }
 
   const rawList = body.invitations;
