@@ -126,27 +126,41 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  const { data: partnerRow, error: pErr } = await supabase
-    .from("roundtable_partners")
-    .select("id, partner_id, partner_name, partner_timezone, session_id")
-    .eq("brief_token", brief_token)
-    .maybeSingle();
+  const basePartnerColumns =
+    "id, partner_id, partner_name, partner_timezone, session_id";
 
-  if (pErr || !partnerRow?.session_id) {
-    return json({ error: "This link has expired. The team will reach out separately." }, 403);
+  // Prefer most-recent active session for reused brief_token values.
+  const { data: activeRows, error: activeErr } = await supabase
+    .from("roundtable_partners")
+    .select(`${basePartnerColumns}, roundtable_sessions!inner(*)`)
+    .eq("brief_token", brief_token)
+    .in("roundtable_sessions.status", ["open", "lock_pending", "locked"])
+    .order("created_at", { ascending: false, foreignTable: "roundtable_sessions" })
+    .limit(1);
+
+  let partnerRow = activeRows?.[0] ?? null;
+  let session = (partnerRow?.roundtable_sessions as Record<string, unknown> | undefined) ?? null;
+
+  if ((activeErr || !partnerRow || !session)) {
+    // Fallback: most-recent session regardless of status so UI can show proper closed state.
+    const { data: fallbackRows, error: fallbackErr } = await supabase
+      .from("roundtable_partners")
+      .select(`${basePartnerColumns}, roundtable_sessions!inner(*)`)
+      .eq("brief_token", brief_token)
+      .order("created_at", { ascending: false, foreignTable: "roundtable_sessions" })
+      .limit(1);
+
+    if (fallbackErr || !fallbackRows?.length) {
+      return json({ error: "This link has expired. The team will reach out separately." }, 403);
+    }
+
+    partnerRow = fallbackRows[0];
+    session = (partnerRow.roundtable_sessions as Record<string, unknown> | undefined) ?? null;
   }
 
-  const { data: sess, error: sErr } = await supabase
-    .from("roundtable_sessions")
-    .select("*")
-    .eq("id", partnerRow.session_id)
-    .maybeSingle();
-
-  if (sErr || !sess) {
+  if (!partnerRow?.session_id || !session) {
     return json({ error: "This scheduling window is no longer active." }, 400);
   }
-
-  const session = sess as Record<string, unknown>;
   const sid = partnerRow.session_id as string;
   const status = String(session.status ?? "");
   const expiresAt = session.expires_at ? new Date(String(session.expires_at)) : null;

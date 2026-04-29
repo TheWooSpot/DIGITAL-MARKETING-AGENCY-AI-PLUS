@@ -53,6 +53,14 @@ function extractErrorMessage(e: unknown): string {
 function toUserFriendlyMessage(msg: unknown): string {
   const str = typeof msg === "string" ? msg : String(msg ?? "");
   const lower = str.toLowerCase();
+  if (
+    lower.includes("meeting has ended") ||
+    lower.includes("\"type\":\"ejected\"") ||
+    lower.includes("\"daily-error\"") ||
+    (lower.includes("daily") && lower.includes("ejected"))
+  ) {
+    return "The conversation has ended. Refresh the page to start over with Mr. Mackleberry, or use the calendar below to schedule a working session.";
+  }
   if (lower.includes("microphone") || lower.includes("permission") || lower.includes("not-allowed")) {
     return "Microphone access denied. Please allow microphone permission in your browser and try again.";
   }
