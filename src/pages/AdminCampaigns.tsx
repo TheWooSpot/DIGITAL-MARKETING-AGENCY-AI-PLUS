@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
+import { clearAdminSession, getAdminSessionToken } from "@/lib/adminSession";
 import {
   CAMPAIGN_SURFACE_OPTIONS,
   type CampaignSurface,
@@ -45,6 +46,10 @@ async function postAdminJson<T>(body: Record<string, unknown>): Promise<{
   error?: string;
   status: number;
 }> {
+  const sessionToken = getAdminSessionToken();
+  if (!sessionToken) {
+    return { error: "Not signed in.", status: 401 };
+  }
   const url = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) {
@@ -56,6 +61,7 @@ async function postAdminJson<T>(body: Record<string, unknown>): Promise<{
       "Content-Type": "application/json",
       apikey: key,
       Authorization: `Bearer ${key}`,
+      "X-Admin-Session": sessionToken,
     },
     body: JSON.stringify(body),
   });
@@ -74,8 +80,6 @@ async function postAdminJson<T>(body: Record<string, unknown>): Promise<{
 }
 
 function AdminCampaignsInner() {
-  const adminPhrase = (import.meta.env.VITE_ADMIN_ACCESS_PHRASE ?? "").trim();
-
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [partners, setPartners] = useState<PartnerRow[]>([]);
@@ -203,15 +207,23 @@ function AdminCampaignsInner() {
     return partners.find((p) => p.token === previewRecipientToken) ?? null;
   }, [partners, previewRecipientToken]);
 
+  const handleLogout = async () => {
+    if (!supabase) return;
+    const t = getAdminSessionToken();
+    if (t) {
+      await supabase.rpc("admin_logout", { p_token: t });
+    }
+    clearAdminSession();
+    window.location.assign("/admin/campaigns");
+  };
+
   const runPreview = async () => {
-    if (!previewPartner || !adminPhrase) return;
+    if (!previewPartner || !getAdminSessionToken()) return;
     setPreviewLoading(true);
     setPreviewError(null);
     const surfaces = Array.from(selectedSurfaces);
-    const include_roundtable = surfaces.includes("roundtable_calendar");
     const { data, error, status } = await postAdminJson<{ html?: string }>({
       action: "preview",
-      admin_phrase: adminPhrase,
       invitation: {
         partner_email: previewPartner.partner_email,
         partner_first_name: previewPartner.partner_first_name,
@@ -225,9 +237,7 @@ function AdminCampaignsInner() {
     setPreviewLoading(false);
     if (error || !data?.html) {
       setPreviewError(
-        status === 401
-          ? "Preview was denied (check ADMIN_ACCESS_PHRASE matches your phrase on the server)."
-          : error ?? "Preview failed.",
+        status === 401 ? "Session expired or unauthorized. Sign in again." : error ?? "Preview failed.",
       );
       setPreviewHtml(null);
       return;
@@ -237,7 +247,7 @@ function AdminCampaignsInner() {
   };
 
   const runSend = async () => {
-    if (!supabase || !adminPhrase) return;
+    if (!supabase || !getAdminSessionToken()) return;
     const tokens = Array.from(selectedTokens);
     const surfaces = Array.from(selectedSurfaces);
     if (tokens.length === 0 || surfaces.length === 0) {
@@ -293,7 +303,6 @@ function AdminCampaignsInner() {
         results?: Array<{ success: boolean; http_status?: number; error?: string; brief_token_suffix: string }>;
       }>({
         action: "send_invitations",
-        admin_phrase: adminPhrase,
         invitations,
       });
 
@@ -323,7 +332,7 @@ function AdminCampaignsInner() {
     parts.push(emailSummary);
     if (anyEmail401) {
       parts.push(
-        "Grants were saved, but the email step was not authorized (401). Check the service role / edge function configuration.",
+        "Grants were saved, but the email step failed authorization (401). Sign in again or check session.",
       );
     }
     setSendMessage(parts.join(" "));
@@ -352,17 +361,27 @@ function AdminCampaignsInner() {
   return (
     <div className="admin-campaign-shell ac-sans min-h-screen px-4 py-10">
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
-        <header>
-          <p className="text-xs uppercase tracking-[0.28em] text-[hsl(var(--ac-gold))]">
-            AI Readiness Labs
-          </p>
-          <h1 className="mt-2 font-serif text-3xl font-normal text-[hsl(var(--ac-heading))]">
-            Campaigns (lite admin)
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-[hsl(var(--ac-muted))]">
-            Select partners and surfaces, preview the email for the first selected recipient, then send. Grants are
-            written first; email runs only when Partner Brief or Roundtable Calendar is included.
-          </p>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-[hsl(var(--ac-gold))]">
+              AI Readiness Labs
+            </p>
+            <h1 className="mt-2 font-serif text-3xl font-normal text-[hsl(var(--ac-heading))]">
+              Campaigns (lite admin)
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-[hsl(var(--ac-muted))]">
+              Select partners and surfaces, preview the email for the first selected recipient, then send. Grants are
+              written first; email runs only when Partner Brief or Roundtable Calendar is included.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 border-[hsl(var(--ac-border))] text-[hsl(var(--ac-muted))] hover:text-[hsl(var(--ac-text))]"
+            onClick={() => void handleLogout()}
+          >
+            Log out
+          </Button>
         </header>
 
         {/* Recipients */}
@@ -544,9 +563,8 @@ function AdminCampaignsInner() {
 }
 
 export default function AdminCampaigns() {
-  const phrase = (import.meta.env.VITE_ADMIN_ACCESS_PHRASE ?? "").trim();
   return (
-    <AdminAccessGate expectedPhrase={phrase}>
+    <AdminAccessGate>
       <AdminCampaignsInner />
     </AdminAccessGate>
   );

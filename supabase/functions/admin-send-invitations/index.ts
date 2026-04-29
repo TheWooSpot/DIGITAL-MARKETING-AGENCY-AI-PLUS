@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 import { buildBriefInvitationHtml } from "../_shared/build-brief-invitation-html.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -11,10 +12,29 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function checkPhrase(body: Record<string, unknown>): boolean {
-  const phrase = typeof body.admin_phrase === "string" ? body.admin_phrase.trim() : "";
-  const expected = (Deno.env.get("ADMIN_ACCESS_PHRASE") ?? "").trim();
-  return Boolean(expected && phrase === expected);
+async function validateAdminSession(sessionToken: string): Promise<boolean> {
+  const trimmed = sessionToken.trim();
+  if (!trimmed) return false;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!supabaseUrl || !serviceKey) return false;
+  const supabase = createClient(supabaseUrl, serviceKey);
+  const { data, error } = await supabase.rpc("admin_validate_session", {
+    p_token: trimmed,
+  });
+  if (error) {
+    console.log(LOG_PREFIX, "admin_validate_session", error.message);
+    return false;
+  }
+  return data === true;
+}
+
+function readAdminSessionHeader(req: Request): string {
+  return (
+    req.headers.get("X-Admin-Session") ??
+    req.headers.get("x-admin-session") ??
+    ""
+  ).trim();
 }
 
 type InvitationPayload = {
@@ -78,15 +98,17 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
+  const sessionToken = readAdminSessionHeader(req);
+  const sessionOk = await validateAdminSession(sessionToken);
+  if (!sessionOk) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
   } catch {
     return json({ error: "Invalid JSON body." }, 400);
-  }
-
-  if (!checkPhrase(body)) {
-    return json({ error: "Unauthorized" }, 401);
   }
 
   const action = typeof body.action === "string" ? body.action.trim() : "";
