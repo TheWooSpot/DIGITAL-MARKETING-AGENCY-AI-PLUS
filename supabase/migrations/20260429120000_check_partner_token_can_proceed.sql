@@ -14,6 +14,9 @@ CREATE INDEX IF NOT EXISTS idx_share_grants_partner_surface_active
   ON public.share_grants (partner_token, surface)
   WHERE revoked_at IS NULL;
 
+-- Recreate if an older version used a different OUT shape.
+DROP FUNCTION IF EXISTS public.check_partner_token_can_proceed(text, text);
+
 CREATE OR REPLACE FUNCTION public.check_partner_token_can_proceed(p_token text, p_surface text)
 RETURNS TABLE (can_proceed boolean, reason text)
 LANGUAGE plpgsql
