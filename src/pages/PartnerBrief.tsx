@@ -255,10 +255,15 @@ const PB_INIT = `
     if (typeof window._pbOnUnlock === 'function') window._pbOnUnlock();
 
     if (data) {
-      var r = Math.max(0, data.max_calls - data.call_count);
       var badge = document.getElementById('pb-badge');
       if (badge) {
-        badge.textContent = r >= 9000 ? 'unlimited access' : r + ' conversation' + (r === 1 ? '' : 's') + ' remaining';
+        var unlimited = data.is_admin_token === true || data.remaining_calls == null;
+        if (unlimited) {
+          badge.textContent = 'unlimited access';
+        } else {
+          var rc = typeof data.remaining_calls === 'number' ? data.remaining_calls : 0;
+          badge.textContent = rc + ' conversation' + (rc === 1 ? '' : 's') + ' remaining';
+        }
         badge.style.display = 'block';
       }
     }
@@ -272,27 +277,26 @@ const PB_INIT = `
         return;
       }
       var sb = supaLib.createClient(SUPA_URL, SUPA_KEY);
-      var result = await sb.from('partner_brief_tokens')
-        .select('id,call_count,max_calls,partner_name,partner_first_name,expires_at,is_active')
-        .eq('token', token)
-        .maybeSingle();
+      var result = await sb.rpc('validate_partner_token', { p_token: token });
+      var rpcErr = result.error;
+      var raw = result.data;
 
-      var data = result.data;
-      var error = result.error;
+      if (rpcErr) {
+        console.error('validate_partner_token:', rpcErr);
+        showErr('Could not verify this link. Try again.');
+        return;
+      }
 
-      if (error || !data) {
+      var data = Array.isArray(raw) ? raw[0] : raw;
+      if (!data || typeof data !== 'object') {
         showErr('That access link is not valid or has expired. Please contact the team.');
         return;
       }
-      if (!data.is_active) {
-        showErr('This access is no longer active.');
+      if (data.valid !== true) {
+        showErr('That access link is not valid or has expired. Please contact the team.');
         return;
       }
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        showErr('This access link has expired.');
-        return;
-      }
-      if (data.call_count >= data.max_calls) {
+      if (data.at_limit === true) {
         showErr('This access link has reached its usage limit. Please contact the team.');
         return;
       }
