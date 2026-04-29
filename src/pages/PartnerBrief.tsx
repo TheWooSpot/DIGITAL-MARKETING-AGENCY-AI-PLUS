@@ -249,7 +249,7 @@ const PB_INIT = `
 
     window._pbPartnerName = data && (data.partner_name || data.partner_first_name) ? String(data.partner_name || data.partner_first_name).trim() : '';
     window._pbPartnerFirstName = data && data.partner_first_name ? String(data.partner_first_name).trim() : '';
-    window._pbRoundtableActive = data && data.include_calendar ? 'true' : 'false';
+    window._pbRoundtableActive = data && data.roundtable_active ? 'true' : 'false';
 
     // Notify React to mount the Vapi voice button into #pb-voice-mount
     if (typeof window._pbOnUnlock === 'function') window._pbOnUnlock();
@@ -273,7 +273,7 @@ const PB_INIT = `
       }
       var sb = supaLib.createClient(SUPA_URL, SUPA_KEY);
       var result = await sb.from('partner_brief_tokens')
-        .select('id,call_count,max_calls,partner_name,partner_first_name,include_calendar,expires_at,is_active')
+        .select('id,call_count,max_calls,partner_name,partner_first_name,expires_at,is_active')
         .eq('token', token)
         .maybeSingle();
 
@@ -296,6 +296,19 @@ const PB_INIT = `
         showErr('This access link has reached its usage limit. Please contact the team.');
         return;
       }
+      var roundtableActive = false;
+      try {
+        var portalRes = await fetch(
+          SUPA_URL + '/functions/v1/portal-load?token=' + encodeURIComponent(token) + '&brief_token=' + encodeURIComponent(token)
+        );
+        if (portalRes.ok) {
+          var portalData = await portalRes.json();
+          roundtableActive = !!(portalData && portalData.roundtable_active === true);
+        }
+      } catch (_) {
+        roundtableActive = false;
+      }
+      data.roundtable_active = roundtableActive;
       unlockContent(data);
     } catch (e) {
       console.error('Token validation error:', e);

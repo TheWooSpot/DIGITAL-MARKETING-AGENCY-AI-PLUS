@@ -11,7 +11,21 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url)
-    const token = url.searchParams.get('token')
+    const briefToken = url.searchParams.get('brief_token')?.trim() || null
+
+    let bodyToken: string | null = null
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json()
+        if (body && typeof body.token === 'string') {
+          bodyToken = body.token.trim()
+        }
+      } catch (_) {
+        // Keep backward compatibility: allow token through query even when body is empty/non-JSON.
+      }
+    }
+
+    const token = url.searchParams.get('token')?.trim() || bodyToken
 
     if (!token) {
       return new Response(JSON.stringify({ error: 'Missing portal token' }), {
@@ -80,7 +94,46 @@ serve(async (req) => {
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
 
-    return new Response(JSON.stringify({
+    let roundtableSessionId: string | null = null
+    let roundtableSessionExpiresAt: string | null = null
+    let includeCalendar: boolean | null = null
+
+    if (briefToken) {
+      try {
+        const { data: partnerBrief } = await supabase
+          .from('partner_brief_tokens')
+          .select('token')
+          .eq('token', briefToken)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (partnerBrief?.token) {
+          const { data: roundtablePartners } = await supabase
+            .from('roundtable_partners')
+            .select('session_id, roundtable_sessions!inner(id, status, created_at, expires_at, include_calendar)')
+            .eq('brief_token', briefToken)
+            .in('roundtable_sessions.status', ['open', 'lock_pending', 'locked'])
+            .order('created_at', { ascending: false, foreignTable: 'roundtable_sessions' })
+            .limit(1)
+
+          if (roundtablePartners?.length) {
+            const best = roundtablePartners[0] as {
+              roundtable_sessions?: { id?: string; expires_at?: string | null; include_calendar?: boolean | null }
+            }
+            const session = best.roundtable_sessions
+            if (session?.id) {
+              roundtableSessionId = session.id
+              roundtableSessionExpiresAt = session.expires_at ?? null
+              includeCalendar = typeof session.include_calendar === 'boolean' ? session.include_calendar : null
+            }
+          }
+        }
+      } catch (_) {
+        // Intentionally non-blocking for backward compatibility.
+      }
+    }
+
+    const responseBody: Record<string, unknown> = {
       valid: true,
       prospect: {
         company: prospect.company,
@@ -94,7 +147,16 @@ serve(async (req) => {
       },
       faq: faq || [],
       content: content || [],
-    }), {
+    }
+
+    if (briefToken) {
+      responseBody.roundtable_session_id = roundtableSessionId
+      responseBody.roundtable_session_expires_at = roundtableSessionExpiresAt
+      responseBody.include_calendar = includeCalendar
+      responseBody.roundtable_active = Boolean(roundtableSessionId && includeCalendar === true)
+    }
+
+    return new Response(JSON.stringify(responseBody), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
