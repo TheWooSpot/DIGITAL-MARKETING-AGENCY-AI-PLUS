@@ -296,7 +296,9 @@ const PB_INIT = `
         showErr('That access link is not valid or has expired. Please contact the team.');
         return;
       }
-      if (data.at_limit === true) {
+      // Usage cap is ONLY `at_limit` from validate_partner_token — never infer from remaining_calls / max_calls.
+      // Admin tokens should always have at_limit false from the DB; we never block admins on this path.
+      if (data.at_limit === true && data.is_admin_token !== true) {
         showErr('This access link has reached its usage limit. Please contact the team.');
         return;
       }
