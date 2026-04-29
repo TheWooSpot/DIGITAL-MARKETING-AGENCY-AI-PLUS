@@ -41,6 +41,10 @@ function normFirst(s: string): string {
   return s.trim().toLowerCase();
 }
 
+function surfaceLabelForId(id: string): string {
+  return CAMPAIGN_SURFACE_OPTIONS.find((o) => o.id === id)?.label ?? id.replace(/_/g, " ");
+}
+
 async function postAdminJson<T>(body: Record<string, unknown>): Promise<{
   data?: T;
   error?: string;
@@ -88,9 +92,7 @@ function AdminCampaignsInner() {
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
   const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
 
-  const [selectedSurfaces, setSelectedSurfaces] = useState<Set<CampaignSurface>>(
-    new Set(["partner_brief_labs"]),
-  );
+  const [selectedSurfaces, setSelectedSurfaces] = useState<Set<CampaignSurface>>(new Set());
 
   const [emailSubject, setEmailSubject] = useState(DEFAULT_SUBJECT);
   const [briefTopic, setBriefTopic] = useState(DEFAULT_BRIEF_TOPIC);
@@ -423,18 +425,10 @@ function AdminCampaignsInner() {
                       <div className="flex-1">
                         <div className="text-sm font-medium text-[hsl(var(--ac-text))]">{displayName(p)}</div>
                         <div className="text-xs text-[hsl(var(--ac-muted))]">{p.partner_email}</div>
-                        {pills.length > 0 ? (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {pills.map((s) => (
-                              <span
-                                key={s}
-                                className="rounded-full border border-[hsl(var(--ac-gold))]/40 bg-[hsl(var(--ac-bg))] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[hsl(var(--ac-gold))]"
-                              >
-                                {s.replace(/_/g, " ")}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                        <p className="mt-1 text-xs italic text-[hsl(var(--ac-muted))]/85">
+                          Currently has:{" "}
+                          {pills.length > 0 ? pills.map(surfaceLabelForId).join(", ") : "none"}
+                        </p>
                       </div>
                     </label>
                   </li>
@@ -605,5 +599,5 @@ export default function AdminCampaigns() {
     return <AdminLoginForm onSuccess={() => setGate("authed")} />;
   }
 
-  return <AdminCampaignsInner onLogout={() => setGate("login")} />;
+  return <AdminCampaignsInner />;
 }
