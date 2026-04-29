@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminAccessGate } from "@/components/AdminAccessGate";
+import { AdminLoginForm } from "@/components/AdminLoginForm";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -562,10 +562,48 @@ function AdminCampaignsInner() {
   );
 }
 
+type AdminGate = "checking" | "login" | "authed";
+
 export default function AdminCampaigns() {
-  return (
-    <AdminAccessGate>
-      <AdminCampaignsInner />
-    </AdminAccessGate>
-  );
+  const [gate, setGate] = useState<AdminGate>("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!supabase) {
+        if (!cancelled) setGate("login");
+        return;
+      }
+      const token = getAdminSessionToken();
+      if (!token) {
+        if (!cancelled) setGate("login");
+        return;
+      }
+      const { data, error } = await supabase.rpc("admin_validate_session", { p_token: token });
+      if (cancelled) return;
+      if (error || data !== true) {
+        clearAdminSession();
+        setGate("login");
+        return;
+      }
+      setGate("authed");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (gate === "checking") {
+    return (
+      <div className="admin-campaign-shell ac-sans px-4 py-16 text-center text-sm text-[hsl(var(--ac-muted))]">
+        Checking session…
+      </div>
+    );
+  }
+
+  if (gate === "login") {
+    return <AdminLoginForm onSuccess={() => setGate("authed")} />;
+  }
+
+  return <AdminCampaignsInner onLogout={() => setGate("login")} />;
 }

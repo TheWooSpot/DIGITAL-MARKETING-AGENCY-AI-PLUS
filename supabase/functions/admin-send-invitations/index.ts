@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { buildBriefInvitationHtml } from "../_shared/build-brief-invitation-html.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -12,13 +12,19 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-async function validateAdminSession(sessionToken: string): Promise<boolean> {
+function getServiceSupabase(): SupabaseClient | null {
+  const supabaseUrl = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!supabaseUrl || !serviceKey) return null;
+  return createClient(supabaseUrl, serviceKey);
+}
+
+async function validateAdminSession(
+  supabase: SupabaseClient,
+  sessionToken: string,
+): Promise<boolean> {
   const trimmed = sessionToken.trim();
   if (!trimmed) return false;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!supabaseUrl || !serviceKey) return false;
-  const supabase = createClient(supabaseUrl, serviceKey);
   const { data, error } = await supabase.rpc("admin_validate_session", {
     p_token: trimmed,
   });
@@ -29,12 +35,39 @@ async function validateAdminSession(sessionToken: string): Promise<boolean> {
   return data === true;
 }
 
+async function logAdminAction(
+  supabase: SupabaseClient,
+  sessionToken: string,
+  action: string,
+  details: Record<string, unknown>,
+  result: string = "success",
+  errorMessage: string | null = null,
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_log_action", {
+    p_token: sessionToken.trim(),
+    p_action: action,
+    p_details: details,
+    p_result: result,
+    p_error_message: errorMessage,
+    p_ip_hint: null,
+  });
+  if (error) {
+    console.log(LOG_PREFIX, "admin_log_action", error.message);
+  }
+}
+
 function readAdminSessionHeader(req: Request): string {
   return (
     req.headers.get("X-Admin-Session") ??
     req.headers.get("x-admin-session") ??
     ""
   ).trim();
+}
+
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  return `***${email.slice(at)}`;
 }
 
 type InvitationPayload = {
@@ -99,9 +132,19 @@ Deno.serve(async (req: Request) => {
   }
 
   const sessionToken = readAdminSessionHeader(req);
-  const sessionOk = await validateAdminSession(sessionToken);
+  if (!sessionToken) {
+    return json({ ok: false, error: "No session token" }, 401);
+  }
+
+  const supabase = getServiceSupabase();
+  if (!supabase) {
+    console.log(LOG_PREFIX, "missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    return json({ error: "Server configuration error." }, 500);
+  }
+
+  const sessionOk = await validateAdminSession(supabase, sessionToken);
   if (!sessionOk) {
-    return json({ error: "Unauthorized" }, 401);
+    return json({ ok: false, error: "Session expired or invalid" }, 401);
   }
 
   let body: Record<string, unknown>;
@@ -117,7 +160,10 @@ Deno.serve(async (req: Request) => {
     const inv = parseInvitation(body.invitation ?? body);
     if (!inv) {
       return json(
-        { error: "Invalid preview payload: need partner_email, partner_first_name, brief_token, brief_topic." },
+        {
+          error:
+            "Invalid preview payload: need partner_email, partner_first_name, brief_token, brief_topic.",
+        },
         400,
       );
     }
@@ -134,6 +180,15 @@ Deno.serve(async (req: Request) => {
       custom_intro: inv.custom_intro,
       surfaces: inv.surfaces,
     });
+
+    await logAdminAction(supabase, sessionToken, "preview", {
+      brief_token_suffix: inv.brief_token.slice(-8),
+      partner_email_masked: maskEmail(inv.partner_email),
+      surfaces: inv.surfaces ?? [],
+      consideration_hours: inv.consideration_hours ?? 96,
+      brief_topic: inv.brief_topic,
+    });
+
     return json({ html });
   }
 
@@ -149,7 +204,7 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!supabaseUrl || !serviceKey) {
-    console.log(LOG_PREFIX, "missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    console.log(LOG_PREFIX, "missing env for send-brief-invitation fetch");
     return json({ error: "Server configuration error." }, 500);
   }
 
@@ -232,6 +287,17 @@ Deno.serve(async (req: Request) => {
       });
     }
   }
+
+  const okCount = results.filter((r) => r.success).length;
+  const failCount = results.length - okCount;
+  await logAdminAction(supabase, sessionToken, "send_invitations", {
+    invitation_count: rawList.length,
+    results_summary: { success: okCount, failed: failCount },
+    recipients_masked: results.map((r) => ({
+      brief_token_suffix: r.brief_token_suffix,
+      success: r.success,
+    })),
+  });
 
   return json({ results });
 });

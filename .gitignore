@@ -45,3 +45,10 @@ docs/claude to vapi build.txt
 .env*.local
 
 secrets-tracker.md
+
+# Supabase MCP deploy scratch (local only)
+invoke-args-only.json
+mcp-deploy-bundle.json
+deploy-payload.json
+bundle-one-line.txt
+full-out.json
