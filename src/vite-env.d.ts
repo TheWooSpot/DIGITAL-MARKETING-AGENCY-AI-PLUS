@@ -36,6 +36,8 @@ interface ImportMetaEnv {
   readonly VITE_AI_IQ_DISCOVERY_CALENDAR_URL?: string;
   /** Partner brief gate (/partner-brief). Case-insensitive match. Default scaffold: PARTNER */
   readonly VITE_PARTNER_BRIEF_ACCESS_PHRASE?: string;
+  /** Lite admin (/admin/campaigns). Must match Supabase secret `ADMIN_ACCESS_PHRASE` for server actions. */
+  readonly VITE_ADMIN_ACCESS_PHRASE?: string;
   /** Supabase table for `?token=` partner brief access rows (default: partner_brief_tokens). */
   readonly VITE_PARTNER_BRIEF_SUPABASE_TABLE?: string;
   /** Column matched against the URL `token` query param (default: token). */

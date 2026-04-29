@@ -1687,6 +1687,31 @@ All colors MUST be HSL.
   }
 }
 
+/* Lite admin campaigns — /admin/campaigns (dark shell, gold accent) */
+@layer components {
+  .admin-campaign-shell {
+    --ac-bg: 220 36% 4%;
+    --ac-panel: 220 30% 8%;
+    --ac-gold: 42 50% 51%;
+    --ac-heading: 210 20% 98%;
+    --ac-text: 210 15% 86%;
+    --ac-muted: 215 14% 60%;
+    --ac-border: 220 24% 18%;
+    background-color: hsl(var(--ac-bg));
+    color: hsl(var(--ac-text));
+  }
+
+  .admin-campaign-shell .font-serif,
+  .admin-campaign-shell h1,
+  .admin-campaign-shell h2 {
+    font-family: Georgia, "Times New Roman", Times, serif;
+  }
+
+  .admin-campaign-shell.ac-sans {
+    font-family: Arial, Helvetica, Verdana, system-ui, sans-serif;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
