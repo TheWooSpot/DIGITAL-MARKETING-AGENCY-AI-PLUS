@@ -1782,6 +1782,22 @@ All colors MUST be HSL.
     border: 1px solid var(--ac-gold-hex);
     color: var(--ac-gold-hex);
   }
+
+  @keyframes cc-hub-pulse {
+    0%,
+    100% {
+      filter: brightness(1);
+      text-shadow: 0 0 0 rgba(201, 153, 58, 0);
+    }
+    50% {
+      filter: brightness(1.06);
+      text-shadow: 0 0 18px rgba(201, 153, 58, 0.22);
+    }
+  }
+
+  .cc-hub-pulse {
+    animation: cc-hub-pulse 2.8s ease-in-out infinite;
+  }
 }
 
 @media print {

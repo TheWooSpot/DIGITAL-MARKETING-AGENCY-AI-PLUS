@@ -31,6 +31,7 @@ import AdResponsePage from "./pages/AdResponsePage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import PortalPage from "./pages/PortalPage";
 import AdminCampaigns from "./pages/AdminCampaigns";
+import AdminCommandCenter from "./pages/AdminCommandCenter";
 
 const queryClient = new QueryClient();
 const isProduction = import.meta.env.VITE_SITE_ENV === 'production';
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/portal/:token" element={<PortalPage />} />
               <Route path="/admin/campaigns" element={<AdminCampaigns />} />
+              <Route path="/admin/command-center" element={<AdminCommandCenter />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

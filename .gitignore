@@ -52,3 +52,6 @@ mcp-deploy-bundle.json
 deploy-payload.json
 bundle-one-line.txt
 full-out.json
+
+# Generated MCP deploy payloads (regenerate with scripts/build-deploy-cc-args.mjs)
+deploy/*.json
