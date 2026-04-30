@@ -1710,6 +1710,78 @@ All colors MUST be HSL.
   .admin-campaign-shell.ac-sans {
     font-family: Arial, Helvetica, Verdana, system-ui, sans-serif;
   }
+
+  /* Card stack — /admin/campaigns partner rows (hex match brand spec) */
+  .admin-campaign-shell {
+    --ac-card-surface: #0d1018;
+    --ac-card-deep: #11141d;
+    --ac-border-hex: #1f2330;
+    --ac-border-hot: #2a2f3e;
+    --ac-gold-hex: #c9993a;
+  }
+
+  .ac-partner-card {
+    background: var(--ac-card-surface);
+    border: 1px solid var(--ac-border-hex);
+  }
+
+  .ac-partner-card:hover {
+    border-color: var(--ac-border-hot);
+  }
+
+  .ac-partner-card--checked {
+    border-color: var(--ac-gold-hex);
+    background: var(--ac-card-deep);
+    box-shadow: 0 0 14px rgba(201, 153, 58, 0.18);
+  }
+
+  .ac-partner-check {
+    display: flex;
+    align-items: flex-start;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .ac-partner-check__box {
+    display: block;
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid var(--ac-border-hot);
+    border-radius: 2px;
+    background: var(--ac-card-surface);
+    position: relative;
+  }
+
+  .ac-partner-check__box[data-checked="true"] {
+    border-color: var(--ac-gold-hex);
+    background: rgba(201, 153, 58, 0.12);
+  }
+
+  .ac-partner-check__box[data-checked="true"]::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid var(--ac-gold-hex);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .ac-surface-chip--off {
+    background: #11141d;
+    border: 1px solid var(--ac-border-hex);
+    color: #9ca3af;
+  }
+
+  .ac-surface-chip--on {
+    background: rgba(201, 153, 58, 0.12);
+    border: 1px solid var(--ac-gold-hex);
+    color: var(--ac-gold-hex);
+  }
 }
 
 @media print {

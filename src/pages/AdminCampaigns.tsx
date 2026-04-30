@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
+import { PartnerCampaignCard } from "@/components/admin/PartnerCampaignCard";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { clearAdminSession, getAdminSessionToken } from "@/lib/adminSession";
-import { CAMPAIGN_SURFACE_OPTIONS, type CampaignSurface } from "@/lib/adminCampaignSurfaces";
+import { campaignNeedsEmail, type CampaignSurface } from "@/lib/adminCampaignSurfaces";
 import { toast } from "sonner";
 
 const DEFAULT_SUBJECT = "AI Readiness Labs — Partner Brief";
@@ -21,6 +21,8 @@ type PartnerRow = {
   partner_last_name: string | null;
   partner_name: string | null;
   partner_email: string;
+  call_count?: number | null;
+  created_at?: string | null;
 };
 
 const SAVED_GROUP_1_FIRST = new Set(["chris", "will", "eugene"]);
@@ -38,8 +40,20 @@ function normFirst(s: string): string {
   return s.trim().toLowerCase();
 }
 
-function surfaceLabelForId(id: string): string {
-  return CAMPAIGN_SURFACE_OPTIONS.find((o) => o.id === id)?.label ?? id.replace(/_/g, " ");
+function maskEmailClient(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  return `***${email.slice(at)}`;
+}
+
+function groupLabelForPartner(firstName: string): string {
+  const f = normFirst(firstName);
+  const in1 = SAVED_GROUP_1_FIRST.has(f);
+  const in2 = SAVED_GROUP_2_FIRST.has(f);
+  if (in1 && in2) return "Group 1 & 2";
+  if (in1) return "Group 1";
+  if (in2) return "Group 2";
+  return "—";
 }
 
 async function postAdminJson<T>(body: Record<string, unknown>): Promise<{
@@ -89,7 +103,8 @@ function AdminCampaignsInner() {
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
   const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
 
-  const [selectedSurfaces, setSelectedSurfaces] = useState<Set<CampaignSurface>>(new Set());
+  /** Per-partner surface picks for the next send (not global). */
+  const [surfaceSelections, setSurfaceSelections] = useState<Record<string, CampaignSurface[]>>({});
 
   const [emailSubject, setEmailSubject] = useState(DEFAULT_SUBJECT);
   const [briefTopic, setBriefTopic] = useState(DEFAULT_BRIEF_TOPIC);
@@ -122,7 +137,9 @@ function AdminCampaignsInner() {
     setLoadError(null);
     const { data: pRows, error: pErr } = await supabase
       .from("partner_brief_tokens")
-      .select("token, partner_first_name, partner_last_name, partner_name, partner_email, is_active")
+      .select(
+        "token, partner_first_name, partner_last_name, partner_name, partner_email, is_active, call_count, created_at",
+      )
       .eq("is_active", true)
       .not("partner_first_name", "is", null);
 
@@ -165,6 +182,20 @@ function AdminCampaignsInner() {
     void refresh();
   }, [refresh]);
 
+  /** Keep per-partner surface maps aligned with loaded partner rows (preserve selections). */
+  useEffect(() => {
+    setSurfaceSelections((prev) => {
+      const next = { ...prev };
+      for (const p of partners) {
+        if (!(p.token in next)) next[p.token] = [];
+      }
+      for (const k of Object.keys(next)) {
+        if (!partners.some((p) => p.token === k)) delete next[k];
+      }
+      return next;
+    });
+  }, [partners]);
+
   const togglePartner = (token: string) => {
     setSelectedTokens((prev) => {
       const next = new Set(prev);
@@ -193,14 +224,14 @@ function AdminCampaignsInner() {
     setSelectionOrder(order);
   };
 
-  const toggleSurface = (id: CampaignSurface) => {
-    setSelectedSurfaces((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+  const toggleSurfaceForPartner = useCallback((token: string, id: CampaignSurface) => {
+    setSurfaceSelections((prev) => {
+      const cur = new Set(prev[token] ?? []);
+      if (cur.has(id)) cur.delete(id);
+      else cur.add(id);
+      return { ...prev, [token]: Array.from(cur) };
     });
-  };
+  }, []);
 
   const previewRecipientToken = useMemo(() => {
     for (const t of selectionOrder) {
@@ -213,6 +244,19 @@ function AdminCampaignsInner() {
     if (!previewRecipientToken) return null;
     return partners.find((p) => p.token === previewRecipientToken) ?? null;
   }, [partners, previewRecipientToken]);
+
+  const previewSurfaceList = previewRecipientToken
+    ? surfaceSelections[previewRecipientToken] ?? []
+    : [];
+
+  const canSend = useMemo(() => {
+    if (selectedTokens.size === 0) return false;
+    for (const t of selectedTokens) {
+      const arr = surfaceSelections[t];
+      if (!arr || arr.length === 0) return false;
+    }
+    return true;
+  }, [selectedTokens, surfaceSelections]);
 
   const submitNewPartner = async () => {
     const fn = newFirst.trim();
@@ -272,7 +316,12 @@ function AdminCampaignsInner() {
     if (!previewPartner || !getAdminSessionToken()) return;
     setPreviewLoading(true);
     setPreviewError(null);
-    const surfaces = Array.from(selectedSurfaces);
+    const surfaces = previewSurfaceList;
+    if (surfaces.length === 0) {
+      setPreviewLoading(false);
+      setPreviewError("Choose at least one surface on this partner’s card to preview.");
+      return;
+    }
     const { data, error, status } = await postAdminJson<{ html?: string }>({
       action: "preview",
       invitation: {
@@ -300,9 +349,12 @@ function AdminCampaignsInner() {
   const runSend = async () => {
     if (!supabase || !getAdminSessionToken()) return;
     const tokens = Array.from(selectedTokens);
-    const surfaces = Array.from(selectedSurfaces);
-    if (tokens.length === 0 || surfaces.length === 0) {
-      setSendMessage("Select at least one recipient and one surface.");
+    if (tokens.length === 0) {
+      setSendMessage("Select at least one partner.");
+      return;
+    }
+    if (!canSend) {
+      setSendMessage("Each checked partner needs at least one surface selected on their card.");
       return;
     }
 
@@ -318,7 +370,7 @@ function AdminCampaignsInner() {
           partner_first_name: p.partner_first_name,
           brief_token: p.token,
           brief_topic: briefTopic.trim() || DEFAULT_BRIEF_TOPIC,
-          surfaces,
+          surfaces: surfaceSelections[p.token] ?? [],
           email_subject: emailSubject.trim() || DEFAULT_SUBJECT,
           custom_intro: customIntro.trim() || undefined,
           consideration_hours: considerationHours,
@@ -353,9 +405,7 @@ function AdminCampaignsInner() {
       } else if (data?.results) {
         const failed = data.results.filter((r) => !r.success);
         anyEmail401 = failed.some((r) => r.http_status === 401);
-        const withEmail = surfaces.some(
-          (s) => s === "partner_brief_labs" || s === "roundtable_calendar",
-        );
+        const withEmail = invitations.some((inv) => campaignNeedsEmail(inv.surfaces));
         if (failed.length === 0) {
           const emailed = data.results.filter((r) => r.resend_id);
           emailSummary = withEmail
@@ -411,18 +461,19 @@ function AdminCampaignsInner() {
 
   return (
     <div className="admin-campaign-shell ac-sans min-h-screen px-4 py-10">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 max-[720px]:max-w-full">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-[hsl(var(--ac-gold))]">
               AI Readiness Labs
             </p>
             <h1 className="mt-2 font-serif text-3xl font-normal text-[hsl(var(--ac-heading))]">
-              Campaigns (lite admin)
+              Admin · Campaigns
             </h1>
             <p className="mt-2 max-w-xl text-sm text-[hsl(var(--ac-muted))]">
-              Select partners and surfaces, preview the email for the first selected recipient, then send. Grants are
-              written first; email runs only when Partner Brief or Roundtable Calendar is included.
+              Check partners to include in a send. Each card has its own surface chips — group presets only change who is
+              checked, not surfaces. Preview uses the first checked partner’s surfaces. Grants run first; email sends
+              when Partner Brief or Roundtable is included.
             </p>
           </div>
           <Button
@@ -435,21 +486,9 @@ function AdminCampaignsInner() {
           </Button>
         </header>
 
-        {/* Recipients */}
-        <section className="rounded-lg border border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-panel))] p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="font-serif text-xl text-[hsl(var(--ac-heading))]">Recipients</h2>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="shrink-0 border-[hsl(var(--ac-gold))]/50 text-[hsl(var(--ac-text))]"
-              onClick={() => setAddOpen(true)}
-            >
-              + Add new partner
-            </Button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+        {/* Controls: group presets + add partner */}
+        <section className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               size="sm"
@@ -457,7 +496,7 @@ function AdminCampaignsInner() {
               className="border-[hsl(var(--ac-gold))]/50 text-[hsl(var(--ac-text))]"
               onClick={() => applySavedGroup(1)}
             >
-              Saved group 1 (Chris, Will, Eugene)
+              Group 1
             </Button>
             <Button
               type="button"
@@ -466,63 +505,43 @@ function AdminCampaignsInner() {
               className="border-[hsl(var(--ac-gold))]/50 text-[hsl(var(--ac-text))]"
               onClick={() => applySavedGroup(2)}
             >
-              Saved group 2 (Anthony, Tony, Frank, Eugene)
+              Group 2
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-[hsl(var(--ac-gold))]/50 text-[hsl(var(--ac-text))]"
+              onClick={() => setAddOpen(true)}
+            >
+              Add new partner +
             </Button>
           </div>
-          <ScrollArea className="mt-4 h-[280px] rounded-md border border-[hsl(var(--ac-border))]">
-            <ul className="divide-y divide-[hsl(var(--ac-border))] p-2">
-              {partners.map((p) => {
-                const checked = selectedTokens.has(p.token);
-                const pills = grantsByToken[p.token] ?? [];
-                return (
-                  <li key={p.token} className="flex flex-col gap-2 py-3">
-                    <label className="flex cursor-pointer items-start gap-3">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => togglePartner(p.token)}
-                        className="mt-1 border-[hsl(var(--ac-gold))] data-[state=checked]:bg-[hsl(var(--ac-gold))] data-[state=checked]:text-[hsl(var(--ac-bg))]"
-                      />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-[hsl(var(--ac-text))]">{displayName(p)}</div>
-                        <div className="text-xs text-[hsl(var(--ac-muted))]">{p.partner_email}</div>
-                        <p className="mt-1 text-xs italic text-[hsl(var(--ac-muted))]/85">
-                          Currently has:{" "}
-                          {pills.length > 0 ? pills.map(surfaceLabelForId).join(", ") : "none"}
-                        </p>
-                      </div>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </ScrollArea>
         </section>
 
-        {/* Surfaces */}
-        <section className="rounded-lg border border-[hsl(var(--ac-border))] bg-[hsl(var(--ac-panel))] p-5 shadow-sm">
-          <h2 className="font-serif text-xl text-[hsl(var(--ac-heading))]">Surfaces</h2>
-          <ul className="mt-4 space-y-3">
-            {CAMPAIGN_SURFACE_OPTIONS.map((s) => (
-              <li key={s.id} className="flex items-start gap-3">
-                <Checkbox
-                  id={`surf-${s.id}`}
-                  checked={selectedSurfaces.has(s.id)}
-                  onCheckedChange={() => toggleSurface(s.id)}
-                  className="mt-0.5 border-[hsl(var(--ac-gold))] data-[state=checked]:bg-[hsl(var(--ac-gold))] data-[state=checked]:text-[hsl(var(--ac-bg))]"
-                />
-                <div>
-                  <label htmlFor={`surf-${s.id}`} className="cursor-pointer text-sm text-[hsl(var(--ac-text))]">
-                    {s.label}
-                  </label>
-                  <p className="text-xs text-[hsl(var(--ac-muted))]">
-                    {s.sendsEmailToday
-                      ? "Included in the partner-brief email when you send."
-                      : "Grant only for now — email for this surface is planned later."}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+        {/* Partner cards (stack) */}
+        <section className="flex flex-col gap-4">
+          {partners.map((p) => (
+            <PartnerCampaignCard
+              key={p.token}
+              partner={{
+                token: p.token,
+                partner_first_name: p.partner_first_name,
+                partner_last_name: p.partner_last_name,
+                partner_name: p.partner_name,
+                partner_email: p.partner_email,
+                call_count: p.call_count,
+              }}
+              groupLabel={groupLabelForPartner(p.partner_first_name)}
+              maskedEmail={maskEmailClient(p.partner_email)}
+              grantsActive={grantsByToken[p.token] ?? []}
+              checked={selectedTokens.has(p.token)}
+              selectedSurfaces={new Set(surfaceSelections[p.token] ?? [])}
+              onTogglePartner={() => togglePartner(p.token)}
+              onToggleSurface={(id) => toggleSurfaceForPartner(p.token, id)}
+              showAdminBadge={false}
+            />
+          ))}
         </section>
 
         {/* Composition */}
@@ -570,7 +589,7 @@ function AdminCampaignsInner() {
             <Button
               type="button"
               variant="outline"
-              disabled={!previewPartner || previewLoading}
+              disabled={!previewPartner || previewLoading || previewSurfaceList.length === 0}
               onClick={() => void runPreview()}
               className="border-[hsl(var(--ac-gold))] text-[hsl(var(--ac-gold))]"
             >
@@ -600,7 +619,7 @@ function AdminCampaignsInner() {
 
             <Button
               type="button"
-              disabled={sendBusy || selectedTokens.size === 0 || selectedSurfaces.size === 0}
+              disabled={sendBusy || !canSend}
               onClick={() => void runSend()}
               className="bg-[hsl(var(--ac-gold))] text-[hsl(var(--ac-bg))] hover:bg-[hsl(var(--ac-gold))]/90"
             >
