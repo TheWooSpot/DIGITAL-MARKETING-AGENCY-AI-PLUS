@@ -9,11 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { clearAdminSession, getAdminSessionToken } from "@/lib/adminSession";
-import {
-  CAMPAIGN_SURFACE_OPTIONS,
-  type CampaignSurface,
-  campaignNeedsEmail,
-} from "@/lib/adminCampaignSurfaces";
+import { CAMPAIGN_SURFACE_OPTIONS, type CampaignSurface } from "@/lib/adminCampaignSurfaces";
 import { toast } from "sonner";
 
 const DEFAULT_SUBJECT = "AI Readiness Labs — Partner Brief";
@@ -313,33 +309,7 @@ function AdminCampaignsInner() {
     setSendBusy(true);
     setSendMessage(null);
 
-    let grantFailures = 0;
-    for (const token of tokens) {
-      for (const surface of surfaces) {
-        const { data: existing } = await supabase
-          .from("share_grants")
-          .select("id")
-          .eq("partner_token", token)
-          .eq("surface", surface)
-          .is("revoked_at", null)
-          .maybeSingle();
-
-        if (existing) continue;
-
-        const { error: insErr } = await supabase.from("share_grants").insert({
-          partner_token: token,
-          surface,
-          granted_by: "admin_dashboard",
-        });
-        if (insErr) grantFailures += 1;
-      }
-    }
-
-    const needEmail = campaignNeedsEmail(surfaces);
-    let emailSummary = "";
-    let anyEmail401 = false;
-
-    if (needEmail) {
+    try {
       const invitations = tokens
         .map((t) => partners.find((p) => p.token === t))
         .filter((p): p is PartnerRow => Boolean(p))
@@ -354,44 +324,70 @@ function AdminCampaignsInner() {
           consideration_hours: considerationHours,
         }));
 
-      const { data, error, status } = await postAdminJson<{
-        results?: Array<{ success: boolean; http_status?: number; error?: string; brief_token_suffix: string }>;
-      }>({
+      if (invitations.length === 0) {
+        setSendMessage("No matching partners for the selected recipients. Try refreshing the list.");
+        return;
+      }
+
+      type SendRow = {
+        success: boolean;
+        http_status?: number;
+        error?: string;
+        brief_token_suffix: string;
+        resend_id?: string;
+        surfaces_granted?: string[];
+        surfaces_failed?: Array<{ surface: string; reason: string }>;
+      };
+
+      const { data, error, status } = await postAdminJson<{ results?: SendRow[] }>({
         action: "send_invitations",
         invitations,
       });
 
+      let emailSummary = "";
+      let anyEmail401 = false;
+
       if (status === 401 || error) {
         anyEmail401 = status === 401;
-        emailSummary = error ?? "Email batch failed.";
+        emailSummary = error ?? "Request failed.";
       } else if (data?.results) {
         const failed = data.results.filter((r) => !r.success);
         anyEmail401 = failed.some((r) => r.http_status === 401);
-        emailSummary =
-          failed.length === 0
-            ? `Emails queued: ${data.results.length} partner(s).`
-            : `Some emails failed (${failed.length}/${data.results.length}).`;
+        const withEmail = surfaces.some(
+          (s) => s === "partner_brief_labs" || s === "roundtable_calendar",
+        );
+        if (failed.length === 0) {
+          const emailed = data.results.filter((r) => r.resend_id);
+          emailSummary = withEmail
+            ? emailed.length > 0
+              ? `Sent or queued: ${emailed.length} email(s). Grants: server-confirmed.`
+              : "Grants saved (no Partner Brief / Roundtable in this send — no email)."
+            : `Grants only: ${data.results.length} partner(s) updated.`;
+        } else {
+          const detail = failed
+            .map((r) => {
+              const sf = r.surfaces_failed?.length
+                ? ` — grants: ${r.surfaces_failed.map((f) => `${f.surface} (${f.reason})`).join("; ")}`
+                : "";
+              return `${r.brief_token_suffix}: ${r.error ?? "failed"}${sf}`;
+            })
+            .join(" | ");
+          emailSummary = `Some operations failed (${failed.length}/${data.results.length}). ${detail}`;
+        }
+      } else {
+        emailSummary = "Unexpected response from server.";
       }
-    } else {
-      emailSummary = "No email surfaces selected — grants only.";
-    }
 
-    await refresh();
+      await refresh();
 
-    const parts: string[] = [];
-    if (grantFailures > 0) {
-      parts.push(`${grantFailures} grant insert(s) failed (see console / Supabase).`);
-    } else {
-      parts.push("Grants updated (no duplicate active rows skipped).");
+      const parts: string[] = [emailSummary];
+      if (anyEmail401) {
+        parts.push("Authorization failed (401). Sign in again or check your admin session.");
+      }
+      setSendMessage(parts.join(" "));
+    } finally {
+      setSendBusy(false);
     }
-    parts.push(emailSummary);
-    if (anyEmail401) {
-      parts.push(
-        "Grants were saved, but the email step failed authorization (401). Sign in again or check session.",
-      );
-    }
-    setSendMessage(parts.join(" "));
-    setSendBusy(false);
   };
 
   if (loading) {

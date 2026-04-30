@@ -3,11 +3,11 @@ export const BRIEF_INVITATION_HTML: string = "<!DOCTYPE html>\r\n<html lang=\"en
 
 
 export const SURFACE_LABELS: Record<string, string> = {
-  partner_brief_labs: "Partner Brief",
+  partner_brief_labs: "Partner Brief — Mack",
   roundtable_calendar: "Roundtable Calendar",
-  door_2_lens: "Door 2 · Lens",
-  door_7_dreamscape: "Door 7 · Dreamscape",
-  door_9_ai_iq: "Door 9 · AI IQ",
+  door_2_lens: "Door 2 · Lens (URL diagnostic)",
+  door_4_compass: "Door 4 · Compass (AI IQ)",
+  door_7_architect: "Door 7 · Architect's Studio (Vision)",
 };
 
 export type BriefInvitationBuildInput = {
